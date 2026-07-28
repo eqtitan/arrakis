@@ -58,5 +58,17 @@
       { "tag": "Weaken", "count": 1, "required": true },
       { "tag": "Heal", "count": 1, "required": false }
     ]
+  },
+  {
+    "id": "myth-seeker",
+    "name": "Myth Seeker (Unkillable)",
+    "purpose": "Unkillable",
+    "style": "Manual",
+    "description": "A community-known Epic/Rare 1-key Nightmare/Ultra-Nightmare Clan Boss comp: High Khatun leads with team speed control, Demytha's Block Damage keeps everyone alive, Seeker pushes turn meters to hold the cycle, and two Poison attackers supply the damage. Needs careful speed tuning (see DeadwoodJedi's Myth Seeker speed-tune page) and solid gear (~3.5k+ DEF) - this is a known comp to aim for, not a guaranteed clear.",
+    "slots": [
+      { "tag": "AllyProtection", "count": 1, "required": true },
+      { "tag": "Poison", "count": 2, "required": true }
+    ],
+    "recommendedChampionIds": ["high-khatun", "demytha", "seeker", "kael", "kalvalax"]
   }
 ]

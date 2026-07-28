@@ -86,6 +86,11 @@ export interface Template {
   style: CbStyle;
   description: string;
   slots: TemplateSlot[];
+  // Specific named champions this template is built around, when the
+  // synergy is tighter than the generic tag-slot matching can express
+  // (e.g. a named community comp). Shown as guidance in the UI; the
+  // scoring engine still matches by tag slots above, not this list.
+  recommendedChampionIds?: string[];
 }
 
 export interface TeamSlotResult {

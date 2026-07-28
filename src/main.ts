@@ -61,7 +61,7 @@ async function main() {
     renderResults(resultsPanelEl, suggestions, championsById);
   }
 
-  renderTemplateGallery(templateGalleryEl, templates);
+  renderTemplateGallery(templateGalleryEl, templates, championsById);
 
   initChampionPicker(
     searchInput,
