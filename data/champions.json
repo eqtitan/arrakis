@@ -155,5 +155,8 @@
   { "id": "yelagirna", "name": "Yelagirna", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Revive"] },
   { "id": "spirithost", "name": "Spirithost", "faction": "Dark Elves", "affinity": "Spirit", "rarity": "Rare", "tags": ["IncreaseAtk", "AllyProtection"] },
   { "id": "gladewulf", "name": "Gladewulf", "faction": "Sylvan Watchers", "affinity": "Void", "rarity": "Rare", "tags": ["AllyProtection"], "notes": "Cited as one of the stronger Rares added in recent times." },
-  { "id": "vallaryn-the-equalizer", "name": "Vallaryn the Equalizer", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Legendary", "tags": ["Weaken"], "notes": "Free login-reward Legendary." }
+  { "id": "vallaryn-the-equalizer", "name": "Vallaryn the Equalizer", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Legendary", "tags": ["Weaken"], "notes": "Free login-reward Legendary." },
+  { "id": "broadmaw", "name": "Broadmaw", "faction": "Lizardmen", "affinity": "Void", "rarity": "Epic", "tags": ["Revive"] },
+  { "id": "dawncaller-sabitha", "name": "Dawncaller Sabitha", "faction": "Knights Revenant", "affinity": "Void", "rarity": "Epic", "tags": ["IncreaseAtk", "Revive"], "notes": "Widely cited as one of the strongest support Epics released in recent times." },
+  { "id": "suwai-firstborn", "name": "Suwai Firstborn", "faction": "Barbarians", "affinity": "Void", "rarity": "Epic", "tags": ["DecreaseDef", "Weaken", "DecreaseAtk"], "notes": "Explicitly cited as a reliable damage enabler for Clan Boss." }
 ]
