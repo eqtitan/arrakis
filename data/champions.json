@@ -202,5 +202,9 @@
   { "id": "gwynneth", "name": "Gwynneth", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "Weaken"], "notes": "Doom Tower Secret Room fragment champion (cannot be summoned)." },
   { "id": "jurojin", "name": "Jurojin", "faction": "Shadowkin", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk"] },
   { "id": "sachi", "name": "Sachi", "faction": "Shadowkin", "affinity": "Force", "rarity": "Epic", "tags": ["Revive"] },
-  { "id": "merouka", "name": "Merouka", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["Revive"], "notes": "A3 places a team-wide Revive-on-Death buff." }
+  { "id": "merouka", "name": "Merouka", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["Revive"], "notes": "A3 places a team-wide Revive-on-Death buff." },
+  { "id": "kaiden", "name": "Kaiden", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Revive"], "notes": "A3 revives two fallen allies; explicitly cited for Clan Boss utility alongside Faction Wars." },
+  { "id": "kallia", "name": "Kallia", "faction": "Barbarians", "affinity": "Force", "rarity": "Epic", "tags": ["HpBurn"] },
+  { "id": "vogoth", "name": "Vogoth", "faction": "Undead Hordes", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal"], "notes": "Passive heals all allies for a percentage of damage he tanks; no cooldown." },
+  { "id": "erinyes", "name": "Erinyes", "faction": "Demonspawn", "affinity": "Force", "rarity": "Epic", "tags": ["Poison"], "notes": "90% chance to place Poison, though more commonly used as fusion fodder for Rhazin Scarhide than fielded directly." }
 ]
