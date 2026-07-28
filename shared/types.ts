@@ -6,6 +6,7 @@ export type Affinity = "Magic" | "Force" | "Spirit" | "Void";
 export type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Mythical";
 
 export type Faction =
+  | "Argonites"
   | "Banner Lords"
   | "Barbarians"
   | "Dark Elves"

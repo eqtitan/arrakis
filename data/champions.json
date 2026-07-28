@@ -168,5 +168,17 @@
   { "id": "gliseah-soulguide", "name": "Gliseah Soulguide", "faction": "Sacred Order", "affinity": "Force", "rarity": "Legendary", "tags": ["Weaken"] },
   { "id": "gretel-hagbane", "name": "Gretel Hagbane", "faction": "Sacred Order", "affinity": "Force", "rarity": "Legendary", "tags": ["DecreaseDef"] },
   { "id": "guurda-bogbrew", "name": "Guurda Bogbrew", "faction": "Ogryn Tribes", "affinity": "Force", "rarity": "Legendary", "tags": ["Weaken", "Poison"] },
-  { "id": "lodric-falconheart", "name": "Lodric Falconheart", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["Shield", "DecreaseAtk"], "notes": "Called an underrated support Epic in community guides." }
+  { "id": "lodric-falconheart", "name": "Lodric Falconheart", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["Shield", "DecreaseAtk"], "notes": "Called an underrated support Epic in community guides." },
+  { "id": "gnarox-blackhorn", "name": "Gnarox Blackhorn", "faction": "Skinwalkers", "affinity": "Magic", "rarity": "Epic", "tags": ["AllyProtection"] },
+  { "id": "acolyte-of-the-slither", "name": "Acolyte of the Slither", "faction": "Argonites", "affinity": "Spirit", "rarity": "Rare", "tags": ["Heal"], "notes": "Cited as one of the best Rare champions in the game. First champion tagged from the Argonites, RSL's 16th faction (added mid-project, not previously in the schema)." },
+  { "id": "armina", "name": "Armina", "faction": "Barbarians", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "dark-athel", "name": "Dark Athel", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseDef"], "notes": "90-day daily login reward champion." },
+  { "id": "sir-artimage", "name": "Sir Artimage", "faction": "Banner Lords", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "suiren", "name": "Suiren", "faction": "Shadowkin", "affinity": "Force", "rarity": "Epic", "tags": ["Poison", "DecreaseDef", "Weaken"], "notes": "The only Shadowkin Epic able to apply AoE Decrease DEF; explicitly cited as a strong Clan Boss progression option." },
+  { "id": "rian-the-conjurer", "name": "Rian the Conjurer", "faction": "Dark Elves", "affinity": "Force", "rarity": "Epic", "tags": ["Weaken", "Revive"], "notes": "A3 revive has a bonus synergy with Akoth the Seared (also in this dataset) if both are on the same team." },
+  { "id": "fenshi", "name": "Fenshi", "faction": "Shadowkin", "affinity": "Force", "rarity": "Epic", "tags": ["Poison"] },
+  { "id": "hexia", "name": "Hexia", "faction": "Undead Hordes", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "romero", "name": "Romero", "faction": "Sacred Order", "affinity": "Force", "rarity": "Epic", "tags": ["Heal", "Shield"], "notes": "Older, lower-power support Epic, but a real team-wide Heal + Shield kit." },
+  { "id": "zargala", "name": "Zargala", "faction": "Orcs", "affinity": "Force", "rarity": "Epic", "tags": ["Weaken", "DecreaseDef"] },
+  { "id": "dark-kael", "name": "Dark Kael", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Poison", "DecreaseAtk"], "notes": "Explicitly described as clearly designed as a Clan Boss champion." }
 ]
