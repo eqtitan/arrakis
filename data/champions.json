@@ -126,5 +126,11 @@
   { "id": "quargan-the-crowned", "name": "Quargan the Crowned", "faction": "Lizardmen", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Shield"] },
   { "id": "rector-drath", "name": "Rector Drath", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseAtk", "Heal", "Revive"], "notes": "Widely cited as one of the strongest support Epics in the game." },
   { "id": "roshcard-the-tower", "name": "Roshcard the Tower", "faction": "Sacred Order", "affinity": "Magic", "rarity": "Legendary", "tags": ["AllyProtection"], "notes": "Block Damage on all allies for 2 turns; explicitly valuable for Unkillable Clan Boss teams." },
-  { "id": "rowan", "name": "Rowan", "faction": "Banner Lords", "affinity": "Void", "rarity": "Epic", "tags": ["Poison"] }
+  { "id": "rowan", "name": "Rowan", "faction": "Banner Lords", "affinity": "Void", "rarity": "Epic", "tags": ["Poison"] },
+  { "id": "saito", "name": "Saito", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Legendary", "tags": ["DecreaseDef"], "notes": "Pure damage dealer explicitly called out as shining in Clan Boss." },
+  { "id": "sepulcher-sentinel", "name": "Sepulcher Sentinel", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseAtk", "AllyProtection"], "notes": "Widely cited as one of the strongest Epics for Clan Boss, rivaling Legendaries." },
+  { "id": "shirimani", "name": "Shirimani", "faction": "High Elves", "affinity": "Force", "rarity": "Legendary", "tags": ["Heal"], "notes": "Known as the Frost Queen." },
+  { "id": "siegehulk", "name": "Siegehulk", "faction": "Ogryn Tribes", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "sinesha", "name": "Sinesha", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Epic", "tags": ["Heal"] },
+  { "id": "skeletor", "name": "Skeletor", "faction": "Knights Revenant", "affinity": "Spirit", "rarity": "Legendary", "tags": [], "notes": "Masters of the Universe crossover Legendary; kit revolves around debuff extension and buff disruption, not fully captured by the current tag set." }
 ]
