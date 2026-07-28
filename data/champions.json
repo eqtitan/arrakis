@@ -141,5 +141,12 @@
   { "id": "thenasil", "name": "Thenasil", "faction": "High Elves", "affinity": "Force", "rarity": "Epic", "tags": ["Heal"] },
   { "id": "thylessia", "name": "Thylessia", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef"], "notes": "Reliable unresisted, unbooked AoE 100% Decrease DEF; commonly cited as a strong low-investment pick." },
   { "id": "tomoe", "name": "Tomoe", "faction": "Shadowkin", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseAtk"] },
-  { "id": "toragi-the-frog", "name": "Toragi the Frog", "faction": "Shadowkin", "affinity": "Magic", "rarity": "Epic", "tags": ["AllyProtection", "Poison"], "notes": "Explicitly cited as excelling in Clan Boss via team-wide Ally Protection and Poison." }
+  { "id": "toragi-the-frog", "name": "Toragi the Frog", "faction": "Shadowkin", "affinity": "Magic", "rarity": "Epic", "tags": ["AllyProtection", "Poison"], "notes": "Explicitly cited as excelling in Clan Boss via team-wide Ally Protection and Poison." },
+  { "id": "trumborr", "name": "Trumborr", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["Weaken", "AllyProtection"], "notes": "Nicknamed the 'Clan Boss Maestro' in community guides." },
+  { "id": "ursala-the-mourner", "name": "Ursala the Mourner", "faction": "Banner Lords", "affinity": "Void", "rarity": "Epic", "tags": ["DecreaseAtk", "IncreaseAtk", "Revive"], "notes": "A3 is a full team revive with Turn Meter, Increase DEF, and Strengthen." },
+  { "id": "venomage", "name": "Venomage", "faction": "Lizardmen", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseAtk", "DecreaseDef", "Poison"], "notes": "Long regarded as one of the best Epic support champions in the game; explicitly a great Clan Boss candidate." },
+  { "id": "vergis", "name": "Vergis", "faction": "High Elves", "affinity": "Spirit", "rarity": "Epic", "tags": ["AllyProtection"] },
+  { "id": "vrask", "name": "Vrask", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal"], "notes": "Requires no skill books; passive heals the whole team on crit." },
+  { "id": "warcaster", "name": "Warcaster", "faction": "Banner Lords", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection"] },
+  { "id": "warmaiden", "name": "Warmaiden", "faction": "Barbarians", "affinity": "Force", "rarity": "Rare", "tags": ["DecreaseDef", "Poison"], "notes": "The only Rare champion in the game able to place a 60% Decrease DEF debuff on the entire enemy team." }
 ]
