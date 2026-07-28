@@ -34,5 +34,12 @@
   { "id": "reliquary-tender", "name": "Reliquary Tender", "faction": "High Elves", "affinity": "Void", "rarity": "Rare", "tags": ["DecreaseAtk", "Heal", "Revive"] },
   { "id": "seeker", "name": "Seeker", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": ["IncreaseAtk"] },
   { "id": "maneater", "name": "Maneater", "faction": "Ogryn Tribes", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection"] },
-  { "id": "rearguard-sergeant", "name": "Rearguard Sergeant", "faction": "Dwarves", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef", "DecreaseAtk", "AllyProtection", "Heal"] }
+  { "id": "rearguard-sergeant", "name": "Rearguard Sergeant", "faction": "Dwarves", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef", "DecreaseAtk", "AllyProtection", "Heal"] },
+  { "id": "authoratrix-lamasu", "name": "Authoratrix Lamasu", "faction": "Demonspawn", "affinity": "Void", "rarity": "Legendary", "tags": ["DecreaseAtk"] },
+  { "id": "burangiri", "name": "Burangiri", "faction": "Shadowkin", "affinity": "Force", "rarity": "Epic", "tags": ["Shield"] },
+  { "id": "cupidus", "name": "Cupidus", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Legendary", "tags": ["HpBurn"] },
+  { "id": "embrys-the-anomaly", "name": "Embrys the Anomaly", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Mythical", "tags": ["DecreaseAtk"] },
+  { "id": "eostrid-dreamsong", "name": "Eostrid Dreamsong", "faction": "Sylvan Watchers", "affinity": "Force", "rarity": "Legendary", "tags": ["Weaken", "Heal", "IncreaseAtk"] },
+  { "id": "godseeker-aniri", "name": "Godseeker Aniri", "faction": "Sacred Order", "affinity": "Void", "rarity": "Epic", "tags": ["Heal", "Revive"] },
+  { "id": "kalvalax", "name": "Kalvalax", "faction": "Knights Revenant", "affinity": "Spirit", "rarity": "Legendary", "tags": ["Poison"] }
 ]

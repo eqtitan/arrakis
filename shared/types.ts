@@ -3,7 +3,7 @@
 
 export type Affinity = "Magic" | "Force" | "Spirit" | "Void";
 
-export type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary";
+export type Rarity = "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary" | "Mythical";
 
 export type Faction =
   | "Banner Lords"
