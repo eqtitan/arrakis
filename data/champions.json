@@ -88,5 +88,6 @@
   { "id": "cleopterix", "name": "Cleopterix", "faction": "Skinwalkers", "affinity": "Spirit", "rarity": "Legendary", "tags": [] },
   { "id": "conellia", "name": "Conellia", "faction": "Dwarves", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal"] },
   { "id": "criodan-the-blue", "name": "Criodan the Blue", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": [] },
-  { "id": "dark-elhain", "name": "Dark Elhain", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": [] }
+  { "id": "dark-elhain", "name": "Dark Elhain", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": [] },
+  { "id": "high-khatun", "name": "High Khatun", "faction": "Barbarians", "affinity": "Spirit", "rarity": "Epic", "tags": [], "notes": "Core to the community 'Myth Seeker' 1-key Nightmare/UNM Clan Boss team (lead + turn meter/speed control) alongside Demytha and Seeker; her speed-manipulation kit isn't fully captured by the current tag set." }
 ]
