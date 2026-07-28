@@ -180,5 +180,17 @@
   { "id": "hexia", "name": "Hexia", "faction": "Undead Hordes", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef"] },
   { "id": "romero", "name": "Romero", "faction": "Sacred Order", "affinity": "Force", "rarity": "Epic", "tags": ["Heal", "Shield"], "notes": "Older, lower-power support Epic, but a real team-wide Heal + Shield kit." },
   { "id": "zargala", "name": "Zargala", "faction": "Orcs", "affinity": "Force", "rarity": "Epic", "tags": ["Weaken", "DecreaseDef"] },
-  { "id": "dark-kael", "name": "Dark Kael", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Poison", "DecreaseAtk"], "notes": "Explicitly described as clearly designed as a Clan Boss champion." }
+  { "id": "dark-kael", "name": "Dark Kael", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Poison", "DecreaseAtk"], "notes": "Explicitly described as clearly designed as a Clan Boss champion." },
+  { "id": "ambassador-lethelin", "name": "Ambassador Lethelin", "faction": "High Elves", "affinity": "Force", "rarity": "Epic", "tags": ["Heal"] },
+  { "id": "aox-the-rememberer", "name": "Aox the Rememberer", "faction": "Lizardmen", "affinity": "Force", "rarity": "Epic", "tags": ["Heal", "DecreaseAtk"] },
+  { "id": "cormac-the-highpeak", "name": "Cormac the Highpeak", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseDef"], "notes": "Fully single-target, but explicitly cited for bringing some of the best boss debuffs in the game." },
+  { "id": "dhukk-the-pierced", "name": "Dhukk the Pierced", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseAtk", "DecreaseDef"] },
+  { "id": "enda-moonbeam", "name": "Enda Moonbeam", "faction": "Sylvan Watchers", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "fodbor-the-bard", "name": "Fodbor the Bard", "faction": "Dwarves", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "galapo-the-recluse", "name": "Galapo the Recluse", "faction": "Lizardmen", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "Revive"] },
+  { "id": "grunch-killjoy", "name": "Grunch Killjoy", "faction": "Ogryn Tribes", "affinity": "Force", "rarity": "Epic", "tags": ["Heal"] },
+  { "id": "kellan-the-shrike", "name": "Kellan the Shrike", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": ["Weaken"] },
+  { "id": "klodd-beastfeeder", "name": "Klodd Beastfeeder", "faction": "Ogryn Tribes", "affinity": "Magic", "rarity": "Epic", "tags": ["Shield"], "notes": "Team-wide Shield plus Increase SPD/ACC buffs; noted as popular for speed-tuned Clan Boss compositions." },
+  { "id": "mistress-of-hymns", "name": "Mistress of Hymns", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Revive"] },
+  { "id": "pann-the-bowhorn", "name": "Pann the Bowhorn", "faction": "Sylvan Watchers", "affinity": "Force", "rarity": "Epic", "tags": ["Weaken"], "notes": "A3 specifically places Weaken (75% chance) instead of Fear when the target is a Boss-type enemy, i.e. it's built to trigger against Clan Boss." }
 ]
