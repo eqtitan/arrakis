@@ -148,5 +148,9 @@
   { "id": "vergis", "name": "Vergis", "faction": "High Elves", "affinity": "Spirit", "rarity": "Epic", "tags": ["AllyProtection"] },
   { "id": "vrask", "name": "Vrask", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal"], "notes": "Requires no skill books; passive heals the whole team on crit." },
   { "id": "warcaster", "name": "Warcaster", "faction": "Banner Lords", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection"] },
-  { "id": "warmaiden", "name": "Warmaiden", "faction": "Barbarians", "affinity": "Force", "rarity": "Rare", "tags": ["DecreaseDef", "Poison"], "notes": "The only Rare champion in the game able to place a 60% Decrease DEF debuff on the entire enemy team." }
+  { "id": "warmaiden", "name": "Warmaiden", "faction": "Barbarians", "affinity": "Force", "rarity": "Rare", "tags": ["DecreaseDef", "Poison"], "notes": "The only Rare champion in the game able to place a 60% Decrease DEF debuff on the entire enemy team." },
+  { "id": "white-dryad-nia", "name": "White Dryad Nia", "faction": "Sylvan Watchers", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection"], "notes": "Explicitly cited as excelling in Clan Boss via team-wide Ally Protection." },
+  { "id": "wuzgar", "name": "Wuzgar", "faction": "Ogryn Tribes", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Shield"] },
+  { "id": "xenomorph", "name": "Xenomorph", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Legendary", "tags": ["Poison"], "notes": "Alien crossover Legendary (Nov 2025-Feb 2026 event), free to claim." },
+  { "id": "yelagirna", "name": "Yelagirna", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Revive"] }
 ]
