@@ -89,5 +89,21 @@
   { "id": "conellia", "name": "Conellia", "faction": "Dwarves", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal"] },
   { "id": "criodan-the-blue", "name": "Criodan the Blue", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": [] },
   { "id": "dark-elhain", "name": "Dark Elhain", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": [] },
-  { "id": "high-khatun", "name": "High Khatun", "faction": "Barbarians", "affinity": "Spirit", "rarity": "Epic", "tags": [], "notes": "Core to the community 'Myth Seeker' 1-key Nightmare/UNM Clan Boss team (lead + turn meter/speed control) alongside Demytha and Seeker; her speed-manipulation kit isn't fully captured by the current tag set." }
+  { "id": "high-khatun", "name": "High Khatun", "faction": "Barbarians", "affinity": "Spirit", "rarity": "Epic", "tags": [], "notes": "Core to the community 'Myth Seeker' 1-key Nightmare/UNM Clan Boss team (lead + turn meter/speed control) alongside Demytha and Seeker; her speed-manipulation kit isn't fully captured by the current tag set." },
+  { "id": "delaaja", "name": "Delaaja", "faction": "Lizardmen", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Heal", "Shield"] },
+  { "id": "dilgol", "name": "Dilgol", "faction": "Dwarves", "affinity": "Void", "rarity": "Rare", "tags": ["DecreaseDef"] },
+  { "id": "doompriest", "name": "Doompriest", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Epic", "tags": ["IncreaseAtk", "Heal"] },
+  { "id": "drexthar-bloodtwin", "name": "Drexthar Bloodtwin", "faction": "Demonspawn", "affinity": "Force", "rarity": "Legendary", "tags": ["HpBurn"], "notes": "Renowned spiderling tank; passive inflicts HP Burn on attackers." },
+  { "id": "duhr-the-hungerer", "name": "Duhr the Hungerer", "faction": "Demonspawn", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Revive"] },
+  { "id": "elenaril", "name": "Elenaril", "faction": "High Elves", "affinity": "Magic", "rarity": "Legendary", "tags": ["HpBurn", "Poison"], "notes": "Poison explosion specialist; A1 HP Burn cannot be resisted." },
+  { "id": "eolfrig", "name": "Eolfrig", "faction": "Banner Lords", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Heal", "IncreaseAtk"] },
+  { "id": "ezio-auditore", "name": "Ezio Auditore", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Legendary", "tags": ["DecreaseDef", "Poison"], "notes": "Assassin's Creed crossover champion; starts combat in Perfect Veil, debuffs unresistable while hidden." },
+  { "id": "fahrakin-the-fat", "name": "Fahrakin the Fat", "faction": "Barbarians", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef", "HpBurn", "Poison"] },
+  { "id": "flesh-tearer", "name": "Flesh-Tearer", "faction": "Skinwalkers", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal"], "notes": "Extends ally buff and enemy debuff durations; commonly cited entry-level Clan Boss support." },
+  { "id": "fyr-gun-isbeil", "name": "Fyr-gun Isbeil", "faction": "Dwarves", "affinity": "Force", "rarity": "Epic", "tags": ["Weaken"] },
+  { "id": "galek", "name": "Galek", "faction": "Orcs", "affinity": "Magic", "rarity": "Rare", "tags": ["DecreaseDef"], "notes": "One of the four starter champions." },
+  { "id": "ghrush-the-mangler", "name": "Ghrush the Mangler", "faction": "Ogryn Tribes", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Heal"] },
+  { "id": "gorgorab", "name": "Gorgorab", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": ["IncreaseAtk", "Revive", "Heal"] },
+  { "id": "gorlos-hellmaw", "name": "Gorlos Hellmaw", "faction": "Demonspawn", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef", "HpBurn"] },
+  { "id": "hakkorhn-smashlord", "name": "Hakkorhn Smashlord", "faction": "Skinwalkers", "affinity": "Magic", "rarity": "Legendary", "tags": ["Heal", "AllyProtection"] }
 ]
