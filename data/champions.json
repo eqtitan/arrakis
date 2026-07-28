@@ -80,5 +80,13 @@
   { "id": "bovos-sharphorn", "name": "Bovos Sharphorn", "faction": "Skinwalkers", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal"] },
   { "id": "branch-arm-lasair", "name": "Branch-arm Lasair", "faction": "Sylvan Watchers", "affinity": "Void", "rarity": "Rare", "tags": ["Shield", "DecreaseAtk"] },
   { "id": "captain-temila", "name": "Captain Temila", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "AllyProtection"] },
-  { "id": "carlinia", "name": "Carlinia", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["HpBurn", "DecreaseAtk"] }
+  { "id": "carlinia", "name": "Carlinia", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["HpBurn", "DecreaseAtk"] },
+  { "id": "catacomb-councilor", "name": "Catacomb Councilor", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": [] },
+  { "id": "ceez", "name": "Ceez", "faction": "Ogryn Tribes", "affinity": "Force", "rarity": "Epic", "tags": [] },
+  { "id": "cheshire-cat", "name": "Cheshire Cat", "faction": "Demonspawn", "affinity": "Spirit", "rarity": "Legendary", "tags": [] },
+  { "id": "cillian-the-lucky", "name": "Cillian the Lucky", "faction": "Banner Lords", "affinity": "Magic", "rarity": "Legendary", "tags": [] },
+  { "id": "cleopterix", "name": "Cleopterix", "faction": "Skinwalkers", "affinity": "Spirit", "rarity": "Legendary", "tags": [] },
+  { "id": "conellia", "name": "Conellia", "faction": "Dwarves", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal"] },
+  { "id": "criodan-the-blue", "name": "Criodan the Blue", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": [] },
+  { "id": "dark-elhain", "name": "Dark Elhain", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": [] }
 ]
