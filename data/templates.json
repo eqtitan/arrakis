@@ -1,0 +1,62 @@
+[
+  {
+    "id": "beginner-poison",
+    "name": "Beginner Poison",
+    "purpose": "Poison",
+    "style": "FullAuto",
+    "description": "Stack Poison debuffs and let them tick for the bulk of your damage while one support keeps the team alive. Forgiving to run on Auto and a good first Clan Boss team for a growing roster.",
+    "slots": [
+      { "tag": "Poison", "count": 2, "required": true },
+      { "tag": "DecreaseDef", "count": 1, "required": true },
+      { "tag": "Heal", "count": 1, "required": false }
+    ]
+  },
+  {
+    "id": "full-poison-spread",
+    "name": "Full Poison Spread",
+    "purpose": "Poison",
+    "style": "FullAuto",
+    "description": "Push Poison stacking further with three appliers so the debuff rarely falls off, backed by a single Decrease Defense source to keep each tick hitting hard.",
+    "slots": [
+      { "tag": "Poison", "count": 3, "required": true },
+      { "tag": "DecreaseDef", "count": 1, "required": true }
+    ]
+  },
+  {
+    "id": "classic-hp-burn-nuke",
+    "name": "Classic HP Burn Nuke",
+    "purpose": "HpBurn",
+    "style": "Manual",
+    "description": "Only one HP Burn instance can be active at a time, so this leans on a single strong applier plus Decrease Defense/Weaken to amplify direct hits alongside the burn.",
+    "slots": [
+      { "tag": "HpBurn", "count": 1, "required": true },
+      { "tag": "DecreaseDef", "count": 1, "required": true },
+      { "tag": "Weaken", "count": 1, "required": false },
+      { "tag": "IncreaseAtk", "count": 1, "required": false }
+    ]
+  },
+  {
+    "id": "unkillable-nuke",
+    "name": "Unkillable Nuke",
+    "purpose": "Unkillable",
+    "style": "Manual",
+    "description": "A dedicated protection champion keeps the rest of the team alive through Clan Boss's nuke hits while everyone else is built for pure damage, amplified by a debuff layer.",
+    "slots": [
+      { "tag": "AllyProtection", "count": 1, "required": true },
+      { "tag": "DecreaseDef", "count": 1, "required": true },
+      { "tag": "Weaken", "count": 1, "required": false }
+    ]
+  },
+  {
+    "id": "budget-nuke",
+    "name": "Budget Nuke",
+    "purpose": "Nuke",
+    "style": "SlowTune",
+    "description": "No Legendary poison applier needed — layer Decrease Defense and Weaken to amplify ordinary hits, with a healer to cover the lack of a dedicated protection buff.",
+    "slots": [
+      { "tag": "DecreaseDef", "count": 1, "required": true },
+      { "tag": "Weaken", "count": 1, "required": true },
+      { "tag": "Heal", "count": 1, "required": false }
+    ]
+  }
+]

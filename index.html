@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arrakis — Clan Boss Team Optimizer</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header id="topbar">
+      <h1>Arrakis</h1>
+      <p class="tagline">Best Clan Boss team from your actual roster.</p>
+    </header>
+
+    <main>
+      <section id="roster-section" aria-labelledby="roster-heading">
+        <h2 id="roster-heading">Your Roster</h2>
+
+        <details id="import-panel">
+          <summary>Import roster (RSL Helper sync)</summary>
+          <p class="hint">
+            If you run <a href="https://rslhelper.com/" target="_blank" rel="noopener">RSL Helper</a>
+            alongside the game, refresh your roster any time with:
+            <code>node tools/rslhelper-export.mjs &gt; roster.json</code>
+            (reads RSL Helper's local database directly), then paste the
+            output below. Only champions already tagged in Arrakis's dataset
+            are imported — the tool reports how many were matched.
+          </p>
+          <textarea id="import-textarea" rows="6" placeholder="Paste roster.json contents here"></textarea>
+          <div class="import-actions">
+            <button id="import-btn" type="button">Import</button>
+            <span id="import-status" role="status"></span>
+          </div>
+        </details>
+
+        <div id="champion-picker">
+          <label for="champion-search">Add a champion you own</label>
+          <input id="champion-search" type="text" placeholder="Search champions…" autocomplete="off" />
+          <div id="champion-search-results" role="listbox"></div>
+        </div>
+
+        <div id="roster-list" aria-live="polite"></div>
+      </section>
+
+      <section id="templates-section" aria-labelledby="templates-heading">
+        <h2 id="templates-heading">Clan Boss Team Templates</h2>
+        <div id="template-gallery"></div>
+      </section>
+
+      <section id="results-section" aria-labelledby="results-heading">
+        <h2 id="results-heading">Suggested Teams</h2>
+        <div id="results-panel" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer id="disclaimer">
+      Champion tags and team templates are a hand-curated starting dataset,
+      not an exhaustive or guaranteed-current database — verify against
+      in-game skill descriptions before relying on a suggestion.
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

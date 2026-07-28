@@ -1,0 +1,216 @@
+:root {
+  color-scheme: light dark;
+  --accent: #c0392b;
+  --border: color-mix(in srgb, currentColor 15%, transparent);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0 1rem 3rem;
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+#topbar {
+  padding: 1.5rem 0 1rem;
+}
+
+#topbar h1 {
+  margin: 0;
+  color: var(--accent);
+}
+
+.tagline {
+  margin: 0.25rem 0 0;
+  opacity: 0.75;
+}
+
+section {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+#import-panel {
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+
+#import-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, monospace;
+  margin-top: 0.5rem;
+}
+
+.import-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.hint {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+#champion-picker {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+#champion-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+#champion-search-results {
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  max-height: 220px;
+  overflow-y: auto;
+  background: canvas;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#champion-search-results:empty {
+  display: none;
+}
+
+.search-result {
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+}
+
+.search-result:hover,
+.search-result:focus {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+#roster-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.roster-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.roster-card .stats-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 0.4rem;
+}
+
+.roster-card .stats-grid label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.roster-card .stats-grid input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.remove-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+#template-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.template-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.template-card h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.template-card p {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin: 0.25rem 0;
+}
+
+.template-tags {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+#results-panel {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.result-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.result-card.top-pick {
+  border-color: var(--accent);
+}
+
+.result-card h3 {
+  margin: 0 0 0.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+
+.team-members {
+  font-weight: 600;
+}
+
+.warning {
+  color: var(--accent);
+  font-size: 0.85rem;
+  margin: 0.25rem 0 0;
+}
+
+#disclaimer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  opacity: 0.7;
+}

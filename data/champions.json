@@ -1,0 +1,23 @@
+[
+  { "id": "warmaster", "name": "Warmaster", "faction": "Orcs", "affinity": "Force", "rarity": "Legendary", "tags": ["DecreaseDef"] },
+  { "id": "kael", "name": "Kael", "faction": "Sacred Order", "affinity": "Force", "rarity": "Legendary", "tags": ["Poison", "DecreaseDef"] },
+  { "id": "coldheart", "name": "Coldheart", "faction": "Dark Elves", "affinity": "Spirit", "rarity": "Legendary", "tags": ["DecreaseDef"] },
+  { "id": "dracomorph", "name": "Dracomorph", "faction": "Draconis", "affinity": "Force", "rarity": "Legendary", "tags": ["Poison", "Weaken", "DecreaseDef"] },
+  { "id": "warlord", "name": "Warlord", "faction": "Barbarians", "affinity": "Force", "rarity": "Legendary", "tags": ["DecreaseDef"] },
+  { "id": "prince-kymar", "name": "Prince Kymar", "faction": "High Elves", "affinity": "Magic", "rarity": "Legendary", "tags": ["AllyProtection", "Heal", "Revive"] },
+  { "id": "duchess-lilitu", "name": "Duchess Lilitu", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Legendary", "tags": ["HpBurn", "DecreaseDef", "Weaken"] },
+  { "id": "geomancer", "name": "Geomancer", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Legendary", "tags": ["Shield", "Heal"] },
+  { "id": "frozen-banshee", "name": "Frozen Banshee", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Legendary", "tags": ["DecreaseDef"] },
+  { "id": "painkeeper", "name": "Painkeeper", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Legendary", "tags": ["Heal", "Revive"] },
+  { "id": "apothecary", "name": "Apothecary", "faction": "High Men", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Revive"] },
+  { "id": "martyr", "name": "Martyr", "faction": "High Men", "affinity": "Force", "rarity": "Legendary", "tags": ["Heal", "AllyProtection"] },
+  { "id": "big-un", "name": "Big Un", "faction": "Ogryn Tribes", "affinity": "Force", "rarity": "Legendary", "tags": ["IncreaseAtk"] },
+  { "id": "trunda-icemaw", "name": "Trunda Icemaw", "faction": "Ogryn Tribes", "affinity": "Magic", "rarity": "Legendary", "tags": ["DecreaseDef", "AoeReliable"] },
+  { "id": "bulwark", "name": "Bulwark", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Legendary", "tags": ["Shield", "Revive", "AllyProtection"] },
+  { "id": "spirit-haunt", "name": "Spirit Haunt", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Legendary", "tags": ["DecreaseDef", "AllyProtection"] },
+  { "id": "doompriestess", "name": "Doompriestess", "faction": "Demonspawn", "affinity": "Void", "rarity": "Legendary", "tags": ["HpBurn", "DecreaseDef", "Weaken"] },
+  { "id": "skullcrusher", "name": "Skullcrusher", "faction": "Orcs", "affinity": "Void", "rarity": "Legendary", "tags": ["Shield", "AllyProtection"] },
+  { "id": "miscreated-monster", "name": "Miscreated Monster", "faction": "Demonspawn", "affinity": "Void", "rarity": "Legendary", "tags": ["Weaken"] },
+  { "id": "warpriest", "name": "Warpriest", "faction": "Sacred Order", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef", "Shield"] },
+  { "id": "frost-spirit", "name": "Frost Spirit", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "Shield"] }
+]
