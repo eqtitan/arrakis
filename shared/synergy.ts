@@ -45,22 +45,31 @@ function joinRoster(roster: RosterEntry[], championsById: Map<string, Champion>)
   return owned;
 }
 
+// RSL's Ascension system tops out at 6 (see shared/types.ts RosterEntry.ascension).
+const MAX_ASCENSION = 6;
+
 // A single 0..1 "how good is this champion in a CB team, generally" score,
 // used both to rank candidates for a specific tag slot and to pick
-// generalist fill-ins once required slots are covered.
-function fitness(owned: OwnedChampion, forTag?: CbTag): number {
-  const { stats } = owned.entry;
+// generalist fill-ins once required slots are covered. Exported so callers
+// (e.g. scoring a fixed named team, not just picking one) can reuse it.
+export function championFitness(entry: RosterEntry, forTag?: CbTag): number {
+  const { stats } = entry;
   const accScore = clamp01(stats.accuracy / (ACC_FLOOR_FOR_DEBUFFS * 1.5));
   const speedScore = clamp01(stats.speed / 250);
   const critDmgScore = clamp01(stats.critDamage / 300);
+  const ascensionScore = clamp01((entry.ascension ?? 0) / MAX_ASCENSION);
 
-  let score = 0.4 * critDmgScore + 0.3 * speedScore;
+  let score = 0.3 * critDmgScore + 0.25 * speedScore + 0.15 * ascensionScore;
   if (!forTag || DEBUFF_TAGS.has(forTag)) {
     score += 0.3 * accScore;
   } else {
     score += 0.3 * critDmgScore;
   }
   return clamp01(score);
+}
+
+function fitness(owned: OwnedChampion, forTag?: CbTag): number {
+  return championFitness(owned.entry, forTag);
 }
 
 // Non-inert tag count is used as a rough "generalist usefulness" signal for
@@ -140,6 +149,70 @@ export function buildTeamForTemplate(
     score: Math.round(coverageScore + statScore),
     filledSlots,
     missingTags,
+    warnings,
+  };
+}
+
+// Scores the template's fixed, named community lineup (Template.recommendedChampionIds)
+// against what the user actually owns — as opposed to buildTeamForTemplate,
+// which freely picks the best-fitting champions from the whole roster. Lets
+// the UI show "the standard comp" next to "what your roster can actually do
+// better", on the same 0-100 scale so they're directly comparable. Returns
+// null for templates with no named lineup (most templates).
+export function buildCommunityTeam(
+  template: Template,
+  roster: RosterEntry[],
+  championsById: Map<string, Champion>,
+): TeamSuggestion | null {
+  const recommended = template.recommendedChampionIds;
+  if (!recommended || recommended.length === 0) return null;
+
+  const entryById = new Map(roster.map((e) => [e.championId, e]));
+  const championIds: string[] = [];
+  const missingChampionIds: string[] = [];
+  for (const id of recommended) {
+    if (entryById.has(id)) championIds.push(id);
+    else missingChampionIds.push(id);
+  }
+
+  const requiredSlots = template.slots.filter((s) => s.required && !CB_INERT_TAGS.has(s.tag));
+  const requiredTotal = requiredSlots.reduce((sum, s) => sum + s.count, 0);
+
+  const coveredTagCounts = new Map<CbTag, number>();
+  for (const id of championIds) {
+    const champion = championsById.get(id);
+    if (!champion) continue;
+    for (const tag of champion.tags) {
+      if (CB_INERT_TAGS.has(tag)) continue;
+      coveredTagCounts.set(tag, (coveredTagCounts.get(tag) ?? 0) + 1);
+    }
+  }
+  let requiredFilled = 0;
+  for (const slot of requiredSlots) {
+    requiredFilled += Math.min(coveredTagCounts.get(slot.tag) ?? 0, slot.count);
+  }
+  const coverageScore = requiredTotal > 0 ? (requiredFilled / requiredTotal) * 70 : 70;
+
+  const ownedEntries = championIds.map((id) => entryById.get(id)!).filter(Boolean);
+  const avgFitness =
+    ownedEntries.length > 0
+      ? ownedEntries.reduce((sum, e) => sum + championFitness(e), 0) / ownedEntries.length
+      : 0;
+  const statScore = avgFitness * 30;
+
+  const warnings: string[] = [];
+  if (missingChampionIds.length > 0) {
+    const names = missingChampionIds.map((id) => championsById.get(id)?.name ?? id).join(", ");
+    warnings.push(`You don't own: ${names}.`);
+  }
+
+  return {
+    templateId: template.id,
+    templateName: template.name,
+    championIds,
+    score: Math.round(coverageScore + statScore),
+    filledSlots: [],
+    missingTags: [],
     warnings,
   };
 }

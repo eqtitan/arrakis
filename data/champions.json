@@ -192,5 +192,15 @@
   { "id": "kellan-the-shrike", "name": "Kellan the Shrike", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": ["Weaken"] },
   { "id": "klodd-beastfeeder", "name": "Klodd Beastfeeder", "faction": "Ogryn Tribes", "affinity": "Magic", "rarity": "Epic", "tags": ["Shield"], "notes": "Team-wide Shield plus Increase SPD/ACC buffs; noted as popular for speed-tuned Clan Boss compositions." },
   { "id": "mistress-of-hymns", "name": "Mistress of Hymns", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Revive"] },
-  { "id": "pann-the-bowhorn", "name": "Pann the Bowhorn", "faction": "Sylvan Watchers", "affinity": "Force", "rarity": "Epic", "tags": ["Weaken"], "notes": "A3 specifically places Weaken (75% chance) instead of Fear when the target is a Boss-type enemy, i.e. it's built to trigger against Clan Boss." }
+  { "id": "pann-the-bowhorn", "name": "Pann the Bowhorn", "faction": "Sylvan Watchers", "affinity": "Force", "rarity": "Epic", "tags": ["Weaken"], "notes": "A3 specifically places Weaken (75% chance) instead of Fear when the target is a Boss-type enemy, i.e. it's built to trigger against Clan Boss." },
+  { "id": "sandlashed-survivor", "name": "Sandlashed Survivor", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["AllyProtection"], "notes": "Team-wide Ally Protection triggers passively when any ally drops below 50% HP; cited as an underrated contributor in Ultra Nightmare Clan Boss." },
+  { "id": "stonebound-thisbe", "name": "Stonebound Thisbe", "faction": "Argonites", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseAtk", "Heal"] },
+  { "id": "infernal-baroness", "name": "Infernal Baroness", "faction": "Demonspawn", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseAtk"] },
+  { "id": "crimson-pegason", "name": "Crimson Pegason", "faction": "Argonites", "affinity": "Force", "rarity": "Rare", "tags": ["Shield"] },
+  { "id": "ultimate-galek", "name": "Ultimate Galek", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["HpBurn"], "notes": "HP Burn chance is conditional on Ultimate Galek having an Increase ATK buff active, distinct from the separately-tagged base Galek." },
+  { "id": "aina", "name": "Aina", "faction": "Barbarians", "affinity": "Magic", "rarity": "Epic", "tags": ["Weaken", "DecreaseDef"], "notes": "High (80%) chance single-target Weaken and Decrease DEF, explicitly cited as valuable in Unkillable Clan Boss teams." },
+  { "id": "gwynneth", "name": "Gwynneth", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "Weaken"], "notes": "Doom Tower Secret Room fragment champion (cannot be summoned)." },
+  { "id": "jurojin", "name": "Jurojin", "faction": "Shadowkin", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk"] },
+  { "id": "sachi", "name": "Sachi", "faction": "Shadowkin", "affinity": "Force", "rarity": "Epic", "tags": ["Revive"] },
+  { "id": "merouka", "name": "Merouka", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["Revive"], "notes": "A3 places a team-wide Revive-on-Death buff." }
 ]

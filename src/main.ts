@@ -1,5 +1,5 @@
 import type { Champion, RosterEntry, Template } from "../shared/types";
-import { suggestTeams } from "../shared/synergy";
+import { buildCommunityTeam, suggestTeams } from "../shared/synergy";
 import { fetchChampions, fetchTemplates } from "./lib/dataClient";
 import { loadRoster, saveRoster } from "./lib/storage";
 import { parseRosterImport } from "./lib/rosterImport";
@@ -58,7 +58,14 @@ async function main() {
     );
 
     const suggestions = suggestTeams(templates, roster, championsById);
-    renderResults(resultsPanelEl, suggestions, championsById);
+
+    const communityTeams = new Map(
+      templates
+        .filter((t) => t.recommendedChampionIds?.length)
+        .map((t) => [t.id, buildCommunityTeam(t, roster, championsById)!]),
+    );
+
+    renderResults(resultsPanelEl, suggestions, championsById, communityTeams);
   }
 
   renderTemplateGallery(templateGalleryEl, templates, championsById);

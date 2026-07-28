@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CB_INERT_TAGS, buildTeamForTemplate, suggestTeams } from "./synergy";
+import { CB_INERT_TAGS, buildCommunityTeam, buildTeamForTemplate, championFitness, suggestTeams } from "./synergy";
 import type { Champion, RosterEntry, Template } from "./types";
 
 function champ(id: string, tags: Champion["tags"]): Champion {
@@ -131,5 +131,60 @@ describe("suggestTeams", () => {
     const results = suggestTeams([poisonTemplate, nukeTemplate], roster, champions);
 
     expect(results[0].score).toBeGreaterThanOrEqual(results[1].score);
+  });
+});
+
+describe("championFitness", () => {
+  it("scores higher ascension more favorably, all else equal", () => {
+    const low = championFitness(entry("a", {}) && { ...entry("a"), ascension: 0 });
+    const high = championFitness({ ...entry("a"), ascension: 6 });
+
+    expect(high).toBeGreaterThan(low);
+  });
+});
+
+describe("buildCommunityTeam", () => {
+  const namedTemplate: Template = {
+    id: "named",
+    name: "Named Comp",
+    purpose: "Unkillable",
+    style: "Manual",
+    description: "test",
+    slots: [
+      { tag: "AllyProtection", count: 1, required: true },
+      { tag: "Poison", count: 1, required: true },
+    ],
+    recommendedChampionIds: ["tank", "dps"],
+  };
+
+  it("returns null for templates with no recommendedChampionIds", () => {
+    const plainTemplate: Template = { ...namedTemplate, recommendedChampionIds: undefined };
+    expect(buildCommunityTeam(plainTemplate, [], new Map())).toBeNull();
+  });
+
+  it("scores the fixed named lineup instead of freely picking from the roster", () => {
+    const champions = new Map([
+      ["tank", champ("tank", ["AllyProtection"])],
+      ["dps", champ("dps", ["Poison"])],
+      ["better-dps", champ("better-dps", ["Poison"])],
+    ]);
+    // A better Poison applier exists in the roster, but it's not part of the
+    // named comp, so buildCommunityTeam must ignore it.
+    const roster = [entry("tank"), entry("dps"), entry("better-dps", { accuracy: 999 })];
+
+    const result = buildCommunityTeam(namedTemplate, roster, champions)!;
+
+    expect(result.championIds.sort()).toEqual(["dps", "tank"]);
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it("flags named champions the user doesn't own", () => {
+    const champions = new Map([["tank", champ("tank", ["AllyProtection"])]]);
+    const roster = [entry("tank")];
+
+    const result = buildCommunityTeam(namedTemplate, roster, champions)!;
+
+    expect(result.championIds).toEqual(["tank"]);
+    expect(result.warnings.some((w) => w.includes("dps"))).toBe(true);
   });
 });

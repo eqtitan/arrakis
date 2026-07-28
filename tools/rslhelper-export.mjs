@@ -63,7 +63,7 @@ function main() {
   const db = new DatabaseSync(dbPath, { readOnly: true });
 
   const rows = db.prepare(
-    "SELECT Name, Rang, Lvl, HP, DEF, ACC, RES, SPD, CritDamage FROM Champs",
+    "SELECT Name, Rang, Lvl, EmpLvl, HP, DEF, ACC, RES, SPD, CritDamage FROM Champs",
   ).all();
 
   // Players often hold multiple un-fused copies of the same champion (fusion
@@ -91,6 +91,10 @@ function main() {
     championId,
     stars: row.Rang,
     level: row.Lvl,
+    // EmpLvl is RSL Helper's column for Ascension (0-6). Awakening has no
+    // corresponding column in this database, so it isn't exported - there's
+    // no real data to include, not an oversight.
+    ascension: row.EmpLvl,
     stats: {
       speed: row.SPD,
       hp: row.HP,

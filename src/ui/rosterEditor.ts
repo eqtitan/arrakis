@@ -74,6 +74,19 @@ export function renderRoster(
     levelLabel.appendChild(levelInput);
     statsGrid.appendChild(levelLabel);
 
+    const ascensionLabel = document.createElement("label");
+    ascensionLabel.textContent = "Ascension";
+    const ascensionInput = document.createElement("input");
+    ascensionInput.type = "number";
+    ascensionInput.min = "0";
+    ascensionInput.max = "6";
+    ascensionInput.value = String(entry.ascension ?? 0);
+    ascensionInput.addEventListener("change", () =>
+      onUpdate(entry.championId, { ascension: clampAscension(Number(ascensionInput.value)) }),
+    );
+    ascensionLabel.appendChild(ascensionInput);
+    statsGrid.appendChild(ascensionLabel);
+
     for (const field of STAT_FIELDS) {
       const label = document.createElement("label");
       label.textContent = field.label;
@@ -97,4 +110,8 @@ export function renderRoster(
 function clampStars(value: number): RosterEntry["stars"] {
   const clamped = Math.min(6, Math.max(1, Math.round(value)));
   return clamped as RosterEntry["stars"];
+}
+
+function clampAscension(value: number): number {
+  return Math.min(6, Math.max(0, Math.round(value)));
 }
