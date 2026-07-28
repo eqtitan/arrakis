@@ -114,5 +114,11 @@
   { "id": "korugar-death-bell", "name": "Korugar Death-Bell", "faction": "Ogryn Tribes", "affinity": "Force", "rarity": "Legendary", "tags": ["AllyProtection"], "notes": "Full-team debuff cleanse, Strengthen, and stat sharing; described as a top-tier CB/Hydra sustain option." },
   { "id": "madame-serris", "name": "Madame Serris", "faction": "Dark Elves", "affinity": "Void", "rarity": "Epic", "tags": ["DecreaseAtk", "DecreaseDef"], "notes": "Halloween 2019 champion, widely regarded as one of the best champions in the game; A3 strips all enemy buffs and replaces with Decrease ATK/DEF." },
   { "id": "masamoto", "name": "Masamoto", "faction": "Shadowkin", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk"] },
-  { "id": "mausoleum-mage", "name": "Mausoleum Mage", "faction": "Undead Hordes", "affinity": "Force", "rarity": "Epic", "tags": ["Heal", "AllyProtection"] }
+  { "id": "mausoleum-mage", "name": "Mausoleum Mage", "faction": "Undead Hordes", "affinity": "Force", "rarity": "Epic", "tags": ["Heal", "AllyProtection"] },
+  { "id": "melga-steelgirdle", "name": "Melga Steelgirdle", "faction": "Dwarves", "affinity": "Spirit", "rarity": "Epic", "tags": ["Shield", "Heal", "Revive"] },
+  { "id": "michelangelo", "name": "Michelangelo", "faction": "Banner Lords", "affinity": "Spirit", "rarity": "Legendary", "tags": ["DecreaseDef", "DecreaseAtk"], "notes": "Teenage Mutant Ninja Turtles crossover champion." },
+  { "id": "mistrider-daithi", "name": "Mistrider Daithi", "faction": "Sylvan Watchers", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "myciliac-priest-orn", "name": "Myciliac Priest Orn", "faction": "Sylvan Watchers", "affinity": "Spirit", "rarity": "Epic", "tags": ["Poison"] },
+  { "id": "oella", "name": "Oella", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Legendary", "tags": ["Heal"] },
+  { "id": "old-hermit-jorrg", "name": "Old Hermit Jorrg", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["HpBurn", "IncreaseAtk", "Revive"] }
 ]
