@@ -70,5 +70,18 @@
       { "tag": "Poison", "count": 2, "required": true }
     ],
     "recommendedChampionIds": ["high-khatun", "demytha", "seeker", "kael", "kalvalax"]
+  },
+  {
+    "id": "debuff-stack-ai",
+    "name": "Full Debuff Stack (AI-designed)",
+    "purpose": "Debuff",
+    "style": "FullAuto",
+    "description": "An original archetype, not pulled from a community guide: stack Decrease ATK, Decrease DEF, and Weaken together so ordinary hits do outsized damage without needing a dedicated Poison or HP Burn applier at all. Sustained by a Heal source rather than a single point-of-failure Unkillable buff, so it doesn't depend on owning an Ally-Protection specialist - a reasonable next step if your roster is strong on generic debuffers but light on Poison/HP Burn/Unkillable pieces. Unverified against any specific difficulty - treat as a starting point to test, not a guaranteed clear.",
+    "slots": [
+      { "tag": "DecreaseDef", "count": 1, "required": true },
+      { "tag": "DecreaseAtk", "count": 1, "required": true },
+      { "tag": "Weaken", "count": 1, "required": true },
+      { "tag": "Heal", "count": 1, "required": false }
+    ]
   }
 ]
