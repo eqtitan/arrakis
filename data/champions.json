@@ -64,5 +64,13 @@
   { "id": "husk", "name": "Husk", "faction": "Undead Hordes", "affinity": "Force", "rarity": "Epic", "tags": [] },
   { "id": "achak-the-wendarin", "name": "Achak the Wendarin", "faction": "Demonspawn", "affinity": "Force", "rarity": "Epic", "tags": ["HpBurn"] },
   { "id": "akemtum", "name": "Akemtum", "faction": "Skinwalkers", "affinity": "Void", "rarity": "Epic", "tags": ["Poison"] },
-  { "id": "alika", "name": "Alika", "faction": "Barbarians", "affinity": "Force", "rarity": "Epic", "tags": [] }
+  { "id": "alika", "name": "Alika", "faction": "Barbarians", "affinity": "Force", "rarity": "Epic", "tags": [] },
+  { "id": "alsgor-crimsonhorn", "name": "Alsgor Crimsonhorn", "faction": "Barbarians", "affinity": "Force", "rarity": "Legendary", "tags": ["Heal", "AllyProtection"] },
+  { "id": "alure", "name": "Alure", "faction": "Demonspawn", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "amoch-the-first-satrap", "name": "Amoch the First Satrap", "faction": "Lizardmen", "affinity": "Magic", "rarity": "Legendary", "tags": ["Heal"] },
+  { "id": "andryssia", "name": "Andryssia", "faction": "High Elves", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection"] },
+  { "id": "archmage-hellmut", "name": "Archmage Hellmut", "faction": "Banner Lords", "affinity": "Magic", "rarity": "Epic", "tags": [] },
+  { "id": "armiger", "name": "Armiger", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Uncommon", "tags": [] },
+  { "id": "arndulf", "name": "Arndulf", "faction": "Banner Lords", "affinity": "Magic", "rarity": "Epic", "tags": [] },
+  { "id": "anax", "name": "Anax", "faction": "Undead Hordes", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef", "Poison", "Weaken"] }
 ]
