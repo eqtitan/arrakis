@@ -105,5 +105,14 @@
   { "id": "ghrush-the-mangler", "name": "Ghrush the Mangler", "faction": "Ogryn Tribes", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Heal"] },
   { "id": "gorgorab", "name": "Gorgorab", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": ["IncreaseAtk", "Revive", "Heal"] },
   { "id": "gorlos-hellmaw", "name": "Gorlos Hellmaw", "faction": "Demonspawn", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef", "HpBurn"] },
-  { "id": "hakkorhn-smashlord", "name": "Hakkorhn Smashlord", "faction": "Skinwalkers", "affinity": "Magic", "rarity": "Legendary", "tags": ["Heal", "AllyProtection"] }
+  { "id": "hakkorhn-smashlord", "name": "Hakkorhn Smashlord", "faction": "Skinwalkers", "affinity": "Magic", "rarity": "Legendary", "tags": ["Heal", "AllyProtection"] },
+  { "id": "hoforees-the-tusked", "name": "Hoforees the Tusked", "faction": "Skinwalkers", "affinity": "Force", "rarity": "Epic", "tags": ["IncreaseAtk", "Revive"] },
+  { "id": "hotatsu", "name": "Hotatsu", "faction": "Shadowkin", "affinity": "Magic", "rarity": "Epic", "tags": ["DecreaseAtk"], "notes": "Kit is commonly cited as Clan Boss utility support." },
+  { "id": "iudex-artor", "name": "Iudex Artor", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Legendary", "tags": ["Heal", "IncreaseAtk", "Revive"], "notes": "2025 Community Weeks free Legendary." },
+  { "id": "karam", "name": "Karam", "faction": "Undead Hordes", "affinity": "Force", "rarity": "Epic", "tags": ["Poison"] },
+  { "id": "khafru-the-deathkeeper", "name": "Khafru the Deathkeeper", "faction": "Undead Hordes", "affinity": "Void", "rarity": "Epic", "tags": ["Heal"] },
+  { "id": "korugar-death-bell", "name": "Korugar Death-Bell", "faction": "Ogryn Tribes", "affinity": "Force", "rarity": "Legendary", "tags": ["AllyProtection"], "notes": "Full-team debuff cleanse, Strengthen, and stat sharing; described as a top-tier CB/Hydra sustain option." },
+  { "id": "madame-serris", "name": "Madame Serris", "faction": "Dark Elves", "affinity": "Void", "rarity": "Epic", "tags": ["DecreaseAtk", "DecreaseDef"], "notes": "Halloween 2019 champion, widely regarded as one of the best champions in the game; A3 strips all enemy buffs and replaces with Decrease ATK/DEF." },
+  { "id": "masamoto", "name": "Masamoto", "faction": "Shadowkin", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk"] },
+  { "id": "mausoleum-mage", "name": "Mausoleum Mage", "faction": "Undead Hordes", "affinity": "Force", "rarity": "Epic", "tags": ["Heal", "AllyProtection"] }
 ]
