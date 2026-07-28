@@ -160,5 +160,13 @@
   { "id": "dawncaller-sabitha", "name": "Dawncaller Sabitha", "faction": "Knights Revenant", "affinity": "Void", "rarity": "Epic", "tags": ["IncreaseAtk", "Revive"], "notes": "Widely cited as one of the strongest support Epics released in recent times." },
   { "id": "suwai-firstborn", "name": "Suwai Firstborn", "faction": "Barbarians", "affinity": "Void", "rarity": "Epic", "tags": ["DecreaseDef", "Weaken", "DecreaseAtk"], "notes": "Explicitly cited as a reliable damage enabler for Clan Boss." },
   { "id": "hierophant-lazarius", "name": "Hierophant Lazarius", "faction": "Lizardmen", "affinity": "Magic", "rarity": "Mythical", "tags": ["IncreaseAtk", "Revive"], "notes": "First Mythical from the Lizardmen faction; base-form A3 is a team-wide Increase ATK/Strengthen buff and his passive revives a random dead ally." },
-  { "id": "kurosa-the-covetous", "name": "Kurosa the Covetous", "faction": "Demonspawn", "affinity": "Force", "rarity": "Mythical", "tags": ["Heal", "Shield", "IncreaseAtk", "AllyProtection"], "notes": "Stacked support Mythical: team-wide Heal, cleanse+Shield+Increase ATK, and team-wide Unkillable." }
+  { "id": "kurosa-the-covetous", "name": "Kurosa the Covetous", "faction": "Demonspawn", "affinity": "Force", "rarity": "Mythical", "tags": ["Heal", "Shield", "IncreaseAtk", "AllyProtection"], "notes": "Stacked support Mythical: team-wide Heal, cleanse+Shield+Increase ATK, and team-wide Unkillable." },
+  { "id": "oathbound", "name": "Oathbound", "faction": "Banner Lords", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseAtk"] },
+  { "id": "occult-brawler", "name": "Occult Brawler", "faction": "Ogryn Tribes", "affinity": "Spirit", "rarity": "Epic", "tags": ["Poison"], "notes": "Regarded since release as one of the best Epic poisoners for Clan Boss." },
+  { "id": "akoth-the-seared", "name": "Akoth the Seared", "faction": "Demonspawn", "affinity": "Magic", "rarity": "Epic", "tags": ["HpBurn", "Shield"] },
+  { "id": "chonoru", "name": "Chonoru", "faction": "Shadowkin", "affinity": "Spirit", "rarity": "Epic", "tags": ["Weaken"] },
+  { "id": "gliseah-soulguide", "name": "Gliseah Soulguide", "faction": "Sacred Order", "affinity": "Force", "rarity": "Legendary", "tags": ["Weaken"] },
+  { "id": "gretel-hagbane", "name": "Gretel Hagbane", "faction": "Sacred Order", "affinity": "Force", "rarity": "Legendary", "tags": ["DecreaseDef"] },
+  { "id": "guurda-bogbrew", "name": "Guurda Bogbrew", "faction": "Ogryn Tribes", "affinity": "Force", "rarity": "Legendary", "tags": ["Weaken", "Poison"] },
+  { "id": "lodric-falconheart", "name": "Lodric Falconheart", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["Shield", "DecreaseAtk"], "notes": "Called an underrated support Epic in community guides." }
 ]

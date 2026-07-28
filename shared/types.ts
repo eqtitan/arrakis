@@ -59,6 +59,13 @@ export interface RosterEntry {
   championId: string;
   stars: 1 | 2 | 3 | 4 | 5 | 6;
   level: number;
+  // RSL's Ascension system, 0-6 (shown as purple stars in-game). Raises base
+  // stats and unlocks skill upgrades at level 3+. Optional because manual
+  // roster entries won't have it unless the user sets it. Awakening is a
+  // separate, newer RSL system that isn't tracked here — RSL Helper's local
+  // database (the only automated import source this app has) doesn't record
+  // it, so there's no real data to import rather than a field we chose to skip.
+  ascension?: number;
   stats: {
     speed: number;
     hp: number;
