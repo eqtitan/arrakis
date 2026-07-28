@@ -10,6 +10,7 @@ export type Faction =
   | "Barbarians"
   | "Dark Elves"
   | "Demonspawn"
+  | "Dwarves"
   | "Draconis"
   | "High Elves"
   | "High Men"

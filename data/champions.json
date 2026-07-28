@@ -19,5 +19,20 @@
   { "id": "skullcrusher", "name": "Skullcrusher", "faction": "Orcs", "affinity": "Void", "rarity": "Legendary", "tags": ["Shield", "AllyProtection"] },
   { "id": "miscreated-monster", "name": "Miscreated Monster", "faction": "Demonspawn", "affinity": "Void", "rarity": "Legendary", "tags": ["Weaken"] },
   { "id": "warpriest", "name": "Warpriest", "faction": "Sacred Order", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef", "Shield"] },
-  { "id": "frost-spirit", "name": "Frost Spirit", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "Shield"] }
+  { "id": "frost-spirit", "name": "Frost Spirit", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "Shield"] },
+  { "id": "arbiter", "name": "Arbiter", "faction": "High Elves", "affinity": "Void", "rarity": "Legendary", "tags": ["Weaken", "IncreaseAtk", "Heal", "Revive"] },
+  { "id": "demytha", "name": "Demytha", "faction": "Dwarves", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection", "Heal"] },
+  { "id": "deacon-armstrong", "name": "Deacon Armstrong", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef", "DecreaseAtk"] },
+  { "id": "scyl-of-the-drakes", "name": "Scyl of the Drakes", "faction": "Barbarians", "affinity": "Magic", "rarity": "Legendary", "tags": ["Revive", "AllyProtection", "Heal"] },
+  { "id": "king-garog", "name": "King Garog", "faction": "Orcs", "affinity": "Force", "rarity": "Legendary", "tags": [] },
+  { "id": "loki-the-deceiver", "name": "Loki the Deceiver", "faction": "Barbarians", "affinity": "Spirit", "rarity": "Legendary", "tags": [] },
+  { "id": "visix-the-unbowed", "name": "Visix the Unbowed", "faction": "Dark Elves", "affinity": "Void", "rarity": "Legendary", "tags": ["AllyProtection"] },
+  { "id": "alice-the-wanderer", "name": "Alice the Wanderer", "faction": "Sacred Order", "affinity": "Magic", "rarity": "Legendary", "tags": [] },
+  { "id": "fayne", "name": "Fayne", "faction": "Skinwalkers", "affinity": "Spirit", "rarity": "Epic", "tags": ["Poison", "DecreaseAtk", "DecreaseDef", "Weaken"] },
+  { "id": "aeshma", "name": "Aeshma", "faction": "Knights Revenant", "affinity": "Magic", "rarity": "Epic", "tags": ["Poison", "Weaken"] },
+  { "id": "cardinal", "name": "Cardinal", "faction": "Sacred Order", "affinity": "Void", "rarity": "Epic", "tags": ["Heal", "Revive"] },
+  { "id": "reliquary-tender", "name": "Reliquary Tender", "faction": "High Elves", "affinity": "Void", "rarity": "Rare", "tags": ["DecreaseAtk", "Heal", "Revive"] },
+  { "id": "seeker", "name": "Seeker", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Epic", "tags": ["IncreaseAtk"] },
+  { "id": "maneater", "name": "Maneater", "faction": "Ogryn Tribes", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection"] },
+  { "id": "rearguard-sergeant", "name": "Rearguard Sergeant", "faction": "Dwarves", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef", "DecreaseAtk", "AllyProtection", "Heal"] }
 ]
