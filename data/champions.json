@@ -152,5 +152,8 @@
   { "id": "white-dryad-nia", "name": "White Dryad Nia", "faction": "Sylvan Watchers", "affinity": "Void", "rarity": "Epic", "tags": ["AllyProtection"], "notes": "Explicitly cited as excelling in Clan Boss via team-wide Ally Protection." },
   { "id": "wuzgar", "name": "Wuzgar", "faction": "Ogryn Tribes", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Shield"] },
   { "id": "xenomorph", "name": "Xenomorph", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Legendary", "tags": ["Poison"], "notes": "Alien crossover Legendary (Nov 2025-Feb 2026 event), free to claim." },
-  { "id": "yelagirna", "name": "Yelagirna", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Revive"] }
+  { "id": "yelagirna", "name": "Yelagirna", "faction": "Orcs", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk", "Revive"] },
+  { "id": "spirithost", "name": "Spirithost", "faction": "Dark Elves", "affinity": "Spirit", "rarity": "Rare", "tags": ["IncreaseAtk", "AllyProtection"] },
+  { "id": "gladewulf", "name": "Gladewulf", "faction": "Sylvan Watchers", "affinity": "Void", "rarity": "Rare", "tags": ["AllyProtection"], "notes": "Cited as one of the stronger Rares added in recent times." },
+  { "id": "vallaryn-the-equalizer", "name": "Vallaryn the Equalizer", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Legendary", "tags": ["Weaken"], "notes": "Free login-reward Legendary." }
 ]
