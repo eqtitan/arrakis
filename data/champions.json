@@ -120,5 +120,11 @@
   { "id": "mistrider-daithi", "name": "Mistrider Daithi", "faction": "Sylvan Watchers", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef"] },
   { "id": "myciliac-priest-orn", "name": "Myciliac Priest Orn", "faction": "Sylvan Watchers", "affinity": "Spirit", "rarity": "Epic", "tags": ["Poison"] },
   { "id": "oella", "name": "Oella", "faction": "Sylvan Watchers", "affinity": "Magic", "rarity": "Legendary", "tags": ["Heal"] },
-  { "id": "old-hermit-jorrg", "name": "Old Hermit Jorrg", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["HpBurn", "IncreaseAtk", "Revive"] }
+  { "id": "old-hermit-jorrg", "name": "Old Hermit Jorrg", "faction": "Orcs", "affinity": "Magic", "rarity": "Epic", "tags": ["HpBurn", "IncreaseAtk", "Revive"] },
+  { "id": "opardin-clanfather", "name": "Opardin Clanfather", "faction": "Barbarians", "affinity": "Magic", "rarity": "Legendary", "tags": ["Heal", "AllyProtection"] },
+  { "id": "pestilus", "name": "Pestilus", "faction": "Knights Revenant", "affinity": "Spirit", "rarity": "Epic", "tags": ["HpBurn", "Heal"] },
+  { "id": "quargan-the-crowned", "name": "Quargan the Crowned", "faction": "Lizardmen", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal", "Shield"] },
+  { "id": "rector-drath", "name": "Rector Drath", "faction": "Knights Revenant", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseAtk", "Heal", "Revive"], "notes": "Widely cited as one of the strongest support Epics in the game." },
+  { "id": "roshcard-the-tower", "name": "Roshcard the Tower", "faction": "Sacred Order", "affinity": "Magic", "rarity": "Legendary", "tags": ["AllyProtection"], "notes": "Block Damage on all allies for 2 turns; explicitly valuable for Unkillable Clan Boss teams." },
+  { "id": "rowan", "name": "Rowan", "faction": "Banner Lords", "affinity": "Void", "rarity": "Epic", "tags": ["Poison"] }
 ]
