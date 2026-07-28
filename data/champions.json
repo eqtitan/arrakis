@@ -158,5 +158,7 @@
   { "id": "vallaryn-the-equalizer", "name": "Vallaryn the Equalizer", "faction": "Undead Hordes", "affinity": "Magic", "rarity": "Legendary", "tags": ["Weaken"], "notes": "Free login-reward Legendary." },
   { "id": "broadmaw", "name": "Broadmaw", "faction": "Lizardmen", "affinity": "Void", "rarity": "Epic", "tags": ["Revive"] },
   { "id": "dawncaller-sabitha", "name": "Dawncaller Sabitha", "faction": "Knights Revenant", "affinity": "Void", "rarity": "Epic", "tags": ["IncreaseAtk", "Revive"], "notes": "Widely cited as one of the strongest support Epics released in recent times." },
-  { "id": "suwai-firstborn", "name": "Suwai Firstborn", "faction": "Barbarians", "affinity": "Void", "rarity": "Epic", "tags": ["DecreaseDef", "Weaken", "DecreaseAtk"], "notes": "Explicitly cited as a reliable damage enabler for Clan Boss." }
+  { "id": "suwai-firstborn", "name": "Suwai Firstborn", "faction": "Barbarians", "affinity": "Void", "rarity": "Epic", "tags": ["DecreaseDef", "Weaken", "DecreaseAtk"], "notes": "Explicitly cited as a reliable damage enabler for Clan Boss." },
+  { "id": "hierophant-lazarius", "name": "Hierophant Lazarius", "faction": "Lizardmen", "affinity": "Magic", "rarity": "Mythical", "tags": ["IncreaseAtk", "Revive"], "notes": "First Mythical from the Lizardmen faction; base-form A3 is a team-wide Increase ATK/Strengthen buff and his passive revives a random dead ally." },
+  { "id": "kurosa-the-covetous", "name": "Kurosa the Covetous", "faction": "Demonspawn", "affinity": "Force", "rarity": "Mythical", "tags": ["Heal", "Shield", "IncreaseAtk", "AllyProtection"], "notes": "Stacked support Mythical: team-wide Heal, cleanse+Shield+Increase ATK, and team-wide Unkillable." }
 ]
