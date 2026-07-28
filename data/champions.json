@@ -72,5 +72,13 @@
   { "id": "archmage-hellmut", "name": "Archmage Hellmut", "faction": "Banner Lords", "affinity": "Magic", "rarity": "Epic", "tags": [] },
   { "id": "armiger", "name": "Armiger", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Uncommon", "tags": [] },
   { "id": "arndulf", "name": "Arndulf", "faction": "Banner Lords", "affinity": "Magic", "rarity": "Epic", "tags": [] },
-  { "id": "anax", "name": "Anax", "faction": "Undead Hordes", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef", "Poison", "Weaken"] }
+  { "id": "anax", "name": "Anax", "faction": "Undead Hordes", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseDef", "Poison", "Weaken"] },
+  { "id": "balar-the-lost", "name": "Balar the Lost", "faction": "Sylvan Watchers", "affinity": "Spirit", "rarity": "Legendary", "tags": ["Poison"] },
+  { "id": "balthus-drauglord", "name": "Balthus Drauglord", "faction": "Undead Hordes", "affinity": "Spirit", "rarity": "Epic", "tags": ["DecreaseAtk"] },
+  { "id": "bellower", "name": "Bellower", "faction": "Ogryn Tribes", "affinity": "Void", "rarity": "Rare", "tags": ["DecreaseAtk", "DecreaseDef"] },
+  { "id": "bonekeeper", "name": "Bonekeeper", "faction": "Orcs", "affinity": "Force", "rarity": "Epic", "tags": ["DecreaseDef"] },
+  { "id": "bovos-sharphorn", "name": "Bovos Sharphorn", "faction": "Skinwalkers", "affinity": "Spirit", "rarity": "Epic", "tags": ["Heal"] },
+  { "id": "branch-arm-lasair", "name": "Branch-arm Lasair", "faction": "Sylvan Watchers", "affinity": "Void", "rarity": "Rare", "tags": ["Shield", "DecreaseAtk"] },
+  { "id": "captain-temila", "name": "Captain Temila", "faction": "Dark Elves", "affinity": "Magic", "rarity": "Epic", "tags": ["Heal", "AllyProtection"] },
+  { "id": "carlinia", "name": "Carlinia", "faction": "Sacred Order", "affinity": "Spirit", "rarity": "Epic", "tags": ["HpBurn", "DecreaseAtk"] }
 ]
