@@ -149,7 +149,7 @@ function render() {
 function syncShowcase() {
   if (!window.W3D || !W3D.showcase) return;
   const host = document.querySelector(".show-sprite[data-hero]");
-  if (!host) { W3D.showcaseStop(); return; }
+  if (!host) { W3D.showcaseStop(".show-sprite"); return; }
   const gear = typeof heroGearLook === "function" ? heroGearLook(heroByUid(UI.heroUid)) : null; // equipped gear shows on the model
   if (!W3D.showcase(host, host.dataset.hero, host.dataset.el, gear) && W3D.supported() && !W3D.modelsReady)
     W3D.whenReady().then(() => { if (host.isConnected) W3D.showcase(host, host.dataset.hero, host.dataset.el, gear); });
@@ -671,12 +671,19 @@ function updateUnit(el, u, targets) {
 // 3D: keep each unit's HUD (name, bars, tap area) pinned above its figure.
 function placeOverlays() {
   if (!B || !B.use3d) return;
+  // Tags sit above each model's head and headgear; nearer units (lower on screen) keep their
+  // spot and farther tags that would overlap them move up.
+  const tags = [];
   for (const el of $app.querySelectorAll(".ov .unit")) {
     const head = W3D.screen(el.dataset.key, "head"), feet = W3D.screen(el.dataset.key, "feet");
-    if (!head || !feet) continue;
-    el.style.transform = `translate(${head.x}px, ${head.y - 34}px) translateX(-50%)`;
-    el.style.height = Math.max(70, feet.y - head.y + 44) + "px";
+    if (head && feet) tags.push({ el, x: head.x, y: head.y - 34, feet: feet.y, hy: head.y });
   }
+  tags.sort((a, b) => b.feet - a.feet);
+  tags.forEach((t, i) => {
+    for (let j = 0; j < i; j++) { const o = tags[j]; if (Math.abs(o.x - t.x) < 78 && t.y > o.y - 30 && t.y < o.y + 30) t.y = o.y - 30; }
+    t.el.style.transform = `translate(${t.x}px, ${t.y}px) translateX(-50%)`;
+    t.el.style.height = Math.max(70, t.feet - t.y + 10) + "px";
+  });
 }
 function addEnemies3d(root) {
   const b = B.battle;
@@ -793,7 +800,7 @@ async function showEvents(events, color = "#7dff7a") {
       else if (e.type === "death") SOUND.play(key.startsWith("A") ? "downed" : "kill", { volume: 0.9 });
       if (B && B.use3d) {
         if (e.type === "dmg") {
-          W3D.burst(key, e.dot ? "#7dff7a" : color, e.crit); W3D.hit(key);
+          W3D.burst(key, e.dot ? "#7dff7a" : color, e.crit); W3D.hit(key, e);
           if (e.crit) { W3D.shake(); NATIVE.haptic("medium"); }
         } else if (e.type === "heal") W3D.heal(key);
         else if (e.type === "fx") W3D.buff(key, EFFECTS[e.t].buff);
@@ -855,7 +862,7 @@ async function doAct(u, choice, token) {
   if (B.use3d) {
     const melee = sk.mult > 0 && sk.target === "enemy" && spriteKind(u.template.id) === "melee";
     SOUND.play(melee ? "swing" : "cast", { volume: 0.6 });
-    await W3D.attack(u.key, hitKeys[0], melee);
+    await W3D.attack(u.key, hitKeys[0], melee, { ult: choice.skill === 2 || sk.target === "allEnemies", support: sk.mult === 0 });
     if (sk.mult === 0) W3D.cast(u.key, color);
     if (melee) hitKeys.forEach((k) => W3D.slash(k, color));
     else if (hitKeys.length) await Promise.all(hitKeys.map((k) => W3D.projectile(u.key, k, color)));
@@ -935,6 +942,7 @@ function finishBattle() {
   }
   const idx = B.idx;
   if (b.result === "victory") {
+    if (B.use3d && W3D.victory) W3D.victory("A");
     const first = idx === G.cleared;
     const r = stageRewards(idx, first);
     grant(r);
