@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compiles the Unity-independent game core and runs checks outside Unity.
+       Folder ends in ~ so Unity ignores it. Run from the repo root: dotnet run with project path unity/Tests~ -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Assets/Sigilbound/Core/**/*.cs" />
+  </ItemGroup>
+</Project>
