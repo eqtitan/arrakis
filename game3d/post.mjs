@@ -35,9 +35,9 @@ import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
 //   falls back to "byte"), "byte" = RGBA8 (half the bandwidth; the canvas is 8-bit anyway).
 // bloomScale: bloom chain input resolution relative to the render size (UnrealBloomPass halves again).
 export const QUALITY = Object.freeze({
-  // Ultra: manual-only "max everything" for flagship phones. Native resolution (dpr capped at 3),
-  // as much MSAA as the GPU allows (clamped to MAX_SAMPLES), 4096 shadows, full-res bloom.
-  // Never chosen by Auto and never auto-stepped (TIERS below excludes it).
+  // Ultra: "max everything" for flagship phones. Native resolution (dpr capped at 3), as much MSAA
+  // as the GPU allows (clamped to MAX_SAMPLES), 4096 shadows, full-res bloom. Auto picks it for
+  // flagship GPUs, or climbs to it once per session when High holds a steady ~60 fps.
   Ultra: Object.freeze({
     name: "Ultra", pixelRatio: 3.0, post: true, msaa: 8, fxaa: false, target: "half",
     shadowMapSize: 4096, shadowType: T.PCFSoftShadowMap, propShadows: true,
@@ -63,7 +63,7 @@ export const QUALITY = Object.freeze({
     maxLights: 3, textureSize: 128,
   }),
 });
-export const TIERS = ["High", "Medium", "Low"]; // auto-stepping ladder (Ultra is manual-only)
+export const TIERS = ["Ultra", "High", "Medium", "Low"]; // auto ladder: flagship GPUs start on Ultra; others can climb one step if steady
 
 // Look parameters (live-tweakable through pipeline.params). NEUTRAL turns grade + vignette off.
 export const DEFAULT_PARAMS = Object.freeze({
@@ -426,7 +426,8 @@ export function tierForGpu(s) {
   let m = s.match(/Adreno\D{0,8}(\d{3})/i);
   if (m) {
     const n = +m[1];
-    if (n >= 700) return "High";                    // 7xx (SD 8 Gen 1+ / 7-series 720+)
+    if (n >= 730) return "Ultra";                   // 730/740/750/8xx (SD 8 Gen 2 and newer flagships)
+    if (n >= 700) return "High";                    // 710/720/725 (SD 7-series, SD 8 Gen 1)
     if (n >= 630) return "High";                    // 630/640/650/660 (SD 845..888)
     if (n >= 615) return "Medium";                  // 615-620 (SD 7xx mid-range)
     if (n >= 540) return "Medium";                  // 540 (SD 835)
@@ -435,14 +436,15 @@ export function tierForGpu(s) {
   m = s.match(/Mali-?G(\d{2,3})/i);
   if (m) {
     const g = m[1];
-    if (g.length === 3) return +g[0] >= 7 ? "High" : +g >= 610 && +g < 615 ? "High" : "Medium"; // G710/715/720/G925, G610; G615 mid
+    if (g.length === 3) return +g >= 715 ? "Ultra" : +g[0] >= 7 ? "High" : +g >= 610 && +g < 615 ? "High" : "Medium"; // G715/720/G925 Ultra; G710, G610 High; G615 mid
     const n = +g;
     if (n >= 76) return "High";                     // G76/G77/G78 (Exynos 9820+, Dimensity 1000+)
     if (n >= 71) return "Medium";                   // G71/G72 (2016-17)
     if (n >= 57) return "Medium";
     return "Low";                                   // G31/G51/G52
   }
-  if (/Immortalis|Xclipse|Apple|PowerVR.*(BXM|DXT|CXT)/i.test(s)) return "High";
+  if (/Immortalis|Xclipse\s*9[4-9]\d|Xclipse\s*\d{4}/i.test(s)) return "Ultra"; // Immortalis-G7xx+, Xclipse 940+ (Exynos 2400+)
+  if (/Xclipse|Apple|PowerVR.*(BXM|DXT|CXT)/i.test(s)) return "High";
   if (/Mali-T|Mali-4|PowerVR|Vivante|VideoCore|Tegra 3/i.test(s)) return "Low";
   if (/NVIDIA|GeForce|Radeon|AMD|Intel.*(Iris|Arc|Xe)/i.test(s)) return "High";
   if (/Intel/i.test(s)) return "Medium";
@@ -461,8 +463,9 @@ export function deviceHint(glOrRenderer) {
   if (!tier) tier = cores >= 8 && (mem == null || mem >= 6) ? "High" : cores >= 6 && (mem == null || mem >= 4) ? "Medium" : "Low";
   // memory / CPU ceilings regardless of GPU name
   if (mem != null && mem <= 2) tier = "Low";
-  else if (mem != null && mem <= 3 && tier === "High") tier = "Medium";
-  if (cores <= 4 && tier === "High") tier = "Medium";
+  else if (mem != null && mem <= 3 && (tier === "High" || tier === "Ultra")) tier = "Medium";
+  else if (mem != null && mem < 8 && tier === "Ultra") tier = "High";
+  if (cores <= 4 && (tier === "High" || tier === "Ultra")) tier = "Medium";
   // very dense big screens (QHD+ tablets / phones in WQHD mode) on a non-High GPU: one step down
   if (devPx > 4.5e6 && tier === "Medium") tier = "Low";
   return tier;
@@ -489,12 +492,14 @@ export function createQualityManager(opts = {}) {
   const { onChange, sampleSeconds = 3, minFps = 50, upFps = 58, warmupWindows = 1, upWindows = 4 } = opts;
   const stored = load();
   let forced = stored && QUALITY[stored.forced] ? stored.forced : null;
-  let current = forced || (stored && QUALITY[stored.tier] ? stored.tier : null) || (QUALITY[opts.initial] ? opts.initial : null) || deviceHint();
+  // A remembered auto tier from before Ultra existed (no v:2) is ignored, so capable phones get re-evaluated.
+  const storedTier = stored && stored.v === 2 && QUALITY[stored.tier] ? stored.tier : null;
+  let current = forced || storedTier || (QUALITY[opts.initial] ? opts.initial : null) || deviceHint();
   let auto = !forced;
   let last = -1, start = 0, frames = 0, warm = warmupWindows, good = 0, fps = 0, dts = [];
   let downedThisSession = false, upsThisSession = 0;
 
-  const persist = () => save({ tier: current, forced, t: Date.now() });
+  const persist = () => save({ v: 2, tier: current, forced, t: Date.now() });
   function resetWindow(now) { start = now; frames = 0; dts = []; }
   function set(name, reason) {
     if (!QUALITY[name] || name === current) return;

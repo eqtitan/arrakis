@@ -519,7 +519,7 @@ Object.assign(ACTIONS, {
         const q = gfxQuality();
         const opt = (k, label) => `<button class="chip ${q.choice === k ? "on" : ""}" data-act="setGfxQuality" data-q="${k}">${label}</button>`;
         return `<div class="setting"><div><b>Graphics quality</b><div class="small dim">${q.choice === "auto"
-          ? `Auto picks the best your phone can run smoothly${q.tier ? ` (now: ${q.tier})` : ""}` : q.choice === "Ultra" ? "Maximum detail at full screen resolution. Uses more battery and may warm the phone." : "Lower it if battles stutter or the phone gets warm"}</div></div>
+          ? `Auto picks the best your phone can run smoothly, up to Ultra${q.tier ? ` (now: ${q.tier})` : ""}` : q.choice === "Ultra" ? "Maximum detail at full screen resolution. Uses more battery and may warm the phone." : "Lower it if battles stutter or the phone gets warm"}</div></div>
           <div class="row wrap" style="gap:6px">${opt("auto", "Auto")}${opt("Ultra", "Ultra")}${opt("High", "High")}${opt("Medium", "Medium")}${opt("Low", "Low")}</div></div>`;
       })()}
       ${B ? "" : `<div class="row" style="gap:8px;margin-top:10px">
@@ -531,7 +531,7 @@ Object.assign(ACTIONS, {
   },
   setGfxQuality(d) {
     W3D.setQuality(d.q);
-    toast(d.q === "auto" ? "Graphics: Auto" : d.q === "Ultra" ? "Graphics: Ultra (applies from the next battle)" : `Graphics: ${d.q}`);
+    toast(d.q === "auto" ? "Graphics: Auto" : d.q === "Ultra" ? "Graphics: Ultra" : `Graphics: ${d.q}`);
     ACTIONS.openSettings();
   },
   toggleGfx() {
@@ -821,7 +821,8 @@ async function showEvents(events, color = "#7dff7a") {
   for (const list of Object.values(groups)) {
     const tags = list.filter((it) => it.cls === "text" && it.e.type !== "dmg" && it.e.type !== "absorb");
     if (tags.length > 1) {
-      const merged = tags.map((it) => it.text).join("  ");
+      // Several at once: icons only (e.g. "💔 🔻"), so neighbouring units' tags don't collide.
+      const merged = tags.map((it) => (it.e.type === "fx" && EFFECTS[it.e.t] ? EFFECTS[it.e.t].icon : String(it.text).split(" ")[0])).join(" ");
       tags.forEach((it, i) => { it.text = i === 0 ? merged : null; });
     }
     for (const it of tags) if (it.text) it.cls = "text tag";

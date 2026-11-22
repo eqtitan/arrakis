@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.16.1 (2026-11-22)
+- Auto graphics now reaches Ultra: flagship phones start on Ultra, and any phone that holds a steady ~60 fps on High steps up by itself (and steps back down if it can't keep up). Status tags shrink to icons when several land at once.
+
+
 ## 0.16.0 (2026-11-22)
 - Ultra graphics mode (Settings → Graphics quality): full native screen resolution, maximum edge smoothing, 4096 shadows, full-resolution glow, sharper reflections, denser grass and scatter, sharper textures. Manual only; Auto never picks it.
 
