@@ -80,12 +80,13 @@ function homeBadge() {
   return n;
 }
 function nav() {
-  const items = [["home", "🏰", "Home"], ["campaign", "⚔️", "Campaign"], ["heroes", "🧙", "Heroes"], ["summon", "🔮", "Summon"], ["titan", "🗿", "Titan"]];
+  const items = [["home", "🏰", "Home"], ["campaign", "⚔️", "Campaign"], ["heroes", "🧙", "Heroes"], ["summon", "🔮", "Summon"], ["titan", "🗿", "Titan"], ["friends", "👥", "Friends"]];
   const badge = homeBadge();
   return `<nav class="nav"><div class="nav-inner">${items.map(([k, ic, name]) =>
-    `<button class="${UI.screen === k || (k === "heroes" && ["hero", "equip"].includes(UI.screen)) ? "on" : ""}" data-act="go" data-to="${k}">
+    `<button class="${UI.screen === k || (k === "heroes" && ["hero", "equip"].includes(UI.screen)) || (k === "friends" && ["friend", "chat"].includes(UI.screen)) ? "on" : ""}" data-act="go" data-to="${k}">
       <span class="ic">${ic}</span>${name}${k === "home" && badge ? `<span class="badge">${badge}</span>` : ""}
       ${k === "titan" && G.daily && G.daily.titanTries ? `<span class="badge" style="background:var(--blue)">${G.daily.titanTries}</span>` : ""}
+      ${k === "friends" && typeof ON !== "undefined" && onlineBadgeCount() ? `<span class="badge">${onlineBadgeCount()}</span>` : ""}
     </button>`).join("")}</div></nav>`;
 }
 
@@ -771,6 +772,7 @@ function finishBattle() {
     const gear = rollStageGear(idx);
     if (first) G.cleared++;
     G.stats.wins++; bumpQuest("win"); save();
+    if (typeof pushProfile === "function") pushProfile();
     const canReplay = G.settings.autoReplay;
     modal(`<div class="result-title victory">VICTORY</div>
       <p style="text-align:center">${rewardText(r)}<br><span class="small dim">+${fmt(r.xp)} XP each${first ? " · First clear bonus!" : ""}</span></p>

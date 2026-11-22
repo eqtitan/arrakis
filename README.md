@@ -124,5 +124,10 @@ It's a separate side project from the optimizer and shares no code with it.
 - Art is drawn in code (`art.js`): vector hero portraits, chapter backdrops and
   canvas battle effects. To use real artwork, add images under `public/game/art/`
   and list them in `ART_FILES` in `art.js`.
+- **Friends & chat:** a Friends tab with friend codes, requests, friend
+  profiles and 1-on-1 messaging, served by `functions/api/sb/[[path]].ts`. It
+  needs a Cloudflare D1 database bound as `SIGIL_DB` (see `wrangler.toml`).
+  Without it the rest of the game still works and the tab explains why.
+  Test locally: `npm run build && npx wrangler pages dev dist --d1 SIGIL_DB=local`.
 - Files: `data.js` (content), `state.js` (save/progression), `battle.js`
-  (DOM-free engine), `ui.js` (screens), `style.css`.
+  (DOM-free engine), `ui.js` (screens), `online.js` (friends & chat), `style.css`.

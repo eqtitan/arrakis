@@ -246,3 +246,25 @@ h2 { font-size: 20px; } h3 { font-size: 16px; }
 .unm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .uel, .ulv { flex: none; }
 textarea.code { width: 100%; height: 64px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font: 11px/1.3 ui-monospace, monospace; resize: none; }
+
+/* ---------- friends & chat ---------- */
+.nav button { font-size: 10px; }
+.inp { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: inherit; min-width: 0; }
+.inp:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+.fcode { font: 800 26px/1.2 ui-monospace, monospace; letter-spacing: 4px; color: var(--gold); }
+.frow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); width: 100%; text-align: left; background: none; }
+.frow:last-child { border-bottom: 0; }
+.frow .por { width: 48px; height: 48px; }
+.ubadge { background: var(--bad); color: #fff; border-radius: 999px; min-width: 22px; height: 22px; line-height: 22px; text-align: center; font-size: 12px; font-weight: 800; padding: 0 6px; }
+.friendcard { background-size: cover; background-position: center; min-height: 230px; justify-content: flex-end; }
+.fteam { display: flex; gap: 4px; justify-content: center; align-items: flex-end; }
+.fh { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.fh-sprite .sprite { width: 70px; height: 105px; }
+.chatwrap { display: flex; flex-direction: column; gap: 10px; height: calc(100dvh - 190px - env(safe-area-inset-bottom)); min-height: 300px; }
+.chatlog { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding: 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+.bubble { max-width: 78%; align-self: flex-start; background: var(--panel2); border-radius: 14px 14px 14px 4px; padding: 8px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.mine { align-self: flex-end; background: linear-gradient(180deg, #e2b14e, #b3802a); color: #1b1408; border-radius: 14px 14px 4px 14px; }
+.bubble.pending { opacity: .55; }
+.btime { display: block; font-size: 10px; opacity: .6; margin-top: 2px; text-align: right; }
+.cday { align-self: center; font-size: 11px; color: var(--dim); margin: 6px 0; }
+.chatbar { display: flex; gap: 8px; }
