@@ -12,16 +12,27 @@ const SOUND = (() => {
   let ctx = null, sfxGain = null, musicGain = null, music = null, musicWanted = false;
   const buffers = {};
   const settings = () => (typeof G !== "undefined" && G.settings) || {};
-  const sfxOn = () => settings().sound !== false;
-  const musicOn = () => settings().music !== false;
+  // Volumes are 0..1 (0 = off). Older saves used on/off switches; respect those.
+  const sfxVol = () => { const s = settings(); return typeof s.sfxVol === "number" ? s.sfxVol : s.sound === false ? 0 : 0.8; };
+  const musicVol = () => { const s = settings(); return typeof s.musicVol === "number" ? s.musicVol : s.music === false ? 0 : 0.6; };
+  const sfxOn = () => sfxVol() > 0;
+  const musicOn = () => musicVol() > 0;
+  const MUSIC_MAX = 0.55; // full slider = comfortable background level under the effects
+  let musicRouted = false;
+  function applyVolumes() {
+    if (sfxGain) sfxGain.gain.value = sfxVol();
+    if (musicGain) musicGain.gain.value = musicVol() * MUSIC_MAX;
+    if (music && !musicRouted) music.volume = Math.min(1, musicVol() * MUSIC_MAX);
+    refreshMusic();
+  }
 
   function unlock() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     ctx = new AC();
-    sfxGain = ctx.createGain(); sfxGain.gain.value = 0.7; sfxGain.connect(ctx.destination);
-    musicGain = ctx.createGain(); musicGain.gain.value = 0.32; musicGain.connect(ctx.destination);
+    sfxGain = ctx.createGain(); sfxGain.gain.value = sfxVol(); sfxGain.connect(ctx.destination);
+    musicGain = ctx.createGain(); musicGain.gain.value = musicVol() * MUSIC_MAX; musicGain.connect(ctx.destination);
     for (const [key, file] of Object.entries(FILES)) {
       fetch(`audio/${file}.ogg`).then((r) => r.arrayBuffer()).then((b) => ctx.decodeAudioData(b))
         .then((buf) => { buffers[key] = buf; }).catch(() => {});
@@ -47,7 +58,8 @@ const SOUND = (() => {
     try {
       const node = ctx.createMediaElementSource(music);
       node.connect(musicGain);
-    } catch (_) { music.volume = 0.32; }
+      musicRouted = true;
+    } catch (_) { musicRouted = false; music.volume = Math.min(1, musicVol() * MUSIC_MAX); }
     music.play().catch(() => { music = null; });
   }
   function stopMusic() {
@@ -69,5 +81,5 @@ const SOUND = (() => {
   ["pointerdown", "touchstart", "keydown"].forEach((ev) => document.addEventListener(ev, unlock, { passive: true }));
 
   const status = () => ({ unlocked: !!ctx, loaded: Object.keys(buffers).length, total: Object.keys(FILES).length, music: !!music && !music.paused });
-  return { play, startMusic, stopMusic, refreshMusic, unlock, status };
+  return { play, startMusic, stopMusic, refreshMusic, applyVolumes, unlock, status, sfxVol, musicVol };
 })();

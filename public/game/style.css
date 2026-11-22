@@ -284,3 +284,9 @@ textarea.code { width: 100%; height: 64px; background: var(--panel2); color: var
 .stage3d .bdesc { position: absolute; left: 0; right: 0; bottom: 8px; pointer-events: none; }
 .update-card { border-color: var(--gold); background: linear-gradient(90deg, #3a2f22, var(--panel)); }
 .update-card a.btn { text-decoration: none; }
+
+/* ---------- settings ---------- */
+.topbar .gear { margin-left: auto; border: 0; cursor: pointer; font-size: 15px; }
+.setting { display: flex; flex-direction: column; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.setting.row { flex-direction: row; align-items: center; }
+.slider { width: 100%; height: 32px; accent-color: var(--gold); }

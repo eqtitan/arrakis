@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.8.0 (2026-11-22)
+- Settings screen (gear button in the top bar and battle header): Music and Sound effects volume sliders (0 = off) that apply instantly, plus battle graphics, save code, how to play and reset.
+
+
 ## 0.7.0 (2026-11-22)
 - Sound and music: CC0 battle theme, hit/crit/heal/buff/knockout sounds, swing and spell sounds, victory and summon fanfares, coin sounds for rewards. Sound and Music on/off buttons on Home.
 

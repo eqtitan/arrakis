@@ -71,6 +71,7 @@ function topbar() {
     <span class="cur">${SHARDS.mystic.icon} ${G.shards.mystic}</span>
     <span class="cur">${SHARDS.radiant.icon} ${G.shards.radiant}</span>
     <span class="cur">💠 ${G.essence}</span>
+    <button class="cur gear" data-act="openSettings" aria-label="Settings">⚙️</button>
   </div>`;
 }
 function homeBadge() {
@@ -133,13 +134,9 @@ const SCREENS = {
         <div class="row" style="margin-top:10px;gap:10px">${team.map((h) => heroCell(h, { noTag: true })).join("") || `<span class="dim small">No team set</span>`}</div>
         <div class="small dim" style="margin-top:6px">Team power: ${fmt(team.reduce((s, h) => s + power(heroStats(h)), 0))}</div></div>
       <button class="btn" data-act="playNext">${G.cleared < TOTAL_STAGES ? `▶ Continue Campaign · ${stageLabel(G.cleared)}` : "▶ Campaign complete! Replay stages"}</button>
-      <div class="row" style="justify-content:center;gap:16px;margin-top:6px">
-        <button class="chip" data-act="showHelp">How to play</button>
-        <button class="chip" data-act="saveCode">Save code</button>
-        <button class="chip" data-act="toggleGfx">Battles: ${G.settings.flat ? "2D" : "3D"}</button>
-        <button class="chip" data-act="toggleSound">Sound: ${G.settings.sound === false ? "Off" : "On"}</button>
-        <button class="chip" data-act="toggleMusic">Music: ${G.settings.music === false ? "Off" : "On"}</button>
-        <button class="chip" data-act="askReset">Reset save</button></div>
+      <div class="row" style="justify-content:center;gap:12px;margin-top:6px">
+        <button class="chip" data-act="openSettings">⚙️ Settings</button>
+        <button class="chip" data-act="showHelp">How to play</button></div>
       <div class="small dim" style="text-align:center">Sigilbound ${VERSION_LABEL}${SBV.date ? ` · ${SBV.date}` : ""}</div>`;
   },
 
@@ -443,11 +440,27 @@ Object.assign(ACTIONS, {
       <div>💸 <b>Free</b>: There's no shop. Every shard is earned by playing.</div></div>
       <button class="btn" style="width:100%;margin-top:12px" data-act="closeModal">Got it</button>`);
   },
-  toggleSound() { G.settings.sound = G.settings.sound === false; save(); if (G.settings.sound) SOUND.play("confirm"); },
-  toggleMusic() { G.settings.music = G.settings.music === false; save(); SOUND.refreshMusic(); },
+  openSettings() {
+    const pct = (v) => Math.round(v * 100);
+    const m = pct(SOUND.musicVol()), s = pct(SOUND.sfxVol());
+    modal(`<h3>Settings</h3>
+      <div class="setting"><div class="row spread"><label for="musicVol"><b>Music</b></label><span class="small dim" id="musicVolLabel">${m ? m + "%" : "Off"}</span></div>
+        <input type="range" id="musicVol" class="slider" min="0" max="100" step="5" value="${m}"></div>
+      <div class="setting"><div class="row spread"><label for="sfxVol"><b>Sound effects</b></label><span class="small dim" id="sfxVolLabel">${s ? s + "%" : "Off"}</span></div>
+        <input type="range" id="sfxVol" class="slider" min="0" max="100" step="5" value="${s}"></div>
+      <div class="setting row spread"><div><b>Battle graphics</b><div class="small dim">2D is lighter on older phones</div></div>
+        <button class="btn sec sm" data-act="toggleGfx">${G.settings.flat ? "2D" : "3D"}</button></div>
+      ${B ? "" : `<div class="row" style="gap:8px;margin-top:10px">
+        <button class="btn sec sm grow" data-act="saveCode">Save code</button>
+        <button class="btn sec sm grow" data-act="showHelp">How to play</button>
+        <button class="btn red sm grow" data-act="askReset">Reset save</button></div>`}
+      <p class="small dim" style="text-align:center;margin:12px 0 8px">Sigilbound ${VERSION_LABEL}</p>
+      <button class="btn" style="width:100%" data-act="closeModal">Done</button>`);
+  },
   toggleGfx() {
     G.settings.flat = !G.settings.flat; save();
-    toast(G.settings.flat ? "Battles will use 2D art (lighter on older phones)" : "Battles will use 3D");
+    toast(G.settings.flat ? "Battles will use 2D art (from the next battle)" : "Battles will use 3D (from the next battle)");
+    ACTIONS.openSettings();
   },
   saveCode() {
     const code = exportSave();
@@ -639,6 +652,7 @@ function renderBattle() {
     ? `🗿 Titan · Turn ${Math.min(b.bossTurns + 1, TITAN_TURNS)}/${TITAN_TURNS} · 💥 ${fmt(b.titanDamage || 0)}`
     : `Stage ${stageLabel(B.idx)} · Wave ${b.wave + 1}/${b.waves.length}`;
   root.querySelector(".bhead").innerHTML = `<button class="btn sec sm" data-act="bFlee">✕</button><div class="info">${info}</div>
+      <button class="btn sec sm" data-act="openSettings" aria-label="Settings">⚙️</button>
       ${B.mode === "stage" ? `<button class="btn sec sm tgl ${G.settings.autoReplay ? "on" : ""}" data-act="bReplayToggle">🔁</button>` : ""}
       <button class="btn sec sm tgl ${G.settings.auto ? "on" : ""}" data-act="bAuto">🤖 Auto</button>
       <button class="btn sec sm" data-act="bSpeed">⏩${G.settings.speed}x</button>`;
@@ -894,6 +908,24 @@ NATIVE.onBack(() => {
   else if (UI.screen !== "home") UI.screen = "home";
   else return NATIVE.exit();
   render();
+});
+
+// Volume sliders in Settings: apply live, preview the effects level, save when released.
+document.addEventListener("input", (e) => {
+  const id = e.target.id;
+  if (id !== "musicVol" && id !== "sfxVol") return;
+  const v = Number(e.target.value) / 100;
+  G.settings[id] = v;
+  if (id === "musicVol") { G.settings.music = v > 0; } else { G.settings.sound = v > 0; }
+  const label = document.getElementById(id + "Label");
+  if (label) label.textContent = v ? Math.round(v * 100) + "%" : "Off";
+  SOUND.applyVolumes();
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "musicVol" && e.target.id !== "sfxVol") return;
+  save();
+  if (e.target.id === "sfxVol") SOUND.play("confirm", { jitter: 0 });
+  if (e.target.id === "musicVol" && Number(e.target.value) > 0 && !B) SOUND.play("tap", { jitter: 0 });
 });
 
 render();
