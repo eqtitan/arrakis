@@ -137,7 +137,26 @@ const W3D = (() => {
       for (const a of g.animations) clips[a.name.split("|").pop()] = a;
       library[base] = { scene: g.scene, clips, headY };
     }).catch((e) => console.warn("Sigilbound: model failed to load", file, e)));
-    Promise.all(jobs).then(() => { modelsSettled = true; readyResolve(); });
+    // Extra clips retargeted from the CC0 Quaternius Universal Animation Library
+    // (tools/anim-retarget): real spell casts, two hit reactions and a heavier death.
+    const extra = fetch("models/anims_ual.json").then((r) => r.ok ? r.json() : null).catch(() => null);
+    Promise.all(jobs).then(() => extra).then((data) => {
+      if (data) {
+        for (const [base, src] of [["monarch", "monarch"], ["adventurer", "monarch"], ["hooded", "hooded_adventurer"]]) {
+          if (!library[base] || !data[src]) continue;
+          for (const [name, c] of Object.entries(data[src])) library[base].clips[name] = ualClip(name, c);
+        }
+      }
+      modelsSettled = true; readyResolve();
+    });
+  }
+  function ualClip(name, c) {
+    const times = Float32Array.from({ length: c.frames }, (_, i) => i / c.fps), tracks = [];
+    for (const [bone, vals] of Object.entries(c.tracks)) {
+      if (bone.endsWith("Pos")) tracks.push(new T.VectorKeyframeTrack(`${bone.slice(0, -3)}.position`, times, vals));
+      else tracks.push(new T.QuaternionKeyframeTrack(`${bone}.quaternion`, times, vals));
+    }
+    return new T.AnimationClip(name, (c.frames - 1) / c.fps, tracks);
   }
   const whenReady = (timeoutMs = 8000) => Promise.race([readyPromise, new Promise((r) => setTimeout(r, timeoutMs))]).then(() => { modelsSettled = true; });
 
@@ -611,7 +630,9 @@ const W3D = (() => {
       // Strikes cycle through the list; brawlers punch and kick, blades slash and kick.
       strike: BRAWLERS[id] ? ["Punch_Right", "Punch_Left", "Kick_Right"] : p === "daggers" ? ["Sword_Slash", "Punch_Left", "Kick_Left"]
         : p === "spear" || p === "trident" ? ["Sword_Slash", "Kick_Right"] : ["Sword_Slash", "Sword_Slash", "Kick_Right"],
-      cast: p === "bow" ? "Gun_Shoot" : "Gun_Shoot", support: "Interact",
+      // Real spell casts from the retargeted CC0 animation library when present.
+      cast: p === "bow" ? "Gun_Shoot" : "Spell_Simple_Shoot", support: "Spell_Simple_Enter",
+      hit: ["Hit_Chest", "HitRecieve"], bigHit: ["Hit_Head", "HitRecieve_2"], death: ["Death01", "Death"],
       fidget: ["Idle", "Idle_Neutral", "Interact"], win: "Wave",
     };
   }
@@ -2081,7 +2102,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     }
     if (A) {
       v.root.rotation.y = turnFrom + shortAngle(turnFrom, turnTo);
-      A.play(opts.support && A.has(A.S.support) ? A.S.support : A.S.cast, { fade: 0.12 });
+      A.play(opts.support && A.has(A.S.support) ? A.S.support : A.has(A.S.cast) ? A.S.cast : "Gun_Shoot", { fade: 0.12 });
       if (vfx) { vfx.castCircle(v.root.position, v.u.el); vfx.charge(v.root, v.u.el, 0.5); if (opts.ult && tgt && !opts.support && !opts.single) { const c = tgt.root.position.clone().setX(tgt.root.position.x * 0.3); vfx.aoe(c, 1.9, v.u.el); sleepScaled(0.45).then(() => vfx && vfx.shockwave(c, v.u.el, 2.6)); } }
       else spellCircle(v, ELEMENTS[v.u.el] ? ELEMENTS[v.u.el].color : "#ffffff");
       const to = v.home.clone().add(dir.clone().normalize().multiplyScalar(0.2));
@@ -2132,7 +2153,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
       if (v.u.titan) A.play(A.has("HitReact") ? "HitReact" : "Idle", { fade: 0.1 });
       // A light glancing blow is sometimes dodged with a roll.
       else if (!big && e && (e.em < 1 || frac < 0.04) && Math.random() < 0.35 && A.has("Roll")) A.play("Roll", { fade: 0.1, speed: 1.5 });
-      else A.play(big && A.has("HitRecieve_2") ? "HitRecieve_2" : "HitRecieve", { fade: 0.08 });
+      else { const L2 = (big ? A.S.bigHit : A.S.hit) || [big ? "HitRecieve_2" : "HitRecieve"]; A.play(L2.find(A.has) || "HitRecieve", { fade: 0.08 }); }
     } else if (!A) play(v, "hit");
     if (v.u.titan) return;
     const back = new T.Vector3(0, 0, (v.u.side === "A" ? 1 : -1) * (big ? 0.34 : 0.2));
@@ -2143,7 +2164,8 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     const v = views.get(key); if (!v || v.dead) return;
     v.dead = true;
     const y0 = v.root.position.y;
-    const fall = v.anim && v.anim.has("Death") ? (v.anim.play("Death", { fade: 0.12, clamp: true }), Promise.resolve())
+    const dn = v.anim && ((v.anim.S.death || ["Death"]).find(v.anim.has));
+    const fall = dn ? (v.anim.play(dn, { fade: 0.12, clamp: true }), Promise.resolve())
       : play(v, "die") ? Promise.resolve() : tween(0.45, (k) => { v.root.rotation.x = -1.4 * ease(k) * (v.u.side === "A" ? -1 : 1); });
     fall.then(() => sleepScaled(1.1))
       .then(() => tween(0.8, (k) => { v.root.position.y = y0 - 0.9 * k; }))
@@ -2443,7 +2465,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, victory, setHighlight, setQuality, dot,
     get quality() { return qm ? qm.current : null; }, get qualityAuto() { return qm ? qm.auto : true; },
     burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop, setCamera, cameras: CAMS, get camera() { return camKey(); },
-    debugStep, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
+    debugStep, _play: (n) => !!(SC.built && SC.built.anim && SC.built.anim.play(n, { fade: 0.1 })), _sc: () => window.SB_DEBUG ? SC : null, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };
 })();
 
