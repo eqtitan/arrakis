@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.19.0 (2026-11-22)
+- Graphics overhaul: new spell effects for every element (cast circles, trails, impacts, beams, shockwaves, heals, shields, Titan slam); new character shading (real metal, living skin, cloth and hair sheen, element rim light, smoothed models, extra-smooth on Ultra); readable faces with eyes, brows and mouths; sculpted helms, pauldrons, shields and gems; real spell-casting, hit and death animations; soft contact shadows, per-arena colour grading, background blur on Ultra and sharpening; fixed jagged edges where armour meets the body. Gear tip no longer appears before the first battle.
+
+
 ## 0.18.3 (2026-11-22)
 - Heroes and enemies stand on the edge of the battle circle (allies along the near side, enemies along the far side), all facing the centre. Battle header fits on one line again.
 

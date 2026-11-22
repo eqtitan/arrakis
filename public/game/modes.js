@@ -331,7 +331,7 @@ const TIPS = [
     html: `<h3>How battles work</h3><p class="small">On your hero's turn, tap a <b>skill</b>, then tap a <b>target</b>. Skills with ⏳ need a few turns to recharge.</p>
       <p class="small">Elements matter: 🔥 beats 🌪️, 🌪️ beats 🌊, 🌊 beats 🔥, and ☀️ and 🌑 beat each other.</p>
       <p class="small">Tap <b>🤖 Auto</b> to let the heroes fight on their own, and <b>⏩</b> to speed up to 3x.</p>` },
-  { id: "gear", when: () => !B && G.gear.length > 0 && UI.screen !== "intro",
+  { id: "gear", when: () => !B && G.stats.wins > 0 && G.gear.length > 0,
     html: `<h3>You found gear!</h3><p class="small">Open <b>Heroes</b>, pick a hero and tap a gear slot to equip it — or tap <b>Auto-equip</b>. Two pieces of the same set give a bonus.</p>
       <p class="small">Gear shows on the hero's 3D model, and better gear looks fancier.</p>` },
   { id: "summon", when: () => !B && G.cleared >= 3 && (G.shards.common + G.shards.mystic + G.shards.radiant) > 0,
