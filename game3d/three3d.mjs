@@ -259,7 +259,7 @@ const W3D = (() => {
     const model = cloneSkinned(lib.scene);
     // Titan: dark basalt; its eyes, maw and (in crackMaterial) seams glow in the day's element.
     const ec = el && ELEMENTS[el] ? ELEMENTS[el].color : "#e8553a";
-    const colors = base === "titan" ? { stone: "#34302d", stoneDark: "#1f1c1a", fang: "#4a443e", socket: "#141110", tongue: "#120c0a" } : roleColors(L, hollow);
+    const colors = base === "titan" ? { stone: "#16130f", stoneDark: "#0c0a09", fang: "#0e0c0a", socket: "#040303", tongue: "#0a0606" } : roleColors(L, hollow);
     const roles = ROLES[base];
     const showCrown = base === "monarch" && L && L.gear === "crown";
     model.traverse((o) => {
@@ -268,8 +268,8 @@ const W3D = (() => {
       const recolor = (m) => {
         const role = roles[m.name];
         const c = m.clone();
-        if (role === "crown" && !showCrown) { c.visible = false; return c; }
-        if (role === "maw") { c.color.set(mul(ec, 0.5)); c.emissive = new T.Color(ec); c.emissiveIntensity = 0.8; return c; }
+        if ((role === "crown" && !showCrown) || role === "tongue") { c.visible = false; return c; }
+        if (role === "maw") { c.color.set(mul(ec, 0.3)); c.emissive = new T.Color(ec); c.emissiveIntensity = 0.75; c.metalness = 0; return c; }
         if (role === "eye" && (hollow || (L && L.glow))) { c.color.set(colors.eye); c.emissive = new T.Color(colors.eye); c.emissiveIntensity = 1.5; return c; }
         if (role && role !== "keep" && colors[role]) c.color.set(colors[role]);
         else if (hollow) c.color.lerp(new T.Color("#2e1f33"), 0.5);
@@ -711,7 +711,7 @@ const W3D = (() => {
 
   // ---------- the Titan: dark cracked stone, glowing element seams, stone horns ----------
   function crackMaterial(m, color, fx) {
-    const uniforms = { uCrack: { value: new T.Color(color) }, uPulse: { value: 1 } };
+    const uniforms = { uCrack: { value: new T.Color(color).multiplyScalar(0.75) }, uPulse: { value: 1 } };
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, uniforms);
       sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vCrackP;")
@@ -721,18 +721,22 @@ varying vec3 vCrackP; uniform vec3 uCrack; uniform float uPulse;
 float cHash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float cNoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(mix(cHash(i), cHash(i + vec3(1,0,0)), f.x), mix(cHash(i + vec3(0,1,0)), cHash(i + vec3(1,1,0)), f.x), f.y),
-             mix(mix(cHash(i + vec3(0,0,1)), cHash(i + vec3(1,0,1)), f.x), mix(cHash(i + vec3(0,1,1)), cHash(i + vec3(1,1,1)), f.x), f.y), f.z); }`)
+             mix(mix(cHash(i + vec3(0,0,1)), cHash(i + vec3(1,0,1)), f.x), mix(cHash(i + vec3(0,1,1)), cHash(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
         .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
-{ vec3 cp = vCrackP * 4.0; float n = cNoise(cp) * 0.8 + cNoise(cp * 3.1) * 0.2;
-  float line = 1.0 - smoothstep(0.012, 0.045, abs(n - 0.5));
-  totalEmissiveRadiance += uCrack * line * 1.6 * uPulse; diffuseColor.rgb *= 1.0 - line * 0.8; }`);
+{ // Seams where the noise crosses 0.5, kept a constant width by dividing by its gradient.
+  vec3 cp = vCrackP * 3.2; const float e = 0.04;
+  float n = cN2(cp), gx = cN2(cp + vec3(e, 0, 0)) - n, gy = cN2(cp + vec3(0, e, 0)) - n, gz = cN2(cp + vec3(0, 0, e)) - n;
+  float d = abs(n - 0.5) / max(length(vec3(gx, gy, gz)) / e, 0.05);
+  float line = 1.0 - smoothstep(0.012, 0.03, d), heat = (1.0 - smoothstep(0.0, 0.09, d)) * 0.35;
+  totalEmissiveRadiance += uCrack * (line + heat) * uPulse; diffuseColor.rgb *= 1.0 - line * 0.9; }`);
     };
     m.customProgramCacheKey = () => "sb-crack";
     fx.push((t) => { uniforms.uPulse.value = 0.75 + Math.sin(t * 1.6) * 0.25; });
     return m;
   }
 
-  const EYE = { x: 0.2, y: 0.12, z: 0.42 }; // Titan eye position in its Head-bone space
+  const EYE = { x: 0.24, y: 0.27, z: 0.46 }; // Titan eye position in its Head-bone space
   function buildTitanKit(model, el, fx) {
     const ec = ELEMENTS[el] ? ELEMENTS[el].color : "#e8553a";
     model.traverse((o) => {
@@ -743,7 +747,7 @@ float cNoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * 
     const bones = {};
     model.traverse((o) => { if (o.isBone) bones[o.name] = o; });
     model.updateMatrixWorld(true);
-    const rock = lit("#3a3532"), rockD = lit("#24201e"), g = glow(ec), gh = glow(ec, 0.3);
+    const rock = lit("#1e1a17"), rockD = lit("#110f0d"), g = glow(ec), gh = glow(ec, 0.3);
     const key = `titan|${el}`;
     const build = (name, fn) => {
       const k = key + name;
@@ -756,14 +760,13 @@ float cNoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * 
         for (const sx of [-1, 1]) {
           part("cone", grp, [sx * 0.34, 0.5, -0.02], [0.22, 0.5, 0.22], rock, [0, 0, sx * -42]);
           part("cone", grp, [sx * 0.56, 0.8, 0.08], [0.14, 0.4, 0.14], rockD, [-30, 0, sx * -14]);
-          part("cone", grp, [sx * 0.62, 1.02, 0.2], [0.05, 0.14, 0.05], g, [-50, 0, 0]);
-          // Heavy brow ridge slanting down towards the nose, and a slit of glowing eye beneath it.
-          part("box", grp, [sx * EYE.x, EYE.y + 0.09, EYE.z + 0.02], [0.34, 0.1, 0.16], rock, [12, 0, sx * -16]);
-          part("box", grp, [sx * EYE.x, EYE.y, EYE.z + 0.04], [0.22, 0.05, 0.04], g, [0, 0, sx * -14]);
-          part("sphere", grp, [sx * EYE.x, EYE.y, EYE.z + 0.03], [0.36, 0.16, 0.06], gh);
+          // Heavy brow ridge slanting down towards the nose over an ember eye in a dark socket.
+          part("box", grp, [sx * (EYE.x - 0.02), EYE.y + 0.12, EYE.z - 0.02], [0.32, 0.08, 0.16], rockD, [15, 0, sx * -24]);
         }
-        part("octa", grp, [0, 0.52, -0.12], [0.18, 0.34, 0.14], rockD, [-25, 0, 0]);
-        part("octa", grp, [0, 0.38, -0.3], [0.14, 0.26, 0.12], rock, [-45, 0, 0]);
+        part("octa", grp, [0, 0.62, 0.12], [0.3, 0.6, 0.26], rockD, [-15, 0, 0]);
+        part("octa", grp, [0.13, 0.56, -0.06], [0.22, 0.44, 0.2], rock, [-35, 0, -22]);
+        part("octa", grp, [-0.13, 0.56, -0.06], [0.22, 0.44, 0.2], rock, [-35, 0, 22]);
+        part("octa", grp, [0, 0.44, -0.3], [0.2, 0.4, 0.18], rockD, [-60, 0, 0]);
       }));
     }
     // Shards along the back and on each shoulder.
