@@ -1,7 +1,7 @@
-// A hero on the battlefield. Uses a real model when one exists at
-// Resources/Heroes/<heroId> (any rigged prefab; if it has an Animator, the triggers
-// Attack / Cast / Hit / Die are fired). Otherwise builds a stylized placeholder from
-// Unity's primitive shapes, coloured to match the hero's 2D art, and animates it in code.
+// A hero on the battlefield. Loads the hero's recoloured CC0 GLB model with glTFast
+// (HeroModels) and plays its clips; while it loads, or if it can't, shows a stylized placeholder
+// built from Unity's primitive shapes in the hero's colours, animated in code. A prefab at
+// Resources/Heroes/<heroId> (with an Animator: triggers Attack / Cast / Hit / Die) overrides both.
 using System.Collections;
 using UnityEngine;
 using Sigilbound.Core;
@@ -13,29 +13,13 @@ namespace Sigilbound.Client
         public Unit Unit;
         public Transform Model, ArmR, ArmL, HeadTop, Aura, Ring;
         Animator _animator;
+        HeroModel _model;
         Vector3 _home; Quaternion _homeRot;
         float _phase; bool _busy; bool _dead;
 
-        static Material _baseMat; static Material _unlitBase;
-
         // ---------- materials ----------
-        static Material Lit(Color c)
-        {
-            if (_baseMat == null)
-            {
-                var tmp = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                _baseMat = tmp.GetComponent<Renderer>().sharedMaterial; // built-in default material (always in builds)
-                Destroy(tmp);
-            }
-            var m = new Material(_baseMat) { color = c };
-            if (m.HasProperty("_Glossiness")) m.SetFloat("_Glossiness", 0.35f);
-            return m;
-        }
-        public static Material Unlit(Color c)
-        {
-            if (_unlitBase == null) _unlitBase = new Material(Shader.Find("Sprites/Default"));
-            return new Material(_unlitBase) { color = c };
-        }
+        static Material Lit(Color c) => Materials.Lit(c, 0f, 0.35f);
+        public static Material Unlit(Color c) => Materials.Unlit(c);
 
         static Transform Part(PrimitiveType type, Transform parent, Vector3 pos, Vector3 scale, Material mat, Vector3? euler = null)
         {
@@ -54,11 +38,15 @@ namespace Sigilbound.Client
         }
 
         // ---------- construction ----------
-        public static CharacterView Create(Unit unit, Vector3 pos, bool faceForward, float scale)
+        public static CharacterView Create(Unit unit, Vector3 pos, bool faceForward, float scale) =>
+            Create(unit, pos, faceForward ? 0f : 180f, scale);
+
+        // yaw: degrees around Y, 0 = facing +Z (battle units face the rune circle's centre).
+        public static CharacterView Create(Unit unit, Vector3 pos, float yaw, float scale)
         {
             var root = new GameObject(unit.Name).transform;
             root.position = pos;
-            root.rotation = Quaternion.LookRotation(faceForward ? Vector3.forward : Vector3.back);
+            root.rotation = Quaternion.Euler(0, yaw, 0);
             var view = root.gameObject.AddComponent<CharacterView>();
             view.Unit = unit;
             view.Model = Pivot("Model", root, Vector3.zero);
@@ -72,8 +60,12 @@ namespace Sigilbound.Client
                 view._animator = inst.GetComponentInChildren<Animator>();
                 view.HeadTop = Pivot("HeadTop", view.Model, new Vector3(0, 2.0f, 0));
             }
-            else if (unit.Titan) view.BuildTitan();
-            else view.BuildPlaceholder(!unit.Ally);
+            else
+            {
+                if (unit.Titan) view.BuildTitan();
+                else view.BuildPlaceholder(!unit.Ally && !unit.Rival);
+                if (HeroModels.Available) view.StartCoroutine(view.LoadModel());
+            }
 
             // Element aura disc and selection ring at the feet.
             view.Aura = Part(PrimitiveType.Cylinder, root, new Vector3(0, 0.01f, 0), new Vector3(1.1f, 0.005f, 1.1f) * scale, Unlit(Palette.Element(unit.El) * new Color(1, 1, 1, 0.35f)));
@@ -81,6 +73,24 @@ namespace Sigilbound.Client
             view._home = root.position; view._homeRot = root.rotation;
             view._phase = Random.value * 10f;
             return view;
+        }
+
+        // Swap the placeholder for the real model once glTFast has built it.
+        IEnumerator LoadModel()
+        {
+            var holder = new GameObject("GLB").transform;
+            holder.SetParent(Model, false);
+            HeroModel built = null;
+            yield return HeroModels.Build(Unit, holder, m => built = m);
+            if (built == null || this == null) { if (holder) Destroy(holder.gameObject); yield break; }
+            foreach (Transform child in Model) if (child != holder) child.gameObject.SetActive(false);
+            _model = built;
+            ArmL = ArmR = null;
+            if (HeadTop == null) HeadTop = Pivot("HeadTop", Model, Vector3.zero);
+            HeadTop.SetParent(Model, false);
+            HeadTop.gameObject.SetActive(true);
+            HeadTop.localPosition = new Vector3(0, built.Height * 0.87f, 0);
+            if (_dead) built.Play(Clip.Death);
         }
 
         void BuildPlaceholder(bool hollow)
@@ -207,7 +217,7 @@ namespace Sigilbound.Client
         {
             if (_dead || Model == null) return;
             float t = Time.time + _phase;
-            if (_animator == null)
+            if (_animator == null && _model == null)
             {
                 Model.localPosition = new Vector3(0, Mathf.Sin(t * 2.4f) * 0.025f, 0);
                 if (!_busy && ArmR != null)
@@ -229,6 +239,7 @@ namespace Sigilbound.Client
         {
             _busy = true;
             if (_animator != null) _animator.SetTrigger(melee ? "Attack" : "Cast");
+            _model?.Play(melee ? Clip.Attack : Clip.Cast);
             Vector3 dir = (targetPos - _home); dir.y = 0;
             Vector3 lungeTo = melee ? _home + dir * 0.55f : _home + dir.normalized * 0.2f;
             float dur = melee ? 0.22f : 0.18f;
@@ -269,6 +280,7 @@ namespace Sigilbound.Client
         {
             if (_dead) return;
             if (_animator != null) _animator.SetTrigger("Hit");
+            _model?.Play(Clip.Hit);
             StartCoroutine(HitRoutine());
         }
         IEnumerator HitRoutine()
@@ -288,7 +300,8 @@ namespace Sigilbound.Client
             if (_dead) return;
             _dead = true;
             if (_animator != null) _animator.SetTrigger("Die");
-            StartCoroutine(DieRoutine());
+            if (_model != null && _model.Has(Clip.Death)) { _model.Play(Clip.Death); StartCoroutine(FadeRings(1.2f)); }
+            else StartCoroutine(DieRoutine());
         }
         IEnumerator DieRoutine()
         {
@@ -299,6 +312,17 @@ namespace Sigilbound.Client
             if (Aura) Aura.gameObject.SetActive(false);
             if (Ring) Ring.gameObject.SetActive(false);
         }
+
+        IEnumerator FadeRings(float after)
+        {
+            yield return new WaitForSeconds(after);
+            if (Aura) Aura.gameObject.SetActive(false);
+            if (Ring) Ring.gameObject.SetActive(false);
+        }
+
+        // Turn toward a point while acting, then back to the rest pose (units idle facing the centre).
+        public void Face(Vector3 target) { var d = target - transform.position; d.y = 0; if (d.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(d); }
+        public void FaceHome() => transform.rotation = _homeRot;
 
         static float Ease(float k) => 1 - Mathf.Pow(1 - Mathf.Clamp01(k), 3);
         public Vector3 Center => transform.position + Vector3.up * (HeadTop ? (HeadTop.position.y - transform.position.y) * 0.55f : 1f);

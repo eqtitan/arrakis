@@ -53,6 +53,7 @@ static class Program
         Check(tr3 == BattleResult.Timeout && t3.BossTurns == TitanTurns, $"strong team survives all {TitanTurns} titan turns (dmg {t3.TitanDamage:N0})");
 
         ParityTests.Run(Check);
+        RenderTests.Run(Check);
 
         // Win-rate sweep like the web sim's fixed-team check (geared team at stage level).
         Console.WriteLine("\nStage win rates (fixed teams at stage level, 30 runs):");

@@ -1,12 +1,18 @@
-// The 3D battlefield: camera, lights, sky backdrop, ground and chapter scenery.
+// The 3D battlefield: camera, lights, sky backdrop, ground, the rune circle and chapter scenery.
+// Battle positions and camera framing come from Core.BattleLayout (ported from three3d.mjs).
 using UnityEngine;
+using Sigilbound.Core;
 
 namespace Sigilbound.Client
 {
     public sealed class Arena : MonoBehaviour
     {
         public Camera Cam;
+        public Light Sun;
         GameObject _scenery;
+        string _camKey = BattleLayout.DefaultCamera; bool _framedBattle, _framedTitan; float _framedAspect;
+
+        public static Vector3 ToUnity(V3 v) => new Vector3((float)v.X, (float)v.Y, (float)v.Z);
 
         public static Arena Create()
         {
@@ -17,7 +23,7 @@ namespace Sigilbound.Client
             a.Cam.clearFlags = CameraClearFlags.SolidColor;
             camGo.transform.position = new Vector3(0, 7.2f, -9.6f);
             camGo.transform.LookAt(new Vector3(0, 0.9f, 1.1f));
-            var sun = new GameObject("Sun").AddComponent<Light>();
+            var sun = a.Sun = new GameObject("Sun").AddComponent<Light>();
             sun.type = LightType.Directional; sun.intensity = 1.15f; sun.shadows = LightShadows.Soft;
             sun.transform.rotation = Quaternion.Euler(48, -30, 0);
             var fill = new GameObject("Fill").AddComponent<Light>();
@@ -25,6 +31,34 @@ namespace Sigilbound.Client
             fill.transform.rotation = Quaternion.Euler(20, 150, 0);
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             return a;
+        }
+
+        // Menu view: the team lineup stands in front of a fixed camera.
+        public void FrameMenu()
+        {
+            _framedBattle = false;
+            Cam.fieldOfView = 42;
+            Cam.transform.position = new Vector3(0, 7.2f, -9.6f);
+            Cam.transform.LookAt(new Vector3(0, 0.9f, 1.1f));
+        }
+
+        // Battle view: a camera preset (Three-quarter by default) at the closest distance that fits
+        // the whole rune circle and the HUD tags on this screen's aspect ratio.
+        public void FrameBattle(string camKey, bool titan)
+        {
+            _camKey = camKey; _framedBattle = true; _framedTitan = titan;
+            _framedAspect = Cam.aspect;
+            var preset = BattleLayout.Camera(camKey);
+            double aspect = Mathf.Max(0.2f, Cam.aspect);
+            Cam.fieldOfView = (float)BattleLayout.FovFor(aspect);
+            Cam.transform.position = ToUnity(BattleLayout.CameraPosition(preset, BattleLayout.FitDistance(preset, aspect, titan)));
+            Cam.transform.LookAt(ToUnity(BattleLayout.CamTarget));
+        }
+
+        void LateUpdate()
+        {
+            // Re-fit when the screen changes shape (rotation, split screen, foldables).
+            if (_framedBattle && Mathf.Abs(Cam.aspect - _framedAspect) > 0.01f) FrameBattle(_camKey, _framedTitan);
         }
 
         public void Show(bool on)
@@ -40,7 +74,7 @@ namespace Sigilbound.Client
             var (top, bottom, ground, prop) = titan ? (Palette.Hex("#1a0a0a"), Palette.Hex("#c0401a"), Palette.Hex("#24100c"), Palette.Hex("#100606")) : Palette.Scene(chapter);
             Cam.backgroundColor = top;
             RenderSettings.fog = true; RenderSettings.fogMode = FogMode.Linear; RenderSettings.fogColor = bottom;
-            RenderSettings.fogStartDistance = 14; RenderSettings.fogEndDistance = 40;
+            RenderSettings.fogStartDistance = 26; RenderSettings.fogEndDistance = 64; // the battle camera sits ~19 m out
             RenderSettings.ambientLight = Color.Lerp(bottom, Color.white, 0.35f) * 0.55f;
 
             // Sky: a big gradient quad behind the battlefield.
@@ -57,12 +91,15 @@ namespace Sigilbound.Client
             g.transform.localScale = new Vector3(8, 1, 8);
             var gm = new Material(g.GetComponent<Renderer>().sharedMaterial) { color = ground };
             g.GetComponent<Renderer>().sharedMaterial = gm;
-            // Battle circle
+            // The rune circle: units stand on its rim (BattleLayout.Rim*).
             var circle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             Destroy(circle.GetComponent<Collider>());
             circle.transform.SetParent(_scenery.transform);
-            circle.transform.position = new Vector3(0, 0.005f, 0.5f); circle.transform.localScale = new Vector3(9, 0.002f, 7.5f);
+            circle.transform.position = new Vector3((float)BattleLayout.RimCx, 0.005f, (float)BattleLayout.RimCz);
+            circle.transform.localScale = new Vector3((float)BattleLayout.RimRx * 2, 0.002f, (float)BattleLayout.RimRz * 2);
             circle.GetComponent<Renderer>().sharedMaterial = CharacterView.Unlit(new Color(1, 1, 1, 0.05f));
+            RuneRing(1.0f, 0.06f, new Color(1f, 0.81f, 0.42f, 0.55f));
+            RuneRing(0.82f, 0.03f, new Color(1f, 0.85f, 0.5f, 0.3f));
 
             // Scenery props ring the arena, themed loosely per chapter.
             var rng = new System.Random(chapter * 31 + 3);
@@ -96,6 +133,23 @@ namespace Sigilbound.Client
             }
         }
 
+        // A glowing ellipse on the ground at `k` times the rim size.
+        void RuneRing(float k, float width, Color c)
+        {
+            var go = new GameObject("RuneRing");
+            go.transform.SetParent(_scenery.transform, false);
+            var lr = go.AddComponent<LineRenderer>();
+            const int n = 96;
+            lr.positionCount = n; lr.loop = true; lr.useWorldSpace = false;
+            lr.widthMultiplier = width; lr.sharedMaterial = CharacterView.Unlit(c);
+            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            for (int i = 0; i < n; i++)
+            {
+                float a = i / (float)n * Mathf.PI * 2;
+                lr.SetPosition(i, new Vector3((float)BattleLayout.RimCx + Mathf.Sin(a) * (float)BattleLayout.RimRx * k, 0.02f, (float)BattleLayout.RimCz + Mathf.Cos(a) * (float)BattleLayout.RimRz * k));
+            }
+        }
+
         void Prop(PrimitiveType t, Vector3 pos, Vector3 scale, Material m, Vector3? euler = null)
         {
             var go = GameObject.CreatePrimitive(t);
@@ -114,12 +168,9 @@ namespace Sigilbound.Client
             return t;
         }
 
-        // Battle positions: allies near the camera, enemies across the field.
-        public static Vector3 Slot(bool ally, int index, int count)
-        {
-            float spread = count <= 1 ? 0 : 4.6f / (count - 1);
-            float x = count <= 1 ? 0 : -2.3f + index * spread;
-            return ally ? new Vector3(x, 0, -1.6f) : new Vector3(x * 0.9f, 0, 3.0f);
-        }
+        // Battle positions: on the rune circle's rim, allies along the near arc and enemies along
+        // the far arc, 2.2 m apart; everyone idles facing the centre.
+        public static Vector3 Slot(bool ally, int index, int count) => ToUnity(BattleLayout.Slot(ally, index, count));
+        public static float FacingYaw(Vector3 p) => (float)BattleLayout.FacingCentreYaw(new V3(p.x, p.y, p.z));
     }
 }

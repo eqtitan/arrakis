@@ -148,12 +148,13 @@ namespace Sigilbound.Client
         public void Shake(float intensity = 0.12f) => StartCoroutine(ShakeRoutine(intensity));
         IEnumerator ShakeRoutine(float intensity)
         {
+            var home = _cam.transform.position; // the battle camera moves with the chosen preset
             for (float k = 0; k < 1; k += Time.deltaTime / 0.22f)
             {
-                _cam.transform.position = _camHome + Random.insideUnitSphere * intensity * (1 - k);
+                _cam.transform.position = home + Random.insideUnitSphere * intensity * (1 - k);
                 yield return null;
             }
-            _cam.transform.position = _camHome;
+            _cam.transform.position = home;
         }
     }
 }

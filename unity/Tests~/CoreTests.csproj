@@ -14,6 +14,6 @@
     <!-- The Unity compile check is its own project. -->
     <Compile Remove="CompileCheck/**" />
     <None Remove="CompileCheck/**" />
-    <None Include="fixtures/fixtures.json" CopyToOutputDirectory="PreserveNewest" LinkBase="fixtures" />
+    <None Include="fixtures/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="fixtures" />
   </ItemGroup>
 </Project>
