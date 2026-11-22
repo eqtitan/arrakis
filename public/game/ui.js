@@ -145,6 +145,14 @@ function render() {
   syncShowcase();
 }
 
+// Graphics tier for the Settings row: the live choice if a battle has run, else the saved one.
+function gfxQuality() {
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem("sigilbound.gfx.v1") || "{}") || {}; } catch (_) {}
+  const auto = W3D.quality ? W3D.qualityAuto : !saved.forced;
+  return { choice: auto ? "auto" : (W3D.quality || saved.tier || "High"), tier: W3D.quality || saved.tier || "" };
+}
+
 // Hero detail page: swap the drawn figure for the live 3D hero when 3D is available.
 function syncShowcase() {
   if (!window.W3D || !W3D.showcase) return;
@@ -507,12 +515,24 @@ Object.assign(ACTIONS, {
         <input type="range" id="sfxVol" class="slider" min="0" max="100" step="5" value="${s}"></div>
       <div class="setting row spread"><div><b>Battle graphics</b><div class="small dim">2D is lighter on older phones</div></div>
         <button class="btn sec sm" data-act="toggleGfx">${G.settings.flat ? "2D" : "3D"}</button></div>
+      ${G.settings.flat || !window.W3D || !W3D.setQuality ? "" : (() => {
+        const q = gfxQuality();
+        const opt = (k, label) => `<button class="chip ${q.choice === k ? "on" : ""}" data-act="setGfxQuality" data-q="${k}">${label}</button>`;
+        return `<div class="setting"><div><b>Graphics quality</b><div class="small dim">${q.choice === "auto"
+          ? `Auto picks the best your phone can run smoothly${q.tier ? ` (now: ${q.tier})` : ""}` : "Lower it if battles stutter or the phone gets warm"}</div></div>
+          <div class="row wrap" style="gap:6px">${opt("auto", "Auto")}${opt("High", "High")}${opt("Medium", "Medium")}${opt("Low", "Low")}</div></div>`;
+      })()}
       ${B ? "" : `<div class="row" style="gap:8px;margin-top:10px">
         <button class="btn sec sm grow" data-act="saveCode">Save code</button>
         <button class="btn sec sm grow" data-act="showHelp">How to play</button>
         <button class="btn red sm grow" data-act="askReset">Reset save</button></div>`}
       <p class="small dim" style="text-align:center;margin:12px 0 8px">Sigilbound ${VERSION_LABEL}</p>
       <button class="btn" style="width:100%" data-act="closeModal">Done</button>`);
+  },
+  setGfxQuality(d) {
+    W3D.setQuality(d.q);
+    toast(d.q === "auto" ? "Graphics: Auto" : `Graphics: ${d.q}`);
+    ACTIONS.openSettings();
   },
   toggleGfx() {
     G.settings.flat = !G.settings.flat; save();

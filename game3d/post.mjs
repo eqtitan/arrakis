@@ -526,7 +526,9 @@ export function createQualityManager(opts = {}) {
   }
   function force(name) {
     if (name == null || name === "auto") {
-      forced = null; auto = true; warm = warmupWindows; good = 0; persist();
+      // Back to Auto: restart from the device's recommended tier (not a previously forced one).
+      const hint = QUALITY[opts.initial] ? opts.initial : deviceHint();
+      forced = null; auto = true; warm = warmupWindows; good = 0; downedThisSession = false; current = hint; persist();
       if (onChange) onChange(current, QUALITY[current], "auto");
       return;
     }

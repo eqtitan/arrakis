@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.15.0 (2026-11-22)
+- Built for the Galaxy Note20 class and up: full battle arenas for every chapter (forest, shore, badlands, marsh, ruins, Titan caldera) with water, lava, props and drifting particles; closer portrait camera that fits the whole team; your heroes face the camera; melee heroes run in, strike and run back, casters cast over spell circles, rolls, big-hit reactions, crit hit-stop, victory waves, Titan jump-slam; cape and hair physics; glow (bloom), smoother edges and colour grading; Graphics quality setting (Auto/High/Medium/Low) that steps down automatically if a phone can't keep up; damage numbers stack cleanly and read on any background.
+
+
 ## 0.14.0 (2026-11-22)
 - New look: every hero redesigned with a unique 3D build and higher-detail armour (textured metal, leather and cloth, curved capes); equipped gear now shows on the 3D model (rarity changes size and trim, set changes gem colour); gilded UI skin across all screens; battles draw ~5x fewer objects per frame.
 
