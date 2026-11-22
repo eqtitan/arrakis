@@ -106,3 +106,20 @@ functions/api/            Cloudflare Pages Functions (serve the JSON data)
 tools/
   rslhelper-export.mjs     reads RSL Helper's local SQLite DB, outputs roster.json
 ```
+
+## Sigilbound (prototype game) — `public/game/`
+
+An original, fully free-to-play hero-collector RPG for mobile browsers.
+It's a separate side project from the optimizer and shares no code with it.
+
+- **Play locally:** `npm run dev`, then open `http://localhost:5174/game/`.
+  Or serve the folder directly: `cd public/game && python3 -m http.server`.
+  It's plain JS with no build step. Deploys with the site at `/game/`.
+- **Features:** 24 original heroes in 4 rarities and 5 elements, turn-meter
+  battles (manual / auto / 1–3× speed / auto-replay), a 60-stage campaign,
+  a daily Titan boss, gear with sets and upgrades, leveling and star rank-ups,
+  summoning with pity, an essence exchange, daily login and quests.
+- **No monetization:** there's no shop and no paid currency.
+  Every shard is earned in play. Progress saves to `localStorage`.
+- Files: `data.js` (content), `state.js` (save/progression), `battle.js`
+  (DOM-free engine), `ui.js` (screens), `style.css`.
