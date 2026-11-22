@@ -75,6 +75,17 @@ const W3D = (() => {
     geo.sphere = new T.SphereGeometry(0.5, 20, 14);
     geo.capsule = new T.CapsuleGeometry(0.5, 1.0, 6, 14);
     geo.cyl = new T.CylinderGeometry(0.5, 0.5, 2, 20);
+    // Unit-height shapes for code-built props (low segment counts: they are small on a phone).
+    geo.rod = new T.CylinderGeometry(0.5, 0.5, 1, 10);
+    geo.disc = new T.CylinderGeometry(0.5, 0.5, 1, 24);
+    geo.cone = new T.ConeGeometry(0.5, 1, 10);
+    geo.taper = new T.CylinderGeometry(0.5, 0.32, 1, 10);
+    geo.bell = new T.CylinderGeometry(0.22, 0.5, 1, 16);
+    geo.ring = new T.TorusGeometry(0.5, 0.07, 6, 28);
+    geo.hook = new T.TorusGeometry(0.5, 0.18, 6, 14, Math.PI * 1.25);
+    geo.crook = new T.TorusGeometry(0.5, 0.2, 6, 12, Math.PI);
+    geo.octa = new T.OctahedronGeometry(0.5);
+    geo.half = new T.CylinderGeometry(0.5, 0.5, 1, 12, 1, false, 0, Math.PI);
     return geo;
   }
   function lit(color, metal = 0) {
