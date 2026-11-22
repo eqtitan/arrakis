@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.18.2 (2026-11-22)
+- Your heroes now stand as far apart as the enemies (2.2 m gaps), with the camera re-fitted to the wider line.
+
+
 ## 0.18.1 (2026-11-22)
 - Three-quarter is now the default battle camera (others still available via 🎥 or Settings).
 
