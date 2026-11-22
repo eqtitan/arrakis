@@ -2465,7 +2465,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, victory, setHighlight, setQuality, dot,
     get quality() { return qm ? qm.current : null; }, get qualityAuto() { return qm ? qm.auto : true; },
     burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop, setCamera, cameras: CAMS, get camera() { return camKey(); },
-    debugStep, _play: (n) => !!(SC.built && SC.built.anim && SC.built.anim.play(n, { fade: 0.1 })), _sc: () => window.SB_DEBUG ? SC : null, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
+    debugStep, _play: (n) => !!(window.SB_DEBUG && SC.built && SC.built.anim && SC.built.anim.play(n, { fade: 0.1 })), _sc: () => window.SB_DEBUG ? SC : null, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };
 })();
 

@@ -190,6 +190,42 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
   cap from a power saver doesn't count as slow. `W3D.setQuality("High" | "Medium" | "Low" | "auto")`
   and `W3D.quality` are there for a settings row. Glows use untonemapped MeshBasic materials,
   and eyes and the Titan's maw use strong emissive, so the bloom catches them.
+- **Character shading (`game3d/shading.mjs`):** a stylized PBR look applied after merging
+  (`applyCharacterLook`). It gives skin a subsurface tint and soft terminator, hair and cloth
+  sheen, painted metal and gold, gem cores, and an element-coloured rim. One merged mesh still
+  shades skin, hair, cloth and metal differently, because every vertex carries its role
+  (`sbRole`, written by `prepGeo` from the material role). Normals are smoothed on every tier;
+  Ultra and the card faces also get one level of Loop subdivision (about 4× triangles).
+- **Faces:** small irises with a catch-light, per-hero brows (angle sets the mood) and a mouth
+  line (`FACE` in `three3d.mjs`). Beards hide the mouth.
+- **Sculpted kit:** lathe-turned helm and pauldron shells, a raised shield boss, faceted gems,
+  belt buckles, pouches and vials, and lumpy faceted rock on the Titan.
+- **Skill effects (`game3d/vfx.mjs`):** pooled per-element effects (at most 6 draw calls):
+  - cast circles and charge-ups, projectiles chosen by prop (arrow, bolt, orb, shard)
+  - directional melee slashes and impacts
+  - heal, buff and debuff auras, shield domes, poison ticks
+  - a crit flash, beams for single-target ultimates, AoE rings and shockwaves
+  - death fades and the Titan's slam
+  W3D's existing calls (`attack`, `burst`, `heal`, `buff`, `projectile`, `slash`, `die`) route
+  to it, with the old effects as a fallback.
+- **Extra animation:** seven CC0 clips from the Quaternius Universal Animation Library,
+  retargeted onto our rig by `tools/anim-retarget` (`models/anims_ual.json`, 214 KB):
+  - casters use Spell_Simple_Shoot, and support skills use Spell_Simple_Enter
+  - hits use Hit_Chest, and big hits use Hit_Head
+  - deaths use Death01
+
+  Provenance is in `models/CREDITS.md` (re-verify from quaternius.com before a store release).
+- **More post (`game3d/postfx2.mjs`):** the scene target has 24-bit depth (16-bit z-fought
+  where kit meets the body), and each tier adds passes:
+
+  | Tier | Extra passes |
+  |---|---|
+  | Ultra | SSAO (12 taps), far-background DoF, per-arena colour LUT, sharpen |
+  | High | SSAO (8 taps), LUT, sharpen |
+  | Medium | LUT, sharpen |
+
+  On sustained low fps, the quality manager first drops SSAO on High and Ultra (`soften`),
+  then steps down a whole tier.
 - **Note20 budget (High):** about 60k triangles and 20 draw calls per hero, and about 1.2M
   triangles and 350 calls per battle frame. Measured (SwiftShader, 412×915 at 2.6×):
   - Per hero in the viewer: 5–12 calls, 8–27k triangles with no gear, 15–42k at Mythic.
