@@ -13,6 +13,7 @@ import { detailMaterial, envMap, disposeEnv, bevelBox, roundedPlate } from "./ma
 import { createPipeline, createQualityManager, deviceHint } from "./post.mjs";
 import { buildArena } from "./scenery.mjs";
 import { applyCharacterLook, roleFromGame, tagRole } from "./shading.mjs";
+import { createVFX } from "./vfx.mjs";
 
 // Proper colour management: hex colours (LOOKS, palettes) are sRGB and get converted to
 // linear for lighting, then back to sRGB on output. Legacy mode skipped that conversion,
@@ -309,6 +310,9 @@ const W3D = (() => {
     try { pipe = createPipeline(renderer, scene, camera, { quality: Q.current }); pipe.params.exposure = GFX.exposure; }
     catch (e) { console.warn("Sigilbound: post-processing unavailable", e); pipe = null; }
     renderer.domElement.addEventListener("webglcontextrestored", () => { if (pipe && qm) pipe.setQuality(qm.current); });
+    // Skill effects (vfx.mjs): pooled per-element casts, projectiles, impacts, auras.
+    try { vfx = createVFX(scene, camera, { quality: Q.current === "Ultra" ? "Ultra" : Q.current, speed: spd }); }
+    catch (e) { console.warn("Sigilbound: VFX unavailable", e); vfx = null; }
     resize();
     window.addEventListener("resize", resize);
     last = performance.now();
@@ -406,6 +410,7 @@ const W3D = (() => {
     if (renderer) {
       if (pipe) { pipe.dispose(); pipe = null; }
       if (arena) { try { arena.dispose(); } catch (_) {} arena = null; }
+      if (vfx) { try { vfx.dispose(); } catch (_) {} vfx = null; }
       renderer.domElement.remove();
       disposeEnv(renderer);
       renderer.dispose();
@@ -1965,6 +1970,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     camera.position.copy(_cam); camera.lookAt(_look);
     if (qm) qm.tick(now);
     if (arena) arena.update(t);
+    if (vfx) vfx.update(dt);
     if (pipe) pipe.render(rawDt); else renderer.render(scene, camera);
     for (const cb of frameCbs) cb();
     raf = requestAnimationFrame(loop);
@@ -2052,6 +2058,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
         A.play("Jump_Land", { fade: 0.08, speed: 1.4 });
         await sleepScaled(0.12);
         shake(0.35);
+        if (vfx) vfx.titanSlam(v.root.position, v.u.el);
         await sleepScaled(0.2);
       } else { A.strike(); await sleepScaled(0.5); }
       return;
@@ -2068,7 +2075,8 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     if (A) {
       v.root.rotation.y = turnFrom + shortAngle(turnFrom, turnTo);
       A.play(opts.support && A.has(A.S.support) ? A.S.support : A.S.cast, { fade: 0.12 });
-      spellCircle(v, ELEMENTS[v.u.el] ? ELEMENTS[v.u.el].color : "#ffffff");
+      if (vfx) { vfx.castCircle(v.root.position, v.u.el); vfx.charge(v.root, v.u.el, 0.5); if (opts.ult && tgt && !opts.support) vfx.aoe(tgt.root.position.clone().setX(tgt.root.position.x * 0.3), 1.9, v.u.el); }
+      else spellCircle(v, ELEMENTS[v.u.el] ? ELEMENTS[v.u.el].color : "#ffffff");
       const to = v.home.clone().add(dir.clone().normalize().multiplyScalar(0.2));
       await tween(0.2, (k) => { v.root.position.lerpVectors(v.home, to, ease(k)); });
       await sleepScaled(0.15);
@@ -2112,7 +2120,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     const frac = e && v.u.maxHp ? e.amount / v.u.maxHp : 0;
     const crit = !!(e && e.crit), big = crit || frac > 0.14;
     const A = v.anim;
-    if (crit) { hitStop = Math.max(hitStop, reduce ? 0 : 0.09); punchT = 0.25; }
+    if (crit) { hitStop = Math.max(hitStop, reduce ? 0 : 0.09); punchT = 0.25; if (vfx && !reduce) vfx.critFlash(lastEl); }
     if (A && !v.busy) {
       if (v.u.titan) A.play(A.has("HitReact") ? "HitReact" : "Idle", { fade: 0.1 });
       // A light glancing blow is sometimes dodged with a roll.
@@ -2133,7 +2141,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     fall.then(() => sleepScaled(1.1))
       .then(() => tween(0.8, (k) => { v.root.position.y = y0 - 0.9 * k; }))
       .then(() => { v.aura.visible = false; v.ring.visible = false; });
-    burstAt(worldCenter(key), "#8a8a96", 26, 1.6, 0.6, -0.3);
+    if (vfx) vfx.deathFade(v.root.position, v.u.el); else burstAt(worldCenter(key), "#8a8a96", 26, 1.6, 0.6, -0.3);
   }
   // Winners turn to the camera and celebrate (staggered so they don't move in lockstep).
   function victory(side = "A") {
@@ -2175,18 +2183,26 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
       return true;
     } });
   }
+  // Callers pass element colours; vfx.mjs wants element keys.
+  let vfx = null, lastEl = "physical";
+  const elOf = (color) => { for (const k in ELEMENTS) if (ELEMENTS[k].color === color) return (lastEl = k); return "physical"; };
   function burst(key, color, big) {
     const p = worldCenter(key);
+    if (vfx && p) { vfx.impact(p, elOf(color), { crit: !!big }); return; }
     burstAt(p, color, big ? 44 : 22, big ? 5 : 3.2, big ? 0.45 : 0.32, 0.6);
     burstAt(p, "#ffffff", big ? 10 : 5, 1.4, big ? 1.1 : 0.7, 0);
   }
-  function heal(key) { const v = views.get(key); if (v) burstAt(v.root.position.clone().setY(0.3), "#7dff8a", 18, 1.0, 0.3, -0.6); }
-  function buff(key, good) { const v = views.get(key); if (v) burstAt(v.root.position.clone().setY(0.4), good ? "#ffd86a" : "#c07aff", 10, 0.9, 0.28, -0.5); }
-  function cast(key, color) { const v = views.get(key); if (v) burstAt(v.root.position.clone().setY(0.1), color, 26, 1.4, 0.35, -0.7); }
+  function heal(key) { const v = views.get(key); if (v && vfx) return vfx.heal(v.root.position); if (v) burstAt(v.root.position.clone().setY(0.3), "#7dff8a", 18, 1.0, 0.3, -0.6); }
+  function buff(key, good) { const v = views.get(key); if (v && vfx) return vfx.buff(v.root.position, !!good); if (v) burstAt(v.root.position.clone().setY(0.4), good ? "#ffd86a" : "#c07aff", 10, 0.9, 0.28, -0.5); }
+  function cast(key, color) { const v = views.get(key); if (v && vfx) return; if (v) burstAt(v.root.position.clone().setY(0.1), color, 26, 1.4, 0.35, -0.7); }
 
   function projectile(fromKey, toKey, color, dur = 0.3) {
     const a = worldCenter(fromKey), b = worldCenter(toKey);
     if (!a || !b || !scene) return Promise.resolve();
+    if (vfx) {
+      const fv = views.get(fromKey), prop = fv && !fv.u.titan && LOOKS[fv.u.template.id] ? LOOKS[fv.u.template.id].prop : "";
+      return vfx.projectile(a, b, elOf(color), prop === "bow" ? "arrow" : prop === "mirror" || prop === "staff" ? "bolt" : prop === "orb" || prop === "candle" ? "orb" : "shard");
+    }
     const orb = new T.Mesh(geos().sphere, glow(mix(color, "#ffffff", 0.4)));
     orb.scale.setScalar(0.3); scene.add(orb);
     let n = 0;
@@ -2197,6 +2213,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
   function slash(key, color) {
     const p = worldCenter(key); if (!p || !scene) return;
+    if (vfx) { vfx.slash(p, elOf(color)); return; }
     const arc = new T.Mesh(new T.RingGeometry(0.55, 0.75, 32, 1, -0.9, 2.2), new T.MeshBasicMaterial({ color: new T.Color(color), transparent: true, side: T.DoubleSide, blending: T.AdditiveBlending, depthWrite: false }));
     arc.position.copy(p); arc.quaternion.copy(camera.quaternion); arc.rotateZ(Math.random() * 0.8 - 0.4);
     scene.add(arc);
