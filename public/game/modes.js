@@ -351,6 +351,9 @@ function checkTips() {
     return;
   }
 }
+// One-time switch to the new default camera (Three-quarter); later choices are kept.
+if (!G.settings.camDefault2) { G.settings.cam = "angle"; G.settings.camDefault2 = 1; save(); }
+
 // Existing players shouldn't see beginner tips for things they've clearly done.
 (function seedTips() {
   if (!G.started) return;

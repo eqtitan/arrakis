@@ -332,7 +332,7 @@ const W3D = (() => {
     angle: { name: "Three-quarter", yaw: 38, pitch: 30 },
     front: { name: "Hero view", yaw: 180, pitch: 30 },
   };
-  const camKey = () => { const k = typeof G !== "undefined" && G.settings && G.settings.cam; return CAMS[k] ? k : "classic"; };
+  const camKey = () => { const k = typeof G !== "undefined" && G.settings && G.settings.cam; return CAMS[k] ? k : "angle"; }; // Three-quarter is the default view
   function setCamera(k) { if (CAMS[k] && typeof G !== "undefined") { G.settings.cam = k; if (typeof save === "function") save(); } if (renderer) resize(); }
   // Shared quality manager (one per session; remembers the tier in localStorage).
   let pipe = null, qm = null;
