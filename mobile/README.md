@@ -14,8 +14,11 @@ attached to the **android-latest** release in this repository's *Releases* secti
 2. Open the download. If asked, allow installs from your browser.
 3. To update, install the next build over the old one. Your progress stays.
 
-This is a debug-signed test build, fine for you and your brother. Publishing on Google
-Play needs a release signing key and a Play Console account ($25 once).
+Test builds are all signed with one permanent key
+(`android/app/sigilbound-test.keystore`), so each new APK installs over the previous one and
+keeps your progress. That key is in the repository on purpose, because it's for test builds
+only. Publishing on Google Play needs a separate private release key stored in GitHub
+secrets, plus a Play Console account ($25 once).
 
 ## iPhone
 

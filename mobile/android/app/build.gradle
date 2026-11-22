@@ -17,7 +17,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // One permanent key for test builds, so every APK installs over the last one and keeps
+    // the player's data (GitHub's runners otherwise make a new random debug key each build).
+    // It's committed on purpose: test builds only. A Play Store release needs its own private
+    // key kept in GitHub secrets, never in the repo.
+    signingConfigs {
+        sigilboundTest {
+            storeFile file("sigilbound-test.keystore")
+            storePassword "sigilbound-test"
+            keyAlias "sigilbound-test"
+            keyPassword "sigilbound-test"
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig signingConfigs.sigilboundTest
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

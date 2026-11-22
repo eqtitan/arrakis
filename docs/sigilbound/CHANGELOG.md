@@ -13,6 +13,9 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.6.1 (2026-11-22)
+- Android test builds are now signed with one permanent key, so updates install over the old app and keep your progress. Earlier builds each had a random key, which forced an uninstall and lost data.
+
 ## 0.6.0 (2026-11-22)
 - Rigged, animated 3D hero models (CC0, Quaternius), recolored per hero, with idle, attack, cast, hit and death animations. Hollow enemies and a stone Titan.
 - Versioning: version and build number shown on the Home screen and in release names.
