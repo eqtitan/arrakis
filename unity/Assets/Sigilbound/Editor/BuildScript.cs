@@ -23,7 +23,8 @@ namespace Sigilbound.EditorTools
             ProjectSetup.Apply();
             EditorUserBuildSettings.buildAppBundle = false; // an APK that installs straight onto a phone
             PlayerSettings.bundleVersion = Version();
-            if (int.TryParse(Environment.GetEnvironmentVariable("SB_BUILD"), out var code) && code > 0) PlayerSettings.Android.bundleVersionCode = code;
+            int code = BuildNumber();
+            if (code > 0) PlayerSettings.Android.bundleVersionCode = code;
             var keystore = Path.GetFullPath(TestKeystore);
             if (File.Exists(keystore))
             {
@@ -39,6 +40,18 @@ namespace Sigilbound.EditorTools
         }
 
         public static void iOS() { ProjectSetup.Apply(); PlayerSettings.bundleVersion = Version(); Build(BuildTarget.iOS, "Builds/iOS"); }
+
+        // Android versionCode (must always go up so updates install): SB_BUILD, else game-ci's
+        // -androidVersionCode argument, else unity/build-number.txt written by CI.
+        static int BuildNumber()
+        {
+            if (int.TryParse(Environment.GetEnvironmentVariable("SB_BUILD"), out var n) && n > 0) return n;
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i + 1 < args.Length; i++)
+                if (args[i] == "-androidVersionCode" && int.TryParse(args[i + 1], out n) && n > 0) return n;
+            try { if (int.TryParse(File.ReadAllText("build-number.txt").Trim(), out n) && n > 0) return n; } catch (IOException) { }
+            return 0;
+        }
 
         // The web game's version (public/game/version.js) unless SB_VERSION overrides it.
         static string Version()
