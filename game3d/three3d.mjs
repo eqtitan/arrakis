@@ -1738,6 +1738,8 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   const ALLY_FACING = Math.PI - 0.95;
   // Yaw 0 faces the camera (+Z) and PI faces the enemies: about 60-72° off the camera, toward
   // the centre of the line.
+  const ARENA_CENTRE = new T.Vector3(0, 0, (2.0 + -3.6) / 2);
+  const faceCentre = (p) => Math.atan2(ARENA_CENTRE.x - p.x, ARENA_CENTRE.z - p.z); // models face +Z at yaw 0
   const allyFacing = (x) => (x <= 0.05 ? 1 : -1) * (1.05 + 0.2 * Math.min(1, Math.abs(x) / 1.8));
   // Rows spread with the team size; with 4+ units every other one steps back, so the HUD tags
   // and the figures overlap less.
@@ -1797,9 +1799,9 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     built.model.scale.multiplyScalar(scale);
     const pos = u.titan ? new T.Vector3(0, 0, -4.0) : slot(ally, i, n);
     root.position.copy(pos);
-    // Allies idle in a three-quarter turn toward the camera (angled in toward the middle of the
-    // line) so the player sees faces, chests and gear; they turn to the target only to attack.
-    const idleRot = ally ? allyFacing(pos.x) : 0;
+    // Everyone idles facing the centre of the battle circle (midway between the two rows) and only
+    // turns toward a target while acting; returnHome() swings them back to this.
+    const idleRot = faceCentre(pos);
     root.rotation.y = idleRot;
     const aura = new T.Mesh(new T.CircleGeometry(0.62 * (u.titan ? 2 : scale), 32), glow(ELEMENTS[u.el].color, 0.35));
     aura.rotation.x = -Math.PI / 2; aura.position.y = 0.02; root.add(aura);

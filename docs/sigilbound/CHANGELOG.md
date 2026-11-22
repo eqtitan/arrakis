@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.17.1 (2026-11-22)
+- Heroes and enemies now idle facing the centre of the battle circle, turning toward their target only while acting.
+
+
 ## 0.17.0 (2026-11-22)
 - New Trials tab: daily Dungeons (Gilded Vault for gold, Hall of Echoes for hero XP, Sigil Forge for gear of the set you choose; 10 floors each, 3 winning runs a day, losses are free) and the Arena (pick from 3 rival teams matched to your power, 5 fights a day, climb Bronze to Sigil, weekly rank rewards). First-time tips for new players. Promo code box in Settings. Fixed capes slowly tipping up into a 'slab' over long sessions (Sable, Ulfgar and others). Shield-absorbed hits no longer show 'CRIT 0'.
 
