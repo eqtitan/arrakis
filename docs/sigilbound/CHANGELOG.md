@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.14.0 (2026-11-22)
+- New look: every hero redesigned with a unique 3D build and higher-detail armour (textured metal, leather and cloth, curved capes); equipped gear now shows on the 3D model (rarity changes size and trim, set changes gem colour); gilded UI skin across all screens; battles draw ~5x fewer objects per frame.
+
+
 ## 0.13.1 (2026-11-22)
 - Update banner appears while the app is open: checks every 5 minutes and pops a notice, no restart needed.
 
