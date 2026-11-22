@@ -11,6 +11,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { detailMaterial, envMap, disposeEnv, bevelBox, roundedPlate } from "./materials.mjs";
 import { createPipeline, createQualityManager, deviceHint } from "./post.mjs";
+import { buildArena } from "./scenery.mjs";
 
 // Proper colour management: hex colours (LOOKS, palettes) are sRGB and get converted to
 // linear for lighting, then back to sRGB on output. Legacy mode skipped that conversion,
@@ -264,6 +265,29 @@ const W3D = (() => {
     const rim = new T.DirectionalLight(0x99aaff, GFX.rim); rim.position.set(4, 5, -8); scene.add(rim);
     const front = new T.DirectionalLight(0xffffff, GFX.front); front.position.set(0, 4, 10); scene.add(front);
 
+    // The arena (scenery.mjs): textured ground with a worn fighting circle and paths, scatter,
+    // framing props, sky and silhouettes, light fog and motes. Falls back to the plain field.
+    const Q = quality(renderer);
+    try {
+      arena = buildArena(scene, { chapter: opts.titan ? 9 : (opts.chapter || 0), titan: !!opts.titan, quality: Q.current.toLowerCase(), renderer });
+    } catch (e) { console.warn("Sigilbound: arena failed, using the plain field", e); arena = null; }
+    if (!arena) plainField(sc, opts);
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -9; sun.shadow.camera.right = sun.shadow.camera.top = 9;
+
+    camera = new T.PerspectiveCamera(50, 1, 0.1, 150);
+    // Post-processing and adaptive quality (post.mjs): the tier sets pixel ratio, MSAA, shadow
+    // map size and bloom, and steps down on sustained low fps.
+    try { pipe = createPipeline(renderer, scene, camera, { quality: Q.current }); pipe.params.exposure = GFX.exposure; }
+    catch (e) { console.warn("Sigilbound: post-processing unavailable", e); pipe = null; }
+    renderer.domElement.addEventListener("webglcontextrestored", () => { if (pipe && qm) pipe.setQuality(qm.current); });
+    resize();
+    window.addEventListener("resize", resize);
+    last = performance.now();
+    raf = requestAnimationFrame(loop);
+  }
+  let arena = null;
+  // The pre-0.15 field: flat textured ground, a faint ring and simple scenery.
+  function plainField(sc, opts) {
     // Lift the ground toward a neutral warm grey: colour-managed dark tones read much darker,
     // and lifting toward the (often saturated) horizon colour made it glare.
     const groundMat = new T.MeshStandardMaterial({ color: new T.Color(mix(sc[2], "#8c8680", GFX.groundLift)), roughness: 1, map: groundTexture() });
@@ -273,18 +297,6 @@ const W3D = (() => {
     const ring = new T.Mesh(new T.RingGeometry(3.4, 3.6, 64), glow("#ffffff", 0.08));
     ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.01, -0.6); ring.scale.set(1.25, 1, 1); scene.add(ring);
     buildScenery(opts.titan ? 2 : (opts.chapter || 0) % 5, sc, opts.chapter || 0);
-
-    camera = new T.PerspectiveCamera(50, 1, 0.1, 150);
-    // Post-processing and adaptive quality (post.mjs): the tier sets pixel ratio, MSAA, shadow
-    // map size and bloom, and steps down on sustained low fps.
-    const Q = quality(renderer);
-    try { pipe = createPipeline(renderer, scene, camera, { quality: Q.current }); pipe.params.exposure = GFX.exposure; }
-    catch (e) { console.warn("Sigilbound: post-processing unavailable", e); pipe = null; }
-    renderer.domElement.addEventListener("webglcontextrestored", () => { if (pipe && qm) pipe.setQuality(qm.current); });
-    resize();
-    window.addEventListener("resize", resize);
-    last = performance.now();
-    raf = requestAnimationFrame(loop);
   }
 
   function buildScenery(kind, sc, seed) {
@@ -348,6 +360,7 @@ const W3D = (() => {
     window.removeEventListener("resize", resize);
     if (renderer) {
       if (pipe) { pipe.dispose(); pipe = null; }
+      if (arena) { try { arena.dispose(); } catch (_) {} arena = null; }
       renderer.domElement.remove();
       disposeEnv(renderer);
       renderer.dispose();
@@ -1839,6 +1852,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     }
     camera.position.copy(_cam); camera.lookAt(_look);
     if (qm) qm.tick(now);
+    if (arena) arena.update(t);
     if (pipe) pipe.render(rawDt); else renderer.render(scene, camera);
     for (const cb of frameCbs) cb();
     raf = requestAnimationFrame(loop);
