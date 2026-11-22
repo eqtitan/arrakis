@@ -144,7 +144,57 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
   colors don't go muddy. Colors chosen under the old legacy mode (very dark values such as the
   Titan's `#16130f`) now render darker still. That works for the Titan, but recheck any old
   "picked dark on purpose" colors when you touch them.
-- **Animations used:** Idle (Idle_Sword), Sword_Slash (melee), Gun_Shoot (casting), HitRecieve, Death.
+- **Animation (`makeAnim` and the battle choreography in `three3d.mjs`):** every unit has a
+  controller that crossfades between clips (no pops) and returns to its own idle.
+  - Idle per hero: Idle_Sword for weapon holders, Idle_Neutral for small foci (candle, mirror,
+    bell, orb, lantern), Idle_Gun for the archer. Every 8–20 s an idle unit plays a short fidget.
+  - Melee: run in with the Run clip, stop short of the target, strike, then backpedal home with
+    Run_Back. Strikes cycle per hero: brawlers (Odo, Kettle, Gorrum, Thrain) use Punch_Right,
+    Punch_Left and Kick_Right; daggers slash, punch and kick; blades slash and sometimes kick.
+  - Ranged and support skills cast in place (Gun_Shoot, or Interact for buffs and heals) over a
+    glowing spell circle in the element colour.
+  - Hits: HitRecieve, or HitRecieve_2 for crits and hits over 14% of max HP. A glancing blow
+    (weak element or under 4%) is sometimes dodged with Roll. Crits add a short hit-stop and a
+    camera punch.
+  - A3 and all-enemy skills: the camera zooms gently toward the caster (the FOV narrows 12%,
+    and the view drifts a little toward the caster), then eases back.
+  - Victory (`W3D.victory("A")`, called from ui.js): the winners turn to the camera and wave,
+    staggered.
+  - Titan: Punch and Weapon swings, a Jump → Jump_Land slam with a camera shake, then a roar
+    (Yes, No or Wave).
+  - Secondary motion: capes, ponytails, bandana and scarf tails, and the whip swing on damped
+    springs driven by their anchor's movement (`springy`). The kit helper bones follow, so it
+    costs nothing extra in draw calls.
+  - Pacing is unchanged: run-in 0.26 s, strike 0.35 s, return 0.25 s, all scaled by the game
+    speed setting.
+- **Battle camera (`resize`):** a fixed pitch of 34° (a 62° lens on portrait screens) and the
+  closest distance at which every slot, the tallest kit and the HUD tags fit the frame. Rows
+  are 5.2 m apart; with 4 or more units every other one steps back 0.5 m. Allies idle in a
+  three-quarter turn toward the camera, angled in toward the middle of the line
+  (`allyFacing`), and turn to the target only to attack. HUD tags anchor at each model's real
+  head and headgear top (`screen(key, "head")`), and ui.js stacks tags that would overlap.
+- **Arenas (`game3d/scenery.mjs`, `buildArena`):** each chapter has its own textured ground,
+  with a worn fighting circle and paths, scattered rocks and grass, framing props, sky,
+  silhouettes, light fog and motes. The Titan fights in a basalt caldera with lava seams. If
+  the arena fails to build, the plain field is used. Preview: `node tools/scenery-preview-shot.cjs`.
+- **Post-processing and quality (`game3d/post.mjs`):** bloom, MSAA, a grade and a vignette.
+  The quality tiers are:
+
+  | Tier | Pixel ratio | MSAA | Shadow map | Textures |
+  |---|---|---|---|---|
+  | High | 2.0 | 4× | 2048 PCF soft | 512 px |
+  | Medium | 1.5 | 2× | 1024 | 256 px |
+  | Low | 1.25 | direct render | 512 | 128 px |
+
+  The tier starts from a GPU hint and steps down on sustained low fps. A steady 30 or 60 fps
+  cap from a power saver doesn't count as slow. `W3D.setQuality("High" | "Medium" | "Low" | "auto")`
+  and `W3D.quality` are there for a settings row. Glows use untonemapped MeshBasic materials,
+  and eyes and the Titan's maw use strong emissive, so the bloom catches them.
+- **Note20 budget (High):** about 60k triangles and 20 draw calls per hero, and about 1.2M
+  triangles and 350 calls per battle frame. Measured (SwiftShader, 412×915 at 2.6×):
+  - Per hero in the viewer: 5–12 calls, 8–27k triangles with no gear, 15–42k at Mythic.
+  - Battle, 5 Mythic allies against a 3-enemy wave, arena included: 195 calls and 662k
+    triangles per frame, shadow and post passes included.
 - **Rebuild after changes:** `npm run build:game3d`. Check by screenshotting a battle at
   390×844 (see "Review checklist").
 - **Real per-hero models (future):** a prefab or GLB per hero, rigged to the same humanoid
