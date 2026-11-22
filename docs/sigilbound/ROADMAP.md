@@ -29,7 +29,7 @@ _Last updated: 2026-11-22._
 
 1. **Hero card art.** Generate the 24 portraits with the prompts in `ART_DIRECTION.md`, then wire them into `ART_FILES`. *Owner: you (images) + art-director.*
 2. **3D hero polish (follow-ups from the 0.10.0 art pass).**
-   - **Color pipeline:** colors render paler than intended (legacy color mode), so heroes look washed out. Fix it, or darken the palette.
+   - ~~**Color pipeline**~~ fixed in 0.11.0.
    - **Light heroes:** Seraphine, Oriel, Aurelia and Lumen are too alike.
    - **Hask, Brannoc and Odo** are similar beige tones.
    - **Ysolde's whip** reads like a bow.

@@ -10,6 +10,15 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
+// Proper colour management: hex colours (LOOKS, palettes) are sRGB and get converted to
+// linear for lighting, then back to sRGB on output. Legacy mode skipped that conversion,
+// which rendered every colour much paler than intended.
+T.ColorManagement.legacyMode = false;
+
+// Lighting/tone settings, tuned for colour-managed rendering. window.SB_GFX can override
+// them for side-by-side comparisons.
+const GFX = Object.assign({ tone: "aces", exposure: 1.3, hemi: 1.25, sun: 2.0, rim: 0.8, front: 0.6, groundLift: 0.3 }, window.SB_GFX || {});
+
 const W3D = (() => {
   let renderer = null, scene = null, camera = null, host = null, raf = 0, last = 0;
   let views = new Map(), parts = [], tweens = [], frameCbs = [];
@@ -164,7 +173,8 @@ const W3D = (() => {
     renderer = new T.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
     renderer.outputEncoding = T.sRGBEncoding;
-    renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95;
+    renderer.toneMapping = GFX.tone === "aces" ? T.ACESFilmicToneMapping : GFX.tone === "linear" ? T.LinearToneMapping : T.NoToneMapping;
+    renderer.toneMappingExposure = GFX.exposure;
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
     renderer.domElement.className = "w3d-canvas";
     el.prepend(renderer.domElement);
@@ -173,16 +183,18 @@ const W3D = (() => {
     const sc = opts.titan ? ["#1a0a0a", "#c0401a", "#24100c", "#100606"] : sceneColors(opts.chapter);
     scene.background = gradientTexture(sc[0], sc[1]);
     scene.fog = new T.Fog(new T.Color(sc[1]), 18, 48);
-    scene.add(new T.HemisphereLight(new T.Color(mix(sc[1], "#ffffff", 0.35)), new T.Color(sc[2]), 0.75));
-    const sun = new T.DirectionalLight(0xfff1dd, 1.35);
+    scene.add(new T.HemisphereLight(new T.Color(mix(sc[1], "#ffffff", 0.35)), new T.Color(sc[2]), GFX.hemi));
+    const sun = new T.DirectionalLight(0xfff1dd, GFX.sun);
     sun.position.set(-5, 10, 6); sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
     Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 30 });
     scene.add(sun);
-    const rim = new T.DirectionalLight(0x99aaff, 0.6); rim.position.set(4, 5, -8); scene.add(rim);
-    const front = new T.DirectionalLight(0xffffff, 0.35); front.position.set(0, 4, 10); scene.add(front);
+    const rim = new T.DirectionalLight(0x99aaff, GFX.rim); rim.position.set(4, 5, -8); scene.add(rim);
+    const front = new T.DirectionalLight(0xffffff, GFX.front); front.position.set(0, 4, 10); scene.add(front);
 
-    const groundMat = new T.MeshStandardMaterial({ color: new T.Color(mul(sc[2], 1.05)), roughness: 1, map: groundTexture() });
+    // Lift the ground toward a neutral warm grey: colour-managed dark tones read much darker,
+    // and lifting toward the (often saturated) horizon colour made it glare.
+    const groundMat = new T.MeshStandardMaterial({ color: new T.Color(mix(sc[2], "#8c8680", GFX.groundLift)), roughness: 1, map: groundTexture() });
     groundMat.map.repeat.set(24, 24);
     const ground = new T.Mesh(new T.PlaneGeometry(120, 120), groundMat);
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);

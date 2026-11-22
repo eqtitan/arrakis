@@ -76,9 +76,14 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
   stone. Code-built stone horns, a skull crest, angry brow ridges, back shards and shoulder
   shards attach to its bones. Its idle plays at 0.7× speed for weight, and it is about 10%
   larger than before.
-- **Colour pipeline note:** three r149 runs in legacy color mode, so hex colors act as
-  linear values and render paler than they look in a color picker. Pick darker values than
-  you would for 2D (for example, Titan stone is `#16130f`).
+- **Color pipeline (since 0.11.0):** color management is on (`ColorManagement.legacyMode = false`),
+  so the hex colors in `LOOKS` and the palettes render as they look in a color picker.
+  Lighting uses ACES tone mapping at exposure 1.3. All lighting values sit in the `GFX`
+  object at the top of `game3d/three3d.mjs`, and `window.SB_GFX` can override them for
+  side-by-side comparisons. The ground is lifted toward a neutral warm grey so dark chapter
+  colors don't go muddy. Colors chosen under the old legacy mode (very dark values such as the
+  Titan's `#16130f`) now render darker still. That works for the Titan, but recheck any old
+  "picked dark on purpose" colors when you touch them.
 - **Animations used:** Idle (Idle_Sword), Sword_Slash (melee), Gun_Shoot (casting), HitRecieve, Death.
 - **Rebuild after changes:** `npm run build:game3d`. Check by screenshotting a battle at
   390×844 (see "Review checklist").
