@@ -18,6 +18,9 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-latest
+    concurrency:
+      group: sigilbound-android-release
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -56,11 +59,21 @@ jobs:
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
+          NOTES: >-
+            Built from ${{ github.ref_name }} at ${{ github.sha }}.
+            On an Android phone: download Sigilbound.apk, open it, and allow installs from your
+            browser if asked. Installing a newer build over an older one keeps your progress.
+        # Replace the APK in place (never delete first, so the download link never breaks).
+        # A new release's tag goes on the default branch: GitHub can refuse workflow tokens
+        # creating tags on commits that carry workflow-file changes.
         run: |
-          gh release delete android-latest --yes --cleanup-tag || true
-          gh release create android-latest Sigilbound.apk --prerelease \
-            --target "${{ github.sha }}" --title "Sigilbound for Android (latest build)" \
-            --notes "Built from ${{ github.ref_name }} at ${GITHUB_SHA::7}. On an Android phone: download Sigilbound.apk, open it, and allow installs from your browser if asked. Installing a newer build over an older one keeps your progress."
+          if gh release view android-latest >/dev/null 2>&1; then
+            gh release upload android-latest Sigilbound.apk --clobber
+            gh release edit android-latest --notes "$NOTES"
+          else
+            gh release create android-latest Sigilbound.apk --prerelease \
+              --title "Sigilbound for Android (latest build)" --notes "$NOTES"
+          fi
 
   ios:
     runs-on: macos-15
