@@ -46,12 +46,9 @@ namespace Sigilbound.Client
             _clips[Clip.Cast] = titan ? Find("Weapon", "Punch") : Find("Gun_Shoot", "Interact", "Weapon", "Punch");
             _clips[Clip.Hit] = Find("HitRecieve", "HitReact");
             _clips[Clip.Death] = Find("Death");
+            // One layer: an action cross-fades out the idle, and the idle is queued to return after it.
             foreach (AnimationState s in anim)
-            {
-                bool loop = s.name == _clips[Clip.Idle];
-                s.wrapMode = loop ? WrapMode.Loop : WrapMode.ClampForever;
-                s.layer = loop ? 0 : 1;
-            }
+                s.wrapMode = s.name == _clips[Clip.Idle] ? WrapMode.Loop : s.name == _clips[Clip.Death] ? WrapMode.ClampForever : WrapMode.Once;
             Play(Clip.Idle);
         }
 
