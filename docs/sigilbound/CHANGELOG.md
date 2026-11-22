@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.9.0 (2026-11-22)
+- Auto-replay: a 3-second countdown between battles (not sped up by 2x/3x) with running totals, and a summary of the whole run (battles, wins, losses, gold, XP, shards, gear, level ups) when you stop, switch it off, retreat or lose.
+
+
 ## 0.8.0 (2026-11-22)
 - Settings screen (gear button in the top bar and battle header): Music and Sound effects volume sliders (0 = off) that apply instantly, plus battle graphics, save code, how to play and reset.
 

@@ -5,6 +5,52 @@ const $modal = document.getElementById("modal");
 const $toast = document.getElementById("toast");
 const UI = { screen: "home", tab: "roster", heroUid: null, slot: null, bagSlot: "all", sort: "power", prep: null, chapterOpen: null };
 let B = null; // active battle controller
+// Auto-replay session: running totals across every battle in one 🔁 run, shown when it ends.
+let AUTO = null;
+const AUTO_DELAY_MS = 3000;
+function autoStart(idx) {
+  AUTO = { idx, started: Date.now(), battles: 0, wins: 0, losses: 0, gold: 0, xp: 0, common: 0, mystic: 0, radiant: 0,
+    gear: [], levels: Object.fromEntries(G.team.map((u) => [u, (heroByUid(u) || {}).level || 0])) };
+}
+function autoRecord(win, r, gear) {
+  if (!AUTO) return;
+  AUTO.battles++; if (win) AUTO.wins++; else AUTO.losses++;
+  if (r) { AUTO.gold += r.gold || 0; AUTO.xp += r.xp || 0; AUTO.common += r.common || 0; AUTO.mystic += r.mystic || 0; AUTO.radiant += r.radiant || 0; }
+  if (gear) AUTO.gear.push(gear.uid);
+}
+function autoSummaryHtml(reason) {
+  const a = AUTO;
+  const secs = Math.round((Date.now() - a.started) / 1000);
+  const time = `${Math.floor(secs / 60)}m ${String(secs % 60).padStart(2, "0")}s`;
+  const shards = [["common", "Worn"], ["mystic", "Mystic"], ["radiant", "Radiant"]].filter(([k]) => a[k]).map(([k, n]) => `${SHARDS[k].icon} ${a[k]} ${n}`).join(" · ");
+  const found = a.gear.map(gearByUid).filter(Boolean);
+  const byRarity = {};
+  for (const g of found) byRarity[g.rarity] = (byRarity[g.rarity] || 0) + 1;
+  const gearLine = Object.keys(byRarity).sort((x, y) => y - x).map((r) => `<span style="color:${GEAR_RARITY_COLOR[r]}">${byRarity[r]} ${GEAR_RARITY[r]}</span>`).join(" · ");
+  const ups = Object.entries(a.levels).map(([u, lv]) => { const h = heroByUid(+u); return h && h.level > lv ? `${HERO[h.id].name.split(/[ ,]/)[0]} Lv ${lv} → ${h.level}` : null; }).filter(Boolean);
+  return `<div class="result-title victory" style="font-size:24px">AUTO-BATTLE SUMMARY</div>
+    <p class="small dim" style="text-align:center">Stage ${stageLabel(a.idx)} · ${time}${reason ? ` · ${reason}` : ""}</p>
+    <div class="summary-grid">
+      <div><b>${a.battles}</b><span>Battles</span></div>
+      <div><b style="color:var(--good)">${a.wins}</b><span>Wins</span></div>
+      <div><b style="color:${a.losses ? "var(--bad)" : "var(--dim)"}">${a.losses}</b><span>Losses</span></div>
+    </div>
+    <div class="col small" style="gap:6px;margin:10px 0">
+      <div class="row spread"><span>Gold</span><b class="gold">🪙 ${fmt(a.gold)}</b></div>
+      <div class="row spread"><span>XP (each hero)</span><b>${fmt(a.xp)}</b></div>
+      ${shards ? `<div class="row spread"><span>Shards</span><b>${shards}</b></div>` : ""}
+      <div class="row spread"><span>Gear found</span><b>${found.length ? `${found.length} · ${gearLine}` : "none"}</b></div>
+      ${ups.length ? `<div><span>Level ups</span><div style="color:var(--good);margin-top:2px">${ups.join("<br>")}</div></div>` : ""}
+    </div>`;
+}
+function showAutoSummary(reason, buttons) {
+  if (!AUTO) return false;
+  const html = autoSummaryHtml(reason);
+  AUTO = null;
+  modal(html + (buttons || `<div class="row"><button class="btn sec grow" data-act="resultBack" data-to="heroes">Heroes</button>
+    <button class="btn grow" data-act="resultBack">Map</button></div>`));
+  return true;
+}
 let battleSeq = 0;
 
 // ---------- helpers ----------
@@ -502,7 +548,12 @@ Object.assign(ACTIONS, {
   },
   bAuto() { G.settings.auto = !G.settings.auto; save(); renderBattle(); if (G.settings.auto && B && B.awaiting) { B.awaiting = false; aiTurn(B.actor); } },
   bSpeed() { G.settings.speed = G.settings.speed >= 3 ? 1 : G.settings.speed + 1; save(); renderBattle(); },
-  bReplayToggle() { G.settings.autoReplay = !G.settings.autoReplay; save(); renderBattle(); },
+  bReplayToggle() {
+    G.settings.autoReplay = !G.settings.autoReplay; save();
+    if (G.settings.autoReplay && !AUTO && B) autoStart(B.idx);
+    toast(G.settings.autoReplay ? "Auto-replay on: this stage repeats after each win" : "Auto-replay off after this battle");
+    renderBattle();
+  },
   bFlee() {
     modal(`<h3>Retreat?</h3><p class="small dim">${B && B.mode === "titan" ? "Damage dealt so far still counts and uses up this try." : "You'll get no rewards for this battle."}</p>
       <div class="row"><button class="btn sec grow" data-act="closeModal">Stay</button><button class="btn red grow" data-act="bFleeYes">Retreat</button></div>`);
@@ -511,12 +562,21 @@ Object.assign(ACTIONS, {
     closeModal();
     if (!B) return;
     if (B.mode === "titan") { B.battle.over = true; B.battle.result = "timeout"; finishBattle(); }
-    else { B.token = null; B = null; FX.clear(); W3D.unmount(); SOUND.stopMusic(); G.settings.autoReplay = false; render(); }
+    else {
+      B.token = null; B = null; FX.clear(); W3D.unmount(); SOUND.stopMusic(); G.settings.autoReplay = false; render();
+      if (AUTO && AUTO.battles) showAutoSummary("stopped by retreat"); else AUTO = null;
+    }
   },
   resultNext() { closeModal(); const idx = Math.min(G.cleared, TOTAL_STAGES - 1); startBattle({ mode: "stage", idx }); },
   resultReplay(d) { closeModal(); startBattle({ mode: "stage", idx: +d.idx }); },
   resultBack(d) { closeModal(); FX.clear(); W3D.unmount(); SOUND.stopMusic(); B = null; UI.screen = d.to || "campaign"; render(); },
-  resultStopReplay() { G.settings.autoReplay = false; save(); if (B) B.replayTimer && clearTimeout(B.replayTimer); render(); ACTIONS.resultBack({ to: "campaign" }); },
+  resultStopReplay() {
+    G.settings.autoReplay = false; save();
+    if (B) { clearTimeout(B.replayTimer); clearInterval(B.replayTick); }
+    const idx = B ? B.idx : 0;
+    showAutoSummary("stopped", `<div class="row"><button class="btn sec grow" data-act="resultReplay" data-idx="${idx}">🔁 Replay</button>
+      <button class="btn grow" data-act="resultBack">Map</button></div>`);
+  },
 });
 
 document.addEventListener("click", (e) => {
@@ -875,21 +935,36 @@ function finishBattle() {
     SOUND.stopMusic(); SOUND.play("victory", { jitter: 0 }); setTimeout(() => SOUND.play("coin"), 450);
     if (typeof pushProfile === "function") pushProfile();
     const canReplay = G.settings.autoReplay;
+    if (canReplay && !AUTO) autoStart(idx);
+    autoRecord(true, r, gear);
+    if (!canReplay && AUTO) {
+      showAutoSummary("auto-replay switched off", `<div class="row"><button class="btn sec grow" data-act="resultReplay" data-idx="${idx}">🔁 Replay</button>
+        <button class="btn grow" data-act="resultBack">Map</button></div>`);
+      return;
+    }
     modal(`<div class="result-title victory">VICTORY</div>
       <p style="text-align:center">${rewardText(r)}<br><span class="small dim">+${fmt(r.xp)} XP each${first ? " · First clear bonus!" : ""}</span></p>
       ${ups.length ? `<div class="small" style="text-align:center;color:var(--good)">${ups.join("<br>")}</div>` : ""}
       ${gear ? `<div style="margin:10px 0">${gearRow(gear)}</div>` : ""}
-      ${canReplay ? `<p class="small" style="text-align:center">🔁 Replaying in a moment…</p><button class="btn red" style="width:100%" data-act="resultStopReplay">Stop auto-replay</button>` :
+      ${canReplay ? `<p class="small" style="text-align:center">🔁 Next battle in <b id="replayCount">${AUTO_DELAY_MS / 1000}</b>…</p>
+        <p class="small dim" style="text-align:center">This run: ${AUTO.wins} win${AUTO.wins === 1 ? "" : "s"} · 🪙 ${fmt(AUTO.gold)}${AUTO.gear.length ? ` · ${AUTO.gear.length} gear` : ""}</p>
+        <button class="btn red" style="width:100%" data-act="resultStopReplay">Stop auto-replay</button>` :
       `<div class="col">${idx + 1 < TOTAL_STAGES && G.cleared > idx ? `<button class="btn" data-act="resultNext">Next Stage ▶</button>` : ""}
         <div class="row"><button class="btn sec grow" data-act="resultReplay" data-idx="${idx}">🔁 Replay</button>
         <button class="btn sec grow" data-act="resultBack">Map</button></div></div>`}`);
     if (canReplay) {
       const token = B.token;
-      B.replayTimer = setTimeout(() => { if (B && B.token === token && G.settings.autoReplay) { closeModal(); startBattle({ mode: "stage", idx }); } }, 1600 / G.settings.speed);
+      // Fixed 3-second pause (not sped up by 2x/3x) so the results can be read.
+      let left = AUTO_DELAY_MS / 1000;
+      B.replayTick = setInterval(() => { left--; const el = document.getElementById("replayCount"); if (el && left > 0) el.textContent = left; }, 1000);
+      B.replayTimer = setTimeout(() => { clearInterval(B && B.replayTick); if (B && B.token === token && G.settings.autoReplay) { closeModal(); startBattle({ mode: "stage", idx }); } }, AUTO_DELAY_MS);
     }
   } else {
     G.settings.autoReplay = false; save();
     SOUND.stopMusic(); SOUND.play("downed", { rate: 0.8, jitter: 0 });
+    autoRecord(false, null, null);
+    if (showAutoSummary("ended by a defeat", `<div class="row"><button class="btn sec grow" data-act="resultReplay" data-idx="${idx}">Retry</button>
+      <button class="btn grow" data-act="resultBack" data-to="heroes">Heroes</button></div>`)) return;
     modal(`<div class="result-title defeat">DEFEAT</div>
       <p class="small" style="text-align:center">Tips: level heroes with gold training, equip and upgrade gear, bring elements that beat the enemy, and summon new heroes.</p>
       <div class="row"><button class="btn sec grow" data-act="resultReplay" data-idx="${idx}">Retry</button>
