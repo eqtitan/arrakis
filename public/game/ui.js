@@ -517,6 +517,9 @@ Object.assign(ACTIONS, {
         <button class="btn sec sm" data-act="toggleGfx">${G.settings.flat ? "2D" : "3D"}</button></div>
       ${G.settings.flat || !window.W3D || !W3D.setCamera ? "" : `<div class="setting"><div><b>Camera angle</b><div class="small dim">Also switchable during battle with 🎥.</div></div>
         <div class="row wrap" style="gap:6px">${Object.entries(W3D.cameras).map(([k, c]) => `<button class="chip ${W3D.camera === k ? "on" : ""}" data-act="setCam" data-k="${k}">${c.name}</button>`).join("")}</div></div>`}
+      ${G.settings.flat || !window.W3D ? "" : `<div class="setting"><div><b>Frame rate</b><div class="small dim">30 fps keeps the phone cooler and saves battery.</div></div>
+        <div class="row wrap" style="gap:6px"><button class="chip ${G.settings.fpsCap === 30 ? "on" : ""}" data-act="setFps" data-v="30">30 · Cooler</button>
+        <button class="chip ${G.settings.fpsCap === 30 ? "" : "on"}" data-act="setFps" data-v="60">60 · Smoother</button></div></div>`}
       ${G.settings.flat || !window.W3D || !W3D.setQuality ? "" : (() => {
         const q = gfxQuality();
         const opt = (k, label) => `<button class="chip ${q.choice === k ? "on" : ""}" data-act="setGfxQuality" data-q="${k}">${label}</button>`;
@@ -593,6 +596,7 @@ Object.assign(ACTIONS, {
     W3D.setCamera(next);
     toast(`🎥 ${W3D.cameras[next].name} (${keys.indexOf(next) + 1}/${keys.length})`);
   },
+  setFps(d) { G.settings.fpsCap = +d.v; save(); toast(+d.v === 30 ? "30 fps: cooler and longer battery" : "60 fps: smoother"); ACTIONS.openSettings(); },
   setCam(d) { W3D.setCamera(d.k); toast(`🎥 ${W3D.cameras[d.k].name}`); ACTIONS.openSettings(); },
   bFlee() {
     modal(`<h3>Retreat?</h3><p class="small dim">${B && B.mode === "titan" ? "Damage dealt so far still counts and uses up this try." : B && B.mode === "arena" ? "Retreating counts as a loss." : "You'll get no rewards for this battle."}</p>

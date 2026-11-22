@@ -40,25 +40,25 @@ export const QUALITY = Object.freeze({
   // as the GPU allows (clamped to MAX_SAMPLES), 4096 shadows, full-res bloom. Auto picks it for
   // flagship GPUs, or climbs to it once per session when High holds a steady ~60 fps.
   Ultra: Object.freeze({
-    name: "Ultra", pixelRatio: 3.0, post: true, msaa: 8, fxaa: false, target: "half",
+    name: "Ultra", fps: 60, pixelRatio: 3.0, post: true, msaa: 8, fxaa: false, target: "half",
     shadowMapSize: 4096, shadowType: T.PCFSoftShadowMap, propShadows: true,
     bloom: true, bloomStrength: 1.45, bloomScale: 1.0,
     maxLights: 8, textureSize: 512,
   }),
   High: Object.freeze({
-    name: "High", pixelRatio: 2.0, post: true, msaa: 4, fxaa: false, target: "half",
+    name: "High", fps: 60, pixelRatio: 2.0, post: true, msaa: 4, fxaa: false, target: "half",
     shadowMapSize: 2048, shadowType: T.PCFSoftShadowMap, propShadows: true,
     bloom: true, bloomStrength: 1.4, bloomScale: 1.0,
     maxLights: 6, textureSize: 512,
   }),
   Medium: Object.freeze({
-    name: "Medium", pixelRatio: 1.5, post: true, msaa: 2, fxaa: false, target: "byte",
+    name: "Medium", fps: 45, pixelRatio: 1.25, post: true, msaa: 2, fxaa: false, target: "byte",
     shadowMapSize: 1024, shadowType: T.PCFShadowMap, propShadows: false,
     bloom: true, bloomStrength: 1.25, bloomScale: 0.5,
     maxLights: 4, textureSize: 256,
   }),
   Low: Object.freeze({
-    name: "Low", pixelRatio: 1.25, post: false, msaa: 0, fxaa: false, target: "byte",
+    name: "Low", fps: 30, shadows: false, pixelRatio: 1.0, post: false, msaa: 0, fxaa: false, target: "byte",
     shadowMapSize: 512, shadowType: T.PCFShadowMap, propShadows: false,
     bloom: false, bloomStrength: 0, bloomScale: 0.5,
     maxLights: 3, textureSize: 128,
@@ -506,7 +506,10 @@ function save(v) { try { localStorage.setItem(STORE_KEY, JSON.stringify(v)); } c
  * onChange(name, preset, reason) with reason "slow" | "fast" | "forced" | "auto".
  */
 export function createQualityManager(opts = {}) {
-  const { onChange, sampleSeconds = 3, minFps = 50, upFps = 58, warmupWindows = 1, upWindows = 4 } = opts;
+  const { onChange, sampleSeconds = 3, warmupWindows = 1, upWindows = 4 } = opts;
+  // Judged against the active frame-rate cap (a 30 fps cap must not look "slow").
+  let minFps = opts.minFps || 50, upFps = opts.upFps || 58;
+  function setCap(cap) { minFps = Math.round(cap * 0.83); upFps = Math.round(cap * 0.96); }
   const stored = load();
   let forced = stored && QUALITY[stored.forced] ? stored.forced : null;
   // A remembered auto tier from before Ultra existed (no v:2) is ignored, so capable phones get re-evaluated.
@@ -571,7 +574,7 @@ export function createQualityManager(opts = {}) {
     if (changed && onChange) onChange(name, QUALITY[name], "forced");
   }
   return {
-    tick, force,
+    tick, force, setCap,
     get current() { return current; },
     get preset() { return QUALITY[current]; },
     get fps() { return fps; },

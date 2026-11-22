@@ -22,7 +22,7 @@ h2 { font-size: 20px; } h3 { font-size: 16px; }
 
 /* top bar */
 .topbar { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; padding: 10px 12px;
-  padding-top: calc(10px + env(safe-area-inset-top)); background: rgba(20,17,28,.92); backdrop-filter: blur(8px);
+  padding-top: calc(10px + env(safe-area-inset-top)); background: rgba(20,17,28,.97);
   border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
 .topbar::-webkit-scrollbar { display: none; }
 .cur { background: var(--panel2); border-radius: 999px; padding: 4px 10px; font-size: 13px; white-space: nowrap; font-weight: 600; }
@@ -454,3 +454,6 @@ h3 { letter-spacing: .3px; color: #f6e6c2; }
 .bhead { gap: 5px; padding: 6px 8px; }
 .bhead .btn.sm { padding: 6px 8px; white-space: nowrap; flex: none; }
 .bhead .info { font-size: 12px; line-height: 1.2; min-width: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* no live blur over the 3D canvas: re-blurring the moving scene every frame costs a lot of GPU (heat) */
+.topbar, .skillbar { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }

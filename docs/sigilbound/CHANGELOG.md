@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.19.1 (2026-11-22)
+- Runs much cooler: battles capped at 60 fps (no more 120 fps on high-refresh phones), Low at 30 fps without shadows, shadows refresh at 30 Hz, hero viewer at 30 fps, no live blur over the 3D view, lower resolution on Medium/Low. New Frame rate setting: 30 (cooler) or 60 (smoother).
+
+
 ## 0.19.0 (2026-11-22)
 - Graphics overhaul: new spell effects for every element (cast circles, trails, impacts, beams, shockwaves, heals, shields, Titan slam); new character shading (real metal, living skin, cloth and hair sheen, element rim light, smoothed models, extra-smooth on Ultra); readable faces with eyes, brows and mouths; sculpted helms, pauldrons, shields and gems; real spell-casting, hit and death animations; soft contact shadows, per-arena colour grading, background blur on Ultra and sharpening; fixed jagged edges where armour meets the body. Gear tip no longer appears before the first battle.
 

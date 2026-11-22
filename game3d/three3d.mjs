@@ -295,7 +295,9 @@ const W3D = (() => {
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.toneMapping = GFX.tone === "aces" ? T.ACESFilmicToneMapping : GFX.tone === "linear" ? T.LinearToneMapping : T.NoToneMapping;
     renderer.toneMappingExposure = GFX.exposure;
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+    renderer.shadowMap.enabled = !(quality(renderer).preset && quality(renderer).preset.shadows === false);
+    renderer.shadowMap.type = T.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true;
+    lastDraw = 0;
     renderer.domElement.className = "w3d-canvas";
     el.prepend(renderer.domElement);
 
@@ -1948,8 +1950,22 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   // toward the target on crits, and shake. Hit-stop briefly slows the whole fight on crits.
   let hitStop = 0, punchT = 0, focusK = 0, focusId = 0;
   const focusAt = new T.Vector3(), _cam = new T.Vector3(), _look = new T.Vector3();
+  // Frame-rate cap: never redraw faster than the tier's (or the player's) cap. A 120 Hz phone
+  // otherwise renders 120 frames a second for no visible gain, which is what heats it up.
+  let lastDraw = 0, shadowTick = 0;
+  function fpsCap() {
+    const user = typeof G !== "undefined" && G.settings && G.settings.fpsCap === 30 ? 30 : 60;
+    const tier = qm && qm.preset && qm.preset.fps ? qm.preset.fps : 60;
+    return Math.min(user, tier);
+  }
   function loop(now) {
     if (!renderer) return;
+    const cap = fpsCap();
+    if (now - lastDraw < 1000 / cap - 3) { raf = requestAnimationFrame(loop); return; }
+    lastDraw = now;
+    if (qm && qm.setCap) qm.setCap(cap);
+    // Shadows refresh at ~30 Hz (every other frame at 60 fps); the rest of the scene every frame.
+    if (renderer.shadowMap.enabled && ++shadowTick % (cap > 40 ? 2 : 1) === 0) renderer.shadowMap.needsUpdate = true;
     const rawDt = Math.min(0.05, (now - last) / 1000); last = now;
     const dt = hitStop > 0 ? rawDt * 0.06 : rawDt;
     hitStop = Math.max(0, hitStop - rawDt);
@@ -2360,6 +2376,8 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   function scLoop(now) {
     SC.raf = 0;
     if (!SC.renderer || !SC.renderer.domElement.isConnected) return; // page changed: pause until re-attached
+    if (now - (SC.lastDraw || 0) < 1000 / 30 - 3) { SC.raf = requestAnimationFrame(scLoop); return; } // hero viewer: 30 fps is plenty
+    SC.lastDraw = now;
     const dt = Math.min(0.05, (now - SC.last) / 1000); SC.last = now;
     if (SC.built) {
       if (SC.built.mixer) SC.built.mixer.update(dt);
