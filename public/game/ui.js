@@ -116,7 +116,7 @@ const SCREENS = {
     const team = G.team.map(heroByUid).filter(Boolean);
     const login = loginAvailable();
     const next = LOGIN_REWARDS[G.login.day % LOGIN_REWARDS.length];
-    return `<div class="hero-banner" style="padding:8px 0 0"><div class="logo">SIGILBOUND</div>
+    return `${typeof updateBanner === "function" ? updateBanner() : ""}<div class="hero-banner" style="padding:8px 0 0"><div class="logo">SIGILBOUND</div>
       <div class="small dim">Campaign ${G.cleared}/${TOTAL_STAGES} · ${G.heroes.length} heroes · ${G.stats.wins} wins</div></div>
       <div class="card row spread">
         <div><h3>Daily Login · Day ${((G.login.day - (login ? 0 : 1)) % 7) + 1}</h3><div class="small dim">${login ? rewardText(next) : "Come back tomorrow"}</div></div>
@@ -137,7 +137,8 @@ const SCREENS = {
         <button class="chip" data-act="showHelp">How to play</button>
         <button class="chip" data-act="saveCode">Save code</button>
         <button class="chip" data-act="toggleGfx">Battles: ${G.settings.flat ? "2D" : "3D"}</button>
-        <button class="chip" data-act="askReset">Reset save</button></div>`;
+        <button class="chip" data-act="askReset">Reset save</button></div>
+      <div class="small dim" style="text-align:center">Sigilbound ${VERSION_LABEL}${SBV.date ? ` · ${SBV.date}` : ""}</div>`;
   },
 
   campaign() {
@@ -450,7 +451,7 @@ Object.assign(ACTIONS, {
       <button class="btn sec" style="width:100%;margin:8px 0" data-act="copySave">Copy my save code</button>
       <textarea id="loadcode" class="code" placeholder="Paste a save code here"></textarea>
       <div class="row" style="margin-top:8px"><button class="btn sec grow" data-act="closeModal">Close</button><button class="btn grow" data-act="loadSave">Load code</button></div>
-      <p class="small dim" style="text-align:center;margin-top:8px">Version ${GAME_VERSION}</p>`);
+      <p class="small dim" style="text-align:center;margin-top:8px">Sigilbound ${VERSION_LABEL}</p>`);
   },
   copySave() {
     const ta = document.getElementById("savecode");

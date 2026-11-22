@@ -7,8 +7,9 @@ android {
         applicationId "com.sigilbound.game"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // Set by CI from public/game/version.js and the build number; local builds use these defaults.
+        versionCode((project.findProperty("sbVersionCode") ?: "1").toString().toInteger())
+        versionName((project.findProperty("sbVersionName") ?: "0.0.0-dev").toString())
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

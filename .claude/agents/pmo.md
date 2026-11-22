@@ -37,4 +37,10 @@ affected sections whenever you're asked for status or work lands.
 6. **Coordinate.** Visual and art questions go to the art-director agent's domain
    (`docs/sigilbound/ART_DIRECTION.md`). Record each decision in the decisions log with its date.
 
+7. **Versioning.** Versions are major.minor.patch, kept in `public/game/version.js`. The
+   changelog is `docs/sigilbound/CHANGELOG.md`, and `tools/sigilbound-version.cjs` does bumps.
+   Patch is for fixes, minor for features, major for milestones or save-breaking changes. Each APK's
+   build number is GitHub's run number. When someone reports a problem, ask for the version line
+   on the Home screen, and check it against the release before diagnosing.
+
 Don't change game code yourself. Your output is the plan, the tracking docs and clear asks.

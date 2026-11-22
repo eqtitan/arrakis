@@ -41,6 +41,7 @@ _Last updated: 2026-11-22._
 - Accessibility pass: text size, colorblind-safe element markers.
 
 ## Release checklist (each APK build)
+- [ ] Version bumped if this is a release you'll share (`node tools/sigilbound-version.cjs ...`), changelog entry written.
 - [ ] CI green: core tests, Android, iOS, Cloudflare Pages.
 - [ ] Smoke test: starter pick, summon, manual and auto battle, Titan, save and reload.
 - [ ] 3D screenshots reviewed (art-director checklist).

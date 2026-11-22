@@ -31,12 +31,16 @@ function load() {
   return newState();
 }
 function save() {
+  G.gameVersion = GAME_VERSION;
   const json = JSON.stringify(G);
   try { localStorage.setItem(SAVE_KEY, json); } catch (_) { /* ignore */ }
   if (typeof NATIVE !== "undefined") NATIVE.persist(SAVE_KEY, json);
 }
 function resetSave() { G = newState(); save(); }
-const GAME_VERSION = "0.4";
+const SBV = window.SB_VERSION || { version: "0.0.0", build: "dev", commit: "", date: "" };
+const GAME_VERSION = SBV.version;
+// "v0.6.0 · build 12 · abc1234" (app builds) or "v0.6.0 · dev" (local/web copies).
+const VERSION_LABEL = `v${SBV.version} · ${SBV.build === "dev" ? "dev" : `build ${SBV.build}`}${SBV.commit ? ` · ${SBV.commit}` : ""}`;
 function exportSave() {
   return "SB1." + btoa(unescape(encodeURIComponent(JSON.stringify(G))));
 }
