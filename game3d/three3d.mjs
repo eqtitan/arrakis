@@ -8,6 +8,7 @@ import * as T from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
+import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 const W3D = (() => {
   let renderer = null, scene = null, camera = null, host = null, raf = 0, last = 0;
@@ -38,7 +39,7 @@ const W3D = (() => {
     hooded: { DarkBrown: "armor", Black: "cloth", Brown: "cloth", LightBrown: "accent", Gold: "accent", Metal: "trim", Metal_Dark: "blade", Brown2: "wood", White: "hair", Skin: "skin" },
     adventurer: { LightGreen: "armor", Green: "cloth", Brown: "pants", Brown2: "pants", Black: "boot", Grey: "boot", Hair: "hair", Eyebrows: "hair", Gold: "accent", Skin: "skin", Eye: "eye" },
     monarch: { Metal: "armor", Metal_Dark: "trim", Blue: "cloth", DarkBrown: "pants", Beige: "accent", Gold: "crown", Hair_White: "hair", Skin: "skin", Eye: "eye" },
-    titan: { Yeti_Main: "stone", Yeti_Secondary: "stoneDark", Eye_White: "glow", Eye_Black: "keep", Yeti_Teeth: "keep", Tongue: "keep" },
+    titan: { Yeti_Main: "stone", Yeti_Secondary: "stoneDark", Eye_White: "glow", Eye_Black: "core", Yeti_Teeth: "fang", Tongue: "maw" },
   };
   const ANIMS = {
     idle: ["Idle_Sword", "Idle"], melee: ["Sword_Slash", "Punch_Right", "Punch"], cast: ["Gun_Shoot", "Interact", "Weapon", "Punch"],
@@ -86,6 +87,7 @@ const W3D = (() => {
     geo.crook = new T.TorusGeometry(0.5, 0.2, 6, 12, Math.PI);
     geo.octa = new T.OctahedronGeometry(0.5);
     geo.half = new T.CylinderGeometry(0.5, 0.5, 1, 12, 1, false, 0, Math.PI);
+    geo.dome = new T.SphereGeometry(0.5, 16, 6, 0, Math.PI * 2, 0, Math.PI / 2);
     return geo;
   }
   function lit(color, metal = 0) {
@@ -247,7 +249,6 @@ const W3D = (() => {
       armor: tint(L.armor), cloth: tint(mul(L.armor, 0.62)), pants: tint(mix(L.armor, "#2a2522", 0.6)), accent: tint(L.accent),
       trim: tint(mix(L.accent, "#c8ccd4", 0.4)), blade: tint("#c8d0dc"), wood: tint("#6b4a29"), boot: tint("#2a1f1a"),
       hair: tint(L.hair), skin: tint(skin), crown: tint(L.accent), eye: hollow ? "#ff2a2a" : L.glow || "#1a141f",
-      stone: "#7a726a", stoneDark: "#3d3833",
     };
   }
 
@@ -256,19 +257,22 @@ const W3D = (() => {
     if (!lib) return null;
     const L = base === "titan" ? null : LOOKS[id] || LOOKS.brannoc;
     const model = cloneSkinned(lib.scene);
-    const colors = base === "titan" ? { stone: "#7a726a", stoneDark: "#3d3833" } : roleColors(L, hollow);
+    // Titan: dark basalt; its eyes, maw and (in crackMaterial) seams glow in the day's element.
+    const ec = el && ELEMENTS[el] ? ELEMENTS[el].color : "#e8553a";
+    const colors = base === "titan" ? { stone: "#4a4542", stoneDark: "#2a2624", fang: "#3a3430" } : roleColors(L, hollow);
     const roles = ROLES[base];
-    const showSword = base === "hooded" && L && ["sword", "katana", "daggers", "whip", "hook"].includes(L.prop);
     const showCrown = base === "monarch" && L && L.gear === "crown";
     model.traverse((o) => {
       if (!o.isMesh) return;
       o.castShadow = true; o.frustumCulled = false;
-      if (o.name === "Sword" && !showSword) { o.visible = false; return; }
       const recolor = (m) => {
         const role = roles[m.name];
         const c = m.clone();
         if (role === "crown" && !showCrown) { c.visible = false; return c; }
-        if (role === "glow" && el) { c.color.set(ELEMENTS[el].color); c.emissive = new T.Color(ELEMENTS[el].color); c.emissiveIntensity = 1.2; return c; }
+        if (role === "glow" || role === "core" || role === "maw") {
+          const col = role === "core" ? mix(ec, "#ffffff", 0.55) : role === "maw" ? mul(ec, 0.7) : ec;
+          c.color.set(col); c.emissive = new T.Color(col); c.emissiveIntensity = role === "maw" ? 0.9 : 1.6; return c;
+        }
         if (role === "eye" && (hollow || (L && L.glow))) { c.color.set(colors.eye); c.emissive = new T.Color(colors.eye); c.emissiveIntensity = 1.5; return c; }
         if (role && role !== "keep" && colors[role]) c.color.set(colors[role]);
         else if (hollow) c.color.lerp(new T.Color("#2e1f33"), 0.5);
@@ -281,7 +285,7 @@ const W3D = (() => {
     const root = new T.Group();
     root.add(model);
     // Normalize height (base models are ~1.8 m; heroes stand about 2 units tall like the fallback figures).
-    const targetHead = base === "titan" ? 3.3 : 1.85;
+    const targetHead = base === "titan" ? 3.6 : 1.85;
     model.scale.setScalar(targetHead / lib.headY);
     const mixer = new T.AnimationMixer(model);
     const clip = (kind) => { for (const n of ANIMS[kind]) if (lib.clips[n]) return lib.clips[n]; return null; };
@@ -293,28 +297,484 @@ const W3D = (() => {
       if (e.action === actions.die) return;
       if (actions.idle) { actions.idle.reset().fadeIn(0.15).play(); e.action.fadeOut(0.15); }
     });
-    // Props the base model doesn't have: glowing focus for casters, a shield for tanks.
-    if (L) {
-      let wristR = null, wristL = null;
-      model.traverse((o) => { if (o.isBone && o.name === "WristR") wristR = o; if (o.isBone && o.name === "WristL") wristL = o; });
-      const inv = (bone) => { const s = new T.Vector3(); bone.getWorldScale(s); return 1 / (s.x || 1); };
-      model.updateMatrixWorld(true);
-      if (wristR && ["staff", "orb", "bell", "lantern", "candle", "mirror"].includes(L.prop)) {
-        const k = inv(wristR) * model.scale.x;
-        const orb = new T.Mesh(geos().sphere, glow(L.accent));
-        orb.scale.setScalar(0.16 * k); orb.position.set(0, 0.12 * k, 0.04 * k);
-        wristR.add(orb);
-        const halo = new T.Mesh(geos().sphere, glow(L.accent, 0.3));
-        halo.scale.setScalar(2.0); orb.add(halo);
-      }
-      if (wristL && L.prop === "shield") {
-        const k = inv(wristL) * model.scale.x;
-        const sh = new T.Mesh(geos().cyl, lit(mix(L.accent, "#b8c0cc", 0.5), 0.6));
-        sh.scale.set(0.3 * k, 0.012 * k, 0.36 * k); sh.position.set(0, 0.04 * k, 0.06 * k); sh.rotation.z = Math.PI / 2;
-        wristL.add(sh);
-      }
+    const fx = [];
+    if (L) buildKit(id, L, base, model, hollow, fx);
+    else buildTitanKit(model, el, fx);
+    if (base === "titan" && actions.idle) actions.idle.setEffectiveTimeScale(0.7); // slower, heavier breathing
+    return { model: root, mixer, actions, fx, height: base === "titan" ? 4.7 : 2.3 };
+  }
+
+  // ---------- signature kit: code-built props & headgear attached to bones ----------
+  // Every hero gets a silhouette from LOOKS: `prop` (weapon or focus), `gear` (headgear),
+  // `glow` (eyes and glowing parts) and the optional 3D-only `kit` ({ cape, aura, shield,
+  // side, helm, staff, big, flame, pack }). Parts are built in the model's own metres
+  // (hero ≈ 1.75 m) and merged into one mesh per material per bone, cached per hero, so a
+  // full battle adds only a few draw calls per unit.
+  const kitCache = new Map();
+  const D2R = Math.PI / 180;
+  // Head-bone offsets per base: top of the head (or hood) and the face's front.
+  const HEAD = {
+    monarch: { top: 0.26, r: 0.13, face: 0.15, eye: 0.09, crown: 0.18 },
+    adventurer: { top: 0.25, r: 0.12, face: 0.14, eye: 0.09, crown: 0.18 },
+    hooded: { top: 0.27, r: 0.15, face: 0.16, eye: 0.09, crown: 0.25 },
+  };
+
+  function bake(src) {
+    src.updateMatrixWorld(true);
+    const buckets = new Map();
+    src.traverse((o) => {
+      if (!o.isMesh) return;
+      const g = o.geometry.clone().applyMatrix4(o.matrixWorld);
+      const ng = g.index ? g.toNonIndexed() : g;
+      if (!buckets.has(o.material)) buckets.set(o.material, []);
+      buckets.get(o.material).push(ng);
+    });
+    return [...buckets].map(([mat, list]) => ({ mat, geo: mergeBufferGeometries(list) }));
+  }
+  function instantiate(baked) {
+    const g = new T.Group();
+    for (const { mat, geo: bg } of baked) {
+      const m = new T.Mesh(bg, mat);
+      m.castShadow = !(mat.isMeshBasicMaterial);
+      m.frustumCulled = false;
+      g.add(m);
     }
-    return { model: root, mixer, actions, height: base === "titan" ? 4.2 : 2.3 };
+    return g;
+  }
+  // A group under `bone` whose units are the model's metres. `dir` (bone space) is where the
+  // group's +Y points; `pos` is its origin in bone space.
+  function socket(bone, model, pos, dir, roll = 0) {
+    const s = new T.Vector3(); bone.getWorldScale(s);
+    const outer = new T.Group(); outer.scale.setScalar(model.scale.x / (s.x || 1));
+    bone.add(outer);
+    const inner = new T.Group(); inner.position.set(pos[0], pos[1], pos[2]);
+    if (dir) {
+      const d = new T.Vector3(dir[0], dir[1], dir[2]).normalize();
+      inner.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d);
+      if (roll) inner.quaternion.multiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(0, 1, 0), roll * D2R));
+    }
+    outer.add(inner);
+    return inner;
+  }
+  // Grip direction for a hand: the fist's axis is the wrist's X axis; `tilt` swings the tip
+  // from "forward like a sword" (0) towards "straight up" (about 60) in the idle pose.
+  const gripDir = (side, tilt) => [side === "R" ? -Math.cos(tilt * D2R) : Math.cos(tilt * D2R), -Math.sin(tilt * D2R), 0];
+  const GRIP_POS = { R: [0, 0.075, 0.01], L: [0, 0.075, 0.01] };
+
+  function buildKit(id, L, base, model, hollow, fx) {
+    const K = L.kit || {};
+    const H = HEAD[base] || HEAD.adventurer;
+    const bones = {};
+    model.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+    model.updateMatrixWorld(true);
+    const tint = (c) => hollow ? mix(c, "#2e1f33", 0.5) : c;
+    const M = (c, metal = 0) => lit(tint(c), metal);
+    const Gl = (c, op = 1) => glow(hollow ? mix(c, "#ff3355", 0.45) : c, op);
+    const C = {
+      steel: M("#c4ccd6", 0.6), iron: M("#4a4a52", 0.5), wood: M("#6b4a29"), leather: M("#3a2a20"),
+      acc: M(L.accent, 0.35), accG: Gl(L.accent), accH: Gl(L.accent, 0.28), armor: M(L.armor),
+      armorD: M(mul(L.armor, 0.6)), gold: M(mix(L.accent, "#e8c070", 0.5), 0.6),
+      glowC: Gl(L.glow || L.accent), glowH: Gl(L.glow || L.accent, 0.3),
+    };
+    // Build (or reuse) a merged prop and hang it on a socket. `live` parts stay separate so
+    // they can animate (flames, spinning rings).
+    const attach = (slot, sock, build) => {
+      const key = `${id}|${hollow ? 1 : 0}|${slot}`;
+      let entry = kitCache.get(key);
+      if (!entry) {
+        const g = new T.Group(), live = [];
+        build(g, live);
+        live.forEach((l) => g.remove(l.obj));
+        entry = { baked: bake(g), live };
+        kitCache.set(key, entry);
+      }
+      sock.add(instantiate(entry.baked));
+      for (const l of entry.live) {
+        const o = l.obj.clone(); sock.add(o);
+        fx.push((t) => l.fn(o, t));
+      }
+    };
+    const P = (g, kind, pos, scale, mat, rot) => part(kind, g, pos, scale, mat, rot);
+    const flicker = (o, t) => { const b = o.userData.base, s = 1 + Math.sin(t * 17 + o.id) * 0.12 + Math.sin(t * 29) * 0.06; o.scale.set(b[0] * s, b[1] * (2 - s), b[2] * s); };
+    const pulse = (o, t) => { const b = o.userData.base, s = 1 + Math.sin(t * 3 + o.id) * 0.12; o.scale.set(b[0] * s, b[1] * s, b[2] * s); };
+    const spin = (axis, rate) => (o, t) => { o.rotation[axis] = t * rate; };
+    const liveMesh = (g, live, kind, pos, s, mat, fn, rot) => {
+      const sc = Array.isArray(s) ? s : [s, s, s];
+      const m = P(g, kind, pos, sc, mat, rot);
+      m.userData.base = sc.slice(); m.castShadow = false;
+      live.push({ obj: m, fn }); return m;
+    };
+
+    // ---- weapons, built along +Y from the fist at the origin ----
+    const W = {
+      spear(g) {
+        P(g, "rod", [0, 0.3, 0], [0.042, 1.75, 0.042], C.wood);
+        P(g, "rod", [0, 1.15, 0], [0.06, 0.07, 0.06], C.acc);
+        P(g, "cone", [0, 1.32, 0], [0.09, 0.28, 0.03], C.steel);
+        P(g, "cone", [0, 1.08, 0], [0.09, 0.12, 0.09], C.acc, [180, 0, 0]);
+      },
+      staff(g, live) {
+        const style = K.staff || "orb";
+        const shaft = style === "ice" ? M("#cfe8f4", 0.2) : style === "sun" ? C.gold : C.wood;
+        P(g, "rod", [0, 0.3, 0], [0.05, 1.5, 0.05], shaft);
+        if (style === "ice") {
+          P(g, "octa", [0, 1.17, 0], [0.13, 0.32, 0.13], C.accG);
+          P(g, "octa", [0.07, 1.06, 0], [0.06, 0.16, 0.06], C.accG, [0, 0, -30]);
+          P(g, "octa", [-0.07, 1.06, 0], [0.06, 0.16, 0.06], C.accG, [0, 0, 30]);
+          liveMesh(g, live, "sphere", [0, 1.17, 0], 0.34, C.accH, pulse);
+        } else if (style === "sun") {
+          P(g, "sphere", [0, 1.16, 0], [0.16, 0.16, 0.16], C.glowC);
+          for (let i = 0; i < 8; i++) {
+            const a = i * 45 * D2R;
+            P(g, "cone", [Math.cos(a) * 0.15, 1.16 + Math.sin(a) * 0.15, 0], [0.04, 0.1, 0.04], C.gold, [0, 0, i * 45 - 90]);
+          }
+          liveMesh(g, live, "sphere", [0, 1.16, 0], 0.42, C.glowH, pulse);
+        } else {
+          P(g, "ring", [0, 1.12, 0], [0.2, 0.2, 0.2], C.acc);
+          P(g, "cone", [0, 1.01, 0], [0.07, 0.1, 0.07], C.acc, [180, 0, 0]);
+          P(g, "sphere", [0, 1.12, 0], [0.13, 0.13, 0.13], C.accG);
+          liveMesh(g, live, "sphere", [0, 1.12, 0], 0.3, C.accH, pulse);
+        }
+      },
+      hammer(g, live) {
+        const big = K.big ? 1.35 : 1;
+        P(g, "rod", [0, 0.25, 0], [0.045, 0.85 * big, 0.045], C.wood);
+        P(g, "box", [0, 0.68 * big, 0], [0.36 * big, 0.18 * big, 0.18 * big], K.big ? M("#2a2426", 0.5) : C.iron);
+        P(g, "box", [0, 0.68 * big, 0], [0.38 * big, 0.05 * big, 0.19 * big], C.accG);
+        if (!K.big) {
+          P(g, "box", [0.19, 0.68, 0], [0.02, 0.16, 0.16], C.accG);
+          P(g, "box", [-0.19, 0.68, 0], [0.02, 0.16, 0.16], C.accG);
+          liveMesh(g, live, "sphere", [0, 0.68, 0], 0.42, C.accH, pulse);
+        }
+      },
+      club(g) {
+        P(g, "taper", [0, 0.38, 0], [0.16, 0.8, 0.16], C.wood);
+        P(g, "sphere", [0.06, 0.58, 0.03], [0.07, 0.07, 0.07], C.wood);
+        P(g, "sphere", [-0.05, 0.7, -0.04], [0.06, 0.06, 0.06], C.wood);
+        P(g, "rod", [0, 0.08, 0], [0.1, 0.06, 0.1], C.acc);
+      },
+      trident(g) {
+        P(g, "rod", [0, 0.28, 0], [0.042, 1.6, 0.042], C.armorD);
+        P(g, "box", [0, 1.08, 0], [0.3, 0.04, 0.04], C.gold);
+        P(g, "cone", [0, 1.27, 0], [0.06, 0.34, 0.06], C.acc);
+        for (const x of [-0.13, 0.13]) {
+          P(g, "rod", [x, 1.16, 0], [0.03, 0.16, 0.03], C.acc);
+          P(g, "cone", [x, 1.3, 0], [0.05, 0.14, 0.05], C.acc);
+        }
+        P(g, "sphere", [0, 1.08, 0], [0.07, 0.07, 0.07], C.accG);
+      },
+      katana(g) {
+        P(g, "rod", [0, 0.03, 0], [0.04, 0.26, 0.04], M("#1c1c22"));
+        P(g, "disc", [0, 0.17, 0], [0.1, 0.02, 0.1], C.gold);
+        P(g, "box", [0, 0.48, 0], [0.012, 0.6, 0.045], C.steel);
+        P(g, "box", [0, 0.92, -0.025], [0.012, 0.3, 0.04], C.steel, [-9, 0, 0]);
+        P(g, "box", [0, 0.48, 0.03], [0.014, 0.6, 0.016], C.glowC);
+        P(g, "box", [0, 0.91, 0.006], [0.014, 0.3, 0.016], C.glowC, [-9, 0, 0]);
+      },
+      sword(g, live) {
+        const s = K.side === "sword" && L.prop === "shield" ? 0.8 : 1;
+        P(g, "rod", [0, 0.02, 0], [0.04, 0.22, 0.04], C.leather);
+        P(g, "sphere", [0, -0.1, 0], [0.06, 0.06, 0.06], C.gold);
+        P(g, "box", [0, 0.14, 0], [0.26, 0.04, 0.05], C.gold);
+        P(g, "box", [0, 0.16 + 0.45 * s, 0], [0.075, 0.9 * s, 0.022], C.steel);
+        P(g, "cone", [0, 0.16 + 0.9 * s + 0.05, 0], [0.075, 0.1, 0.022], C.steel);
+        if (L.glow || K.flame) {
+          const fl = K.flame ? Gl(L.accent, 0.55) : C.glowH;
+          liveMesh(g, live, "box", [0, 0.16 + 0.47 * s, 0], [0.13, 0.98 * s, 0.05], fl, K.flame ? flicker : pulse);
+        }
+      },
+      axe(g) {
+        P(g, "rod", [0, 0.25, 0], [0.045, 0.85, 0.045], C.wood);
+        P(g, "half", [0, 0.6, 0], [0.34, 0.025, 0.3], C.steel, [90, 90, 0]);
+        P(g, "box", [0, 0.6, 0], [0.08, 0.12, 0.06], C.acc);
+        P(g, "cone", [0, 0.72, 0], [0.05, 0.1, 0.05], C.acc);
+      },
+      dagger(g) {
+        P(g, "rod", [0, 0.01, 0], [0.034, 0.13, 0.034], C.leather);
+        P(g, "box", [0, 0.09, 0], [0.12, 0.025, 0.03], C.acc);
+        P(g, "cone", [0, 0.28, 0], [0.065, 0.36, 0.015], C.steel);
+        P(g, "cone", [0, 0.28, 0], [0.09, 0.4, 0.02], C.glowH);
+      },
+      whip(g, live) {
+        P(g, "rod", [0, 0.04, 0], [0.04, 0.26, 0.04], C.leather);
+        P(g, "sphere", [0, -0.1, 0], [0.05, 0.05, 0.05], C.acc);
+        // A flaming lash snaking out from the handle in an S-curve.
+        const lash = new T.Group(); lash.position.set(0, 0.17, 0);
+        let x = 0, y = 0;
+        for (let i = 0; i < 7; i++) {
+          const a = (Math.sin(i * 0.9) * 55 - i * 8) * D2R, len = 0.13 - i * 0.006;
+          const nx = x + Math.sin(a) * len, ny = y + Math.cos(a) * len;
+          P(lash, "rod", [(x + nx) / 2, (y + ny) / 2, 0], [0.03 - i * 0.003, len + 0.01, 0.03 - i * 0.003], C.accG, [0, 0, -a / D2R]);
+          x = nx; y = ny;
+        }
+        P(lash, "sphere", [x, y, 0], [0.05, 0.05, 0.05], C.glowC);
+        g.add(lash);
+        live.push({ obj: lash, fn: (o, t) => { o.rotation.y = Math.sin(t * 2.2) * 0.5; o.rotation.z = Math.sin(t * 3.1) * 0.12; } });
+      },
+      hook(g) {
+        P(g, "rod", [0, 0.2, 0], [0.04, 0.7, 0.04], M("#5a4034", 0.4));
+        P(g, "hook", [0.09, 0.56, 0], [0.18, 0.18, 0.18], M("#7a5a48", 0.5), [0, 0, -20]);
+        P(g, "cone", [0.2, 0.52, 0], [0.04, 0.1, 0.04], M("#7a5a48", 0.5), [0, 0, 150]);
+        P(g, "rod", [0, -0.12, 0], [0.06, 0.05, 0.06], C.acc);
+      },
+      bow(g) {
+        // Limbs curve back towards the string side (-Z); the fist holds the middle.
+        P(g, "rod", [0, 0, 0], [0.04, 0.16, 0.04], C.leather);
+        for (const sgn of [1, -1]) {
+          P(g, "rod", [0, sgn * 0.22, -0.02], [0.03, 0.32, 0.03], C.wood, [sgn * -8, 0, 0]);
+          P(g, "rod", [0, sgn * 0.5, -0.09], [0.024, 0.28, 0.024], C.wood, [sgn * -28, 0, 0]);
+          P(g, "sphere", [0, sgn * 0.63, -0.16], [0.035, 0.035, 0.035], C.acc);
+        }
+        P(g, "rod", [0, 0, -0.16], [0.006, 1.26, 0.006], C.accG);
+      },
+      lantern(g, live) {
+        P(g, "rod", [0, 0.3, 0], [0.04, 1.5, 0.04], C.wood);
+        P(g, "crook", [0.1, 1.05, 0], [0.2, 0.2, 0.2], C.gold);
+        P(g, "rod", [0.2, 0.97, 0], [0.008, 0.12, 0.008], C.gold);
+        P(g, "box", [0.2, 0.84, 0], [0.13, 0.17, 0.13], M(mix(L.accent, "#6a4a20", 0.6), 0.5));
+        P(g, "cone", [0.2, 0.95, 0], [0.16, 0.06, 0.16], C.gold);
+        P(g, "sphere", [0.2, 0.84, 0], [0.15, 0.13, 0.15], C.accG);
+        liveMesh(g, live, "sphere", [0.2, 0.84, 0], 0.4, C.accH, pulse);
+      },
+      candle(g, live) {
+        P(g, "disc", [0, 0.06, 0], [0.22, 0.03, 0.22], C.gold);
+        P(g, "rod", [0, -0.03, 0], [0.045, 0.16, 0.045], C.gold);
+        P(g, "rod", [0, 0.2, 0], [0.11, 0.28, 0.11], M("#f2e6c8"));
+        liveMesh(g, live, "cone", [0, 0.42, 0], [0.11, 0.22, 0.11], C.accG, flicker);
+        liveMesh(g, live, "sphere", [0, 0.4, 0], 0.42, C.accH, pulse);
+      },
+      mirror(g, live) {
+        P(g, "rod", [0, 0.05, 0], [0.035, 0.2, 0.035], C.gold);
+        P(g, "ring", [0, 0.3, 0], [0.24, 0.24, 0.3], C.gold);
+        P(g, "disc", [0, 0.3, 0], [0.22, 0.012, 0.22], C.accG, [90, 0, 0]);
+        liveMesh(g, live, "sphere", [0, 0.3, 0], 0.4, C.accH, pulse);
+      },
+      bell(g, live) {
+        // Hand bell: handle in the fist, mouth hanging below the hand (-Y).
+        P(g, "rod", [0, 0.05, 0], [0.04, 0.18, 0.04], C.wood);
+        P(g, "sphere", [0, -0.08, 0], [0.12, 0.1, 0.12], C.gold);
+        P(g, "bell", [0, -0.2, 0], [0.26, 0.24, 0.26], C.gold, [180, 0, 0]);
+        P(g, "ring", [0, -0.32, 0], [0.26, 0.26, 0.4], C.gold, [90, 0, 0]);
+        P(g, "sphere", [0, -0.35, 0], [0.06, 0.06, 0.06], C.glowC);
+        liveMesh(g, live, "sphere", [0, -0.22, 0], 0.5, C.glowH, pulse);
+      },
+      orb(g, live) {
+        P(g, "sphere", [0, 0.22, 0], [0.18, 0.18, 0.18], M("#140a1e", 0.3));
+        liveMesh(g, live, "sphere", [0, 0.22, 0], 0.3, C.accH, pulse);
+        liveMesh(g, live, "ring", [0, 0.22, 0], 0.3, C.accG, spin("y", 2.2), [70, 0, 0]);
+        liveMesh(g, live, "ring", [0, 0.22, 0], 0.24, C.glowC, spin("x", -1.6), [0, 0, 60]);
+      },
+    };
+    // Tilt (degrees towards vertical in idle) per weapon.
+    const TILT = { spear: 25, staff: 55, lantern: 55, candle: 85, bell: 60, orb: 60, mirror: 45, bow: 70, trident: 30, club: 40, hammer: 15, axe: 15, hook: 25 };
+    const ROLL = { bow: 90 };
+
+    // ---- right hand ----
+    const right = L.prop === "shield" ? K.side : L.prop === "daggers" ? "dagger" : L.prop;
+    const builtinSword = base === "hooded" && right === "sword";
+    model.traverse((o) => {
+      if (o.name === "Sword") o.visible = builtinSword;
+      if (o.name === "Backpack" && (K.cape || K.pack === false)) o.visible = false;
+    });
+    if (right && !builtinSword && W[right] && bones.WristR) {
+      attach("R", socket(bones.WristR, model, GRIP_POS.R, gripDir("R", TILT[right] || 0), ROLL[right] || 0), W[right]);
+    }
+    // ---- left hand: shield or second dagger ----
+    if (bones.WristL && L.prop === "daggers") attach("L", socket(bones.WristL, model, GRIP_POS.L, gripDir("L", 0)), W.dagger);
+    if (bones.WristL && L.prop === "shield") {
+      // Shield frame: face (+Z) points along the wrist's X axis, up (+Y) along the forearm.
+      const sock = socket(bones.WristL, model, [0, 0.0, 0.08], null);
+      sock.quaternion.setFromRotationMatrix(new T.Matrix4().makeBasis(new T.Vector3(0, 0, 1), new T.Vector3(0, -1, 0), new T.Vector3(1, 0, 0)));
+      const style = K.shield || "round";
+      attach("S", sock, (g, live) => {
+        const face = M(mix(L.armor, L.accent, 0.25), 0.4), rim = M(mix(L.accent, "#c8ccd4", 0.4), 0.6);
+        if (style === "kite") {
+          P(g, "box", [0, 0.1, 0], [0.4, 0.42, 0.035], face);
+          P(g, "cone", [0, -0.27, 0], [0.4, 0.32, 0.035], face, [180, 0, 0]);
+          P(g, "box", [0, 0.0, 0.022], [0.06, 0.62, 0.012], rim);
+          P(g, "box", [0, 0.14, 0.022], [0.34, 0.06, 0.012], rim);
+        } else if (style === "tower") {
+          P(g, "box", [0, 0.05, 0], [0.44, 0.78, 0.04], M(L.armor, 0.4));
+          P(g, "box", [0, 0.05, -0.006], [0.5, 0.84, 0.03], Gl(L.glow || L.accent, 0.7));
+          P(g, "sphere", [0, 0.12, 0.03], [0.14, 0.14, 0.05], C.glowC);
+          P(g, "box", [0, 0.05, 0.024], [0.05, 0.66, 0.012], C.gold);
+        } else {
+          const r = K.big ? 0.72 : 0.6;
+          P(g, "disc", [0, 0, 0], [r, 0.035, r], face, [90, 0, 0]);
+          P(g, "ring", [0, 0, 0], [r, r, 0.6], K.big ? Gl(L.accent) : rim);
+          P(g, "sphere", [0, 0, 0.02], [0.12, 0.12, 0.08], rim);
+          if (K.studs) for (let i = 0; i < 6; i++) { const a = i * 60 * D2R; P(g, "sphere", [Math.cos(a) * r * 0.36, Math.sin(a) * r * 0.36, 0.02], [0.045, 0.045, 0.03], M(L.accent)); }
+        }
+      });
+    }
+
+    // ---- headgear ----
+    if (bones.Head) {
+      const head = socket(bones.Head, model, [0, 0, 0], null);
+      const top = H.top, r = H.r;
+      const helm = (g, metal) => {
+        P(g, "dome", [0, top - 0.13, -0.01], [r * 2.3, r * 2.0, r * 2.45], metal);
+        P(g, "ring", [0, top - 0.13, -0.01], [r * 2.3, r * 2.45, 0.5], metal, [90, 0, 0]);
+        P(g, "box", [0, top - 0.17, H.face + 0.015], [0.03, 0.1, 0.025], metal);
+      };
+      const eyes = (g) => { for (const x of [-0.05, 0.05]) P(g, "sphere", [x, H.eye, H.face], [0.035, 0.022, 0.02], Gl(hollow ? "#ff2a2a" : L.glow)); };
+      const gear = L.gear;
+      attach("H", head, (g, live) => {
+        if (gear === "helm") {
+          const metal = M(mix(L.armor, "#c8ccd4", K.helm === "winged" ? 0.2 : 0.5), 0.6);
+          helm(g, metal);
+          if (K.helm === "winged") {
+            for (const s of [-1, 1]) {
+              P(g, "cone", [s * (r + 0.03), top - 0.0, -0.05], [0.1, 0.32, 0.03], M("#ffffff", 0.2), [-35, 90, s * -35]);
+              P(g, "cone", [s * (r + 0.02), top - 0.06, -0.08], [0.08, 0.24, 0.025], C.glowC, [-50, 90, s * -50]);
+            }
+          } else if (K.helm === "horned") {
+            for (const s of [-1, 1]) {
+              P(g, "cone", [s * (r + 0.05), top + 0.02, 0], [0.07, 0.28, 0.07], M("#e8e4da"), [0, 0, s * -30]);
+              P(g, "cone", [s * (r + 0.12), top + 0.15, 0], [0.035, 0.08, 0.035], C.accG, [0, 0, s * -30]);
+            }
+            P(g, "box", [0, top + 0.01, 0], [0.03, 0.08, 0.26], C.acc);
+          }
+        } else if (gear === "horns") {
+          P(g, "dome", [0, top - 0.13, -0.01], [r * 2.3, r * 2.0, r * 2.45], M("#26201e", 0.5));
+          for (const s of [-1, 1]) {
+            P(g, "cone", [s * (r + 0.07), top - 0.06, 0.02], [0.09, 0.22, 0.09], M("#e8dcc0"), [0, 0, s * 70]);
+            P(g, "cone", [s * (r + 0.16), top + 0.06, 0.06], [0.065, 0.24, 0.065], M("#e8dcc0"), [-25, 0, s * 15]);
+          }
+          P(g, "box", [0, top - 0.15, H.face + 0.01], [0.16, 0.025, 0.02], C.glowC);
+        } else if (gear === "halo") {
+          const hp = pivot(g, [0, top + 0.13, -0.06]); hp.rotation.x = 70 * D2R;
+          P(hp, "ring", [0, 0, 0], [0.34, 0.34, 0.5], C.glowC);
+          if (K.staff === "sun") for (let i = 0; i < 8; i++) {
+            const a = i * 45 * D2R;
+            P(hp, "cone", [Math.cos(a) * 0.23, Math.sin(a) * 0.23, 0], [0.035, 0.08, 0.035], C.gold, [0, 0, i * 45 - 90]);
+          }
+          liveMesh(g, live, "sphere", [0, top + 0.13, -0.06], [0.42, 0.12, 0.42], C.glowH, pulse);
+        } else if (gear === "circlet") {
+          const cy = H.eye + 0.075;
+          P(g, "ring", [0, cy, 0.03], [r * 1.75, r * 1.85, 0.2], C.gold, [75, 0, 0]);
+          P(g, "octa", [0, cy - 0.005, r * 0.9 + 0.03], [0.05, 0.075, 0.03], C.glowC);
+        } else if (gear === "bandana") {
+          const cloth = M(K.band || L.accent);
+          const by = H.eye + 0.08;
+          P(g, "ring", [0, by, 0], [r * 2.25, r * 2.4, 0.35], cloth, [80, 0, 0]);
+          P(g, "box", [0.03, by - 0.1, -r - 0.07], [0.05, 0.22, 0.012], cloth, [-35, 0, 12]);
+          P(g, "box", [-0.03, by - 0.12, -r - 0.05], [0.05, 0.26, 0.012], cloth, [-25, 0, -10]);
+          if (L.glow) P(g, "sphere", [0, by, r * 1.1], [0.04, 0.04, 0.02], C.glowC);
+        } else if (gear === "crown") {
+          const band = M(K.crownBand || mix(L.accent, "#e8c070", 0.4), 0.6);
+          const cy = H.crown, cr = r * 1.05;
+          P(g, "ring", [0, cy, 0], [cr * 2, cr * 2.1, 0.6], band, [90, 0, 0]);
+          const n = 7, style = K.crown || "spike";
+          for (let i = 0; i < n; i++) {
+            const a = (i / n) * Math.PI * 2 + Math.PI / 2, x = Math.cos(a) * cr, z = Math.sin(a) * cr * 1.05;
+            const h = style === "jagged" ? (i % 2 ? 0.1 : 0.2) : style === "coral" ? 0.12 + (i % 3) * 0.04 : (i === 0 ? 0.16 : 0.11);
+            const tilt = style === "coral" ? (i % 2 ? 18 : -14) : 0;
+            P(g, "cone", [x, cy + h / 2, z], [0.05, h, 0.05], style === "jagged" ? M("#1a1020", 0.4) : band, [0, 0, tilt]);
+            if (style !== "spike" || i === 0) P(g, "sphere", [x, cy + h + 0.005, z], [0.035, 0.035, 0.035], C.glowC);
+          }
+          if (K.flame) for (let i = 0; i < 3; i++) liveMesh(g, live, "cone", [(i - 1) * 0.07, cy + 0.13, cr * 0.95], [0.05, 0.13, 0.05], C.glowC, flicker);
+        } else if (gear === "mask") {
+          P(g, "box", [0, H.eye - 0.08, H.face - 0.01], [0.2, 0.08, 0.06], M("#140f1c"));
+        } else if (gear === "veil") {
+          P(g, "cone", [0, top - 0.06, -0.01], [0.42, 0.36, 0.44], Gl("#1a1028", 0.6));
+          P(g, "ring", [0, top - 0.06, H.face - 0.02], [0.1, 0.1, 0.4], C.accG, [0, 0, 0]);
+        }
+        if (base === "hooded" && (L.glow || hollow) && gear !== "halo") eyes(g);
+      });
+    }
+
+    // ---- back and shoulders: capes for epics/legendaries, quiver, glowing pauldrons ----
+    if (bones.Chest && (K.cape || L.prop === "bow")) {
+      const back = socket(bones.Chest, model, [0, 0, 0], null);
+      attach("B", back, (g) => {
+        if (K.cape) {
+          const cloth = M(K.capeColor || mix(L.armor, "#000000", 0.25)), trim = M(L.accent, 0.3);
+          const z = base === "hooded" ? -0.2 : -0.17;
+          // A curved, flared cloak: a flattened frustum hanging from the shoulders.
+          P(g, "taper", [0, -0.3, z - 0.03], [0.44, 0.84, 0.1], cloth, [172, 0, 0]);
+          P(g, "taper", [0, -0.7, z - 0.085], [0.46, 0.05, 0.11], trim, [172, 0, 0]);
+          P(g, "rod", [0, 0.1, z + 0.03], [0.07, 0.36, 0.07], trim, [0, 0, 90]);
+        }
+        if (L.prop === "bow") {
+          P(g, "rod", [0.06, -0.05, -0.2], [0.12, 0.46, 0.12], C.leather, [0, 0, -25]);
+          for (let i = 0; i < 3; i++) P(g, "cone", [0.15 + i * 0.03, 0.2 + i * 0.01, -0.2 + (i - 1) * 0.03], [0.04, 0.08, 0.015], C.acc, [0, 0, -25]);
+        }
+      });
+    }
+    if (K.aura) for (const [side, bn] of [["l", "UpperArmL"], ["r", "UpperArmR"]]) {
+      if (!bones[bn]) continue;
+      attach("A" + side, socket(bones[bn], model, [0, 0.02, 0], null), (g, live) => {
+        P(g, "sphere", [0, 0, 0], [0.15, 0.15, 0.15], C.glowC);
+        liveMesh(g, live, "sphere", [0, 0, 0], 0.3, C.glowH, pulse);
+      });
+    }
+  }
+
+  // ---------- the Titan: dark cracked stone, glowing element seams, stone horns ----------
+  function crackMaterial(m, color, fx) {
+    const uniforms = { uCrack: { value: new T.Color(color) }, uPulse: { value: 1 } };
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, uniforms);
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vCrackP;")
+        .replace("#include <begin_vertex>", "#include <begin_vertex>\nvCrackP = position;");
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", `#include <common>
+varying vec3 vCrackP; uniform vec3 uCrack; uniform float uPulse;
+float cHash(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float cNoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(cHash(i), cHash(i + vec3(1,0,0)), f.x), mix(cHash(i + vec3(0,1,0)), cHash(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(cHash(i + vec3(0,0,1)), cHash(i + vec3(1,0,1)), f.x), mix(cHash(i + vec3(0,1,1)), cHash(i + vec3(1,1,1)), f.x), f.y), f.z); }`)
+        .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
+{ vec3 cp = vCrackP * 7.0; float n = cNoise(cp) * 0.65 + cNoise(cp * 2.3) * 0.35;
+  float line = 1.0 - smoothstep(0.0, 0.035, abs(n - 0.5));
+  totalEmissiveRadiance += uCrack * line * 2.2 * uPulse; diffuseColor.rgb *= 1.0 - line * 0.6; }`);
+    };
+    m.customProgramCacheKey = () => "sb-crack";
+    fx.push((t) => { uniforms.uPulse.value = 0.75 + Math.sin(t * 1.6) * 0.25; });
+    return m;
+  }
+
+  function buildTitanKit(model, el, fx) {
+    const ec = ELEMENTS[el] ? ELEMENTS[el].color : "#e8553a";
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) if (m.name === "Yeti_Main" || m.name === "Yeti_Secondary") crackMaterial(m, ec, fx);
+    });
+    const bones = {};
+    model.traverse((o) => { if (o.isBone) bones[o.name] = o; });
+    model.updateMatrixWorld(true);
+    const rock = lit("#3a3532"), rockD = lit("#24201e"), g = glow(ec), gh = glow(ec, 0.3);
+    const key = `titan|${el}`;
+    const build = (name, fn) => {
+      const k = key + name;
+      if (!kitCache.has(k)) { const grp = new T.Group(); fn(grp); kitCache.set(k, { baked: bake(grp), live: [] }); }
+      return instantiate(kitCache.get(k).baked);
+    };
+    if (bones.Head) {
+      const s = socket(bones.Head, model, [0, 0, 0], null);
+      s.add(build("H", (grp) => {
+        for (const sx of [-1, 1]) {
+          part("cone", grp, [sx * 0.3, 0.42, -0.02], [0.16, 0.42, 0.16], rock, [0, 0, sx * -38]);
+          part("cone", grp, [sx * 0.46, 0.68, 0.08], [0.1, 0.32, 0.1], rockD, [-30, 0, sx * -12]);
+          part("cone", grp, [sx * 0.52, 0.86, 0.18], [0.035, 0.1, 0.035], g, [-50, 0, 0]);
+        }
+        part("octa", grp, [0, 0.52, -0.12], [0.18, 0.34, 0.14], rockD, [-25, 0, 0]);
+        part("octa", grp, [0, 0.38, -0.3], [0.14, 0.26, 0.12], rock, [-45, 0, 0]);
+      }));
+    }
+    // Shards along the back and on each shoulder.
+    if (bones.Torso) socket(bones.Torso, model, [0, 0, 0], null).add(build("T", (grp) => {
+      [[0, 0.45, -0.38, 0.5], [0.22, 0.32, -0.35, 0.36], [-0.22, 0.32, -0.35, 0.36], [0, 0.15, -0.44, 0.34]].forEach(([x, y, z, h], i) => {
+        part("octa", grp, [x, y, z], [0.16, h, 0.14], i % 2 ? rockD : rock, [-50, 0, x * -60]);
+      });
+      part("sphere", grp, [0, 0.3, -0.33], [0.1, 0.1, 0.1], g);
+    }));
+    for (const bn of ["UpperArmL", "UpperArmR"]) if (bones[bn]) socket(bones[bn], model, [0, 0, 0], null).add(build(bn, (grp) => {
+      part("octa", grp, [0, 0.12, 0], [0.24, 0.38, 0.22], rock, [0, 0, 20]);
+      part("octa", grp, [0.06, 0.02, 0.12], [0.14, 0.26, 0.14], rockD, [30, 0, -10]);
+      part("sphere", grp, [0, 0.12, 0], [0.4, 0.4, 0.4], gh);
+    }));
   }
 
   // ---------- primitive fallback heroes ----------
@@ -379,7 +839,7 @@ const W3D = (() => {
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; root.add(ring);
     scene.add(root);
     views.set(u.key, {
-      u, root, model: built.model, armL: built.armL, armR: built.armR, mixer: built.mixer, actions: built.actions,
+      u, root, model: built.model, armL: built.armL, armR: built.armR, mixer: built.mixer, actions: built.actions, fx: built.fx || [],
       aura, ring, home: pos.clone(), height: built.height * scale, phase: Math.random() * 10, busy: false, dead: false,
     });
   }
@@ -396,6 +856,7 @@ const W3D = (() => {
     for (const v of views.values()) {
       if (v.mixer) v.mixer.update(dt * spd());
       if (v.dead) continue;
+      for (const f of v.fx) f(t);
       if (!v.mixer) {
         v.model.position.y = Math.sin(t * 2.4 + v.phase) * 0.025;
         if (!v.busy && v.armR) {
