@@ -142,6 +142,11 @@ function headSvg(L, id, skin, eye, glowEyes, hood) {
 // Main entry: returns an inline SVG string for a hero/enemy portrait.
 function heroArt(templateId, el, opts = {}) {
   if (ART_FILES[templateId] && !opts.hollow) return `<img class="art" src="${ART_FILES[templateId]}" alt="">`;
+  // Card faces photographed from the 3D models (falls back to the drawn portrait until ready).
+  if (window.W3D && !opts.flat) {
+    const url = W3D.face(templateId, el, !!opts.hollow);
+    if (url) return `<img class="art face3d" src="${url}" alt="">`;
+  }
   if (templateId === "titan") return titanArt(el);
   const L = LOOKS[templateId];
   if (!L) return "";

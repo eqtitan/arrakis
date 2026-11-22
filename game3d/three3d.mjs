@@ -28,9 +28,11 @@ const W3D = (() => {
   const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const spd = () => (typeof G !== "undefined" && G.settings && G.settings.speed) || 1;
 
+  let supportedCache = null;
   function supported() {
-    try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); }
-    catch (_) { return false; }
+    if (supportedCache !== null) return supportedCache;
+    try { const c = document.createElement("canvas"); return (supportedCache = !!(c.getContext("webgl2") || c.getContext("webgl"))); }
+    catch (_) { return (supportedCache = false); }
   }
 
   // ---------- model library ----------
@@ -1041,10 +1043,106 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   function shake(amp = 0.25) { if (!reduce) { shakeT = 0.22; shakeAmp = amp; } }
   function onFrame(cb) { frameCbs.push(cb); }
 
+  // ---------- card faces: head-and-shoulders snapshots of the 3D heroes ----------
+  // Rendered once per hero in a small offscreen renderer, cached in memory and in
+  // localStorage (keyed by game version so model or palette changes re-shoot them).
+  const FACE_SIZE = 256;
+  const faceVer = (window.SB_VERSION && window.SB_VERSION.version) || "dev";
+  const FACE_KEY = "sigilbound.faces.v1";
+  const faces = new Map();
+  try {
+    const stored = JSON.parse(localStorage.getItem(FACE_KEY) || "null");
+    if (stored && stored.ver === faceVer) for (const [k, v] of Object.entries(stored.faces || {})) faces.set(k, v);
+  } catch (_) { /* no storage: shoot again */ }
+  let faceQueue = [], faceBusy = false, faceRenderer = null, faceListeners = [], saveTimer = 0;
+  const faceKey = (id, el, hollow) => id === "titan" ? `titan|${el}` : `${id}|${hollow ? 1 : 0}`;
+  function storeFaces() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(FACE_KEY, JSON.stringify({ ver: faceVer, faces: Object.fromEntries(faces) })); } catch (_) {}
+    }, 400);
+  }
+  function shootFace(id, el, hollow) {
+    const base = id === "titan" ? "titan" : BASE[id] || "adventurer";
+    const built = buildRigged(id, base, hollow, el);
+    if (!built) return null;
+    if (!faceRenderer) {
+      faceRenderer = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      faceRenderer.setPixelRatio(1);
+      faceRenderer.setSize(FACE_SIZE, FACE_SIZE, false);
+      faceRenderer.outputEncoding = T.sRGBEncoding;
+      faceRenderer.toneMapping = T.ACESFilmicToneMapping;
+      faceRenderer.toneMappingExposure = GFX.exposure;
+      faceRenderer.setClearColor(0x000000, 0);
+    }
+    const sc = new T.Scene();
+    sc.add(new T.HemisphereLight(0xfff4e6, 0x3a3040, 1.3));
+    const key = new T.DirectionalLight(0xfff1dd, 2.2); key.position.set(-2, 3, 4); sc.add(key);
+    const fill = new T.DirectionalLight(0xffffff, 0.6); fill.position.set(3, 1, 3); sc.add(fill);
+    const rim = new T.DirectionalLight(el && ELEMENTS[el] ? new T.Color(ELEMENTS[el].color) : 0x99aaff, 1.4); rim.position.set(2, 3, -4); sc.add(rim);
+    const root = built.model;
+    root.rotation.y = -0.35; // a slight three-quarter turn reads better than dead-on
+    sc.add(root);
+    if (built.mixer) built.mixer.update(0.6);
+    for (const f of built.fx || []) f(0.6);
+    root.updateMatrixWorld(true);
+    let head = null;
+    root.traverse((o) => { if (!head && o.isBone && o.name === "Head") head = o; });
+    const c = new T.Vector3();
+    if (head) head.getWorldPosition(c); else c.set(0, built.height * 0.8, 0);
+    const titan = base === "titan";
+    const span = titan ? 2.9 : 0.74;             // height of the view, in scene units
+    c.y += titan ? 0.15 : 0.15;                   // room above for hoods, helms and halos
+    const cam = new T.PerspectiveCamera(28, 1, 0.05, 50);
+    const dist = (span / 2) / Math.tan(14 * D2R);
+    cam.position.set(c.x, c.y + span * 0.08, c.z + dist);
+    cam.lookAt(c.x, c.y - span * 0.04, c.z);
+    faceRenderer.render(sc, cam);
+    let url = null;
+    try {
+      url = faceRenderer.domElement.toDataURL("image/webp", 0.86);
+      if (!url.startsWith("data:image/webp")) url = faceRenderer.domElement.toDataURL("image/png");
+    } catch (_) { url = null; }
+    sc.traverse((o) => { if (o.isMesh) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose && m.dispose()); });
+    return url;
+  }
+  function pumpFaces() {
+    if (faceBusy) return;
+    faceBusy = true;
+    whenReady().then(() => {
+      const step = () => {
+        const job = faceQueue.shift();
+        if (!job) {
+          faceBusy = false;
+          if (faceRenderer) { faceRenderer.dispose(); faceRenderer.forceContextLoss(); faceRenderer = null; }
+          storeFaces();
+          faceListeners.forEach((cb) => { try { cb(); } catch (_) {} });
+          return;
+        }
+        const k = faceKey(job.id, job.el, job.hollow);
+        if (!faces.has(k)) {
+          try { const url = shootFace(job.id, job.el, job.hollow); faces.set(k, url); } catch (e) { console.warn("Sigilbound: face failed", job.id, e); faces.set(k, null); }
+        }
+        setTimeout(step, 0); // let the page breathe between shots
+      };
+      step();
+    });
+  }
+  // Returns a cached card face (data URL), or null and queues one to be shot.
+  function face(id, el, hollow = false) {
+    if (!supported()) return null;
+    const k = faceKey(id, el, hollow);
+    if (faces.has(k)) return faces.get(k);
+    if (!faceQueue.some((j) => faceKey(j.id, j.el, j.hollow) === k)) faceQueue.push({ id, el, hollow });
+    pumpFaces();
+    return null;
+  }
+  const onFaces = (cb) => faceListeners.push(cb);
+
   preload();
   return {
     supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, setHighlight,
-    burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady,
+    burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces,
     has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };
 })();

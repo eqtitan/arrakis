@@ -1004,3 +1004,9 @@ document.addEventListener("change", (e) => {
 });
 
 render();
+
+// Card faces: shoot every hero's 3D face in the background, then refresh the screen.
+if (window.W3D && W3D.face) {
+  W3D.onFaces(() => { if (!B) render(); });
+  HEROES.forEach((h) => W3D.face(h.id, h.el));
+}

@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.12.0 (2026-11-22)
+- Hero cards now show faces photographed from each hero's 3D model (drawn portraits stay as the fallback).
+
+
 ## 0.11.1 (2026-11-22)
 - Light heroes are distinct: Aurelia in gold plate with a royal-blue cape, Oriel in amber and sunset orange, Lumen in silver steel with gold trim, Sister Wren in a brown habit, and Seraphine in ivory with a gold cape. 2D portraits match.
 

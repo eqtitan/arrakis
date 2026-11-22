@@ -104,6 +104,13 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
 
 ## 3. Hero card art (2D illustrations)
 
+**Current default (0.12.0): 3D card faces.** The game photographs each hero's 3D model
+(head and shoulders, slight three-quarter turn, element-coloured rim light) in a small
+offscreen renderer, then caches the images on the device. `W3D.face()` lives in
+`game3d/three3d.mjs`. The cache is keyed by game version, so a model or palette change
+re-shoots the faces after the next update. Order of preference: `ART_FILES` illustration,
+then the 3D face, then the drawn SVG portrait (used before the faces are ready or without WebGL).
+
 Hero cards and summon reveals can use real illustrations. Generate them with an image tool,
 or commission them, then drop them in `public/game/art/` and list them in `ART_FILES` in
 `public/game/art.js` (for example `ysolde: "art/ysolde.webp"`).
