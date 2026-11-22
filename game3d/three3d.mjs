@@ -894,7 +894,9 @@ const W3D = (() => {
     };
     // Gear metal leans towards the hero's armour colour so Mythic gear doesn't make everyone gold.
     const gmetal = (r, k = 0.7) => r === 1 ? "#5a4232" : mix(GEAR_METAL[r], L.armor, k);
-    const gtrim = (r) => r >= 4 ? Mg(GEAR_TRIM[r]) : M(GEAR_TRIM[r], 0.4); // Heroic+ trim is polished
+    // Heroic+ trim is polished. Hollow gear gets dark, desaturated trim: bright thin rarity lines
+    // on dark enemies read as a rendering glitch at phone size.
+    const gtrim = (r) => hollow ? M(mix(GEAR_TRIM[r], "#3a3340", 0.75), 0.5) : r >= 4 ? Mg(GEAR_TRIM[r]) : M(GEAR_TRIM[r], 0.4);
     // Build (or reuse) a merged prop and hang it on a socket. `live` parts stay separate so
     // they can animate (flames, spinning rings, swaying capes). `sig` keys gear variants.
     const attach = (slot, sock, build, sig = "") => {
@@ -1722,6 +1724,9 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
 
   const ALLY_FACING = Math.PI - 0.95;
+  // Yaw 0 faces the camera (+Z) and PI faces the enemies: about 60-72° off the camera, toward
+  // the centre of the line.
+  const allyFacing = (x) => (x <= 0.05 ? 1 : -1) * (1.05 + 0.2 * Math.min(1, Math.abs(x) / 1.8));
   // Rows spread with the team size; with 4+ units every other one steps back, so the HUD tags
   // and the figures overlap less.
   function slot(ally, i, n) {
@@ -1780,7 +1785,10 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     built.model.scale.multiplyScalar(scale);
     const pos = u.titan ? new T.Vector3(0, 0, -3.8) : slot(ally, i, n);
     root.position.copy(pos);
-    root.rotation.y = ally ? ALLY_FACING : 0; // allies face the enemies side-on, so their faces show
+    // Allies idle in a three-quarter turn toward the camera (angled in toward the middle of the
+    // line) so the player sees faces, chests and gear; they turn to the target only to attack.
+    const idleRot = ally ? allyFacing(pos.x) : 0;
+    root.rotation.y = idleRot;
     const aura = new T.Mesh(new T.CircleGeometry(0.62 * (u.titan ? 2 : scale), 32), glow(ELEMENTS[u.el].color, 0.35));
     aura.rotation.x = -Math.PI / 2; aura.position.y = 0.02; root.add(aura);
     const ring = new T.Mesh(new T.RingGeometry(0.72 * (u.titan ? 2 : scale), 0.86 * (u.titan ? 2 : scale), 40),
@@ -1790,7 +1798,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     const top = u.titan ? built.height : measureTop(built) * scale;
     views.set(u.key, {
       u, root, model: built.model, armL: built.armL, armR: built.armR, mixer: built.mixer, actions: built.actions, anim: built.anim, fx: built.fx || [],
-      aura, ring, home: pos.clone(), height: built.height * scale, top, phase: Math.random() * 10, busy: false, dead: false,
+      aura, ring, home: pos.clone(), idleRot, height: built.height * scale, top, phase: Math.random() * 10, busy: false, dead: false,
       fidgetAt: 6 + Math.random() * 10,
     });
   }
@@ -1959,7 +1967,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   async function recover(key) {
     const v = views.get(key); if (!v || v.dead) return;
     const from = v.root.position.clone(), rotFrom = v.root.rotation.y;
-    const rotHome = v.u.side === "A" ? ALLY_FACING : 0;
+    const rotHome = v.idleRot != null ? v.idleRot : v.u.side === "A" ? ALLY_FACING : 0;
     const r0 = v.armR ? v.armR.rotation.x : 0, l0 = v.armL ? v.armL.rotation.x : 0;
     const far = from.distanceTo(v.home) > 0.6;
     if (v.anim && v.u.titan && Math.random() < 0.5) {
