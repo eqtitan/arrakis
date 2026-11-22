@@ -11,7 +11,15 @@ namespace Sigilbound.Core
     {
         public Element El; public int Hp, Atk, Def, Spd, Crit, Cdmg;
         public List<GearSet> Sets = new List<GearSet>();
-        public int Power => (int)Math.Round(Hp / 10.0 + Atk * 2 + Def * 1.5 + Spd * 4 + Crit * 3 + Cdmg);
+        public int Power => Js.RoundInt(Hp / 10.0 + Atk * 2 + Def * 1.5 + Spd * 4 + Crit * 3 + Cdmg);
+    }
+
+    // Unrounded stats, as state.js baseStats returns them (enemy, Titan and rival stats are
+    // rounded only after their multipliers, exactly like the web game).
+    public sealed class RawStats
+    {
+        public Element El; public double Hp, Atk, Def, Spd, Crit = 15, Cdmg = 50;
+        public int Power => Js.RoundInt(Hp / 10.0 + Atk * 2 + Def * 1.5 + Spd * 4 + Crit * 3 + Cdmg);
     }
 
     public sealed class EnemySpec
@@ -20,7 +28,7 @@ namespace Sigilbound.Core
         public Element El; public bool Boss;
     }
 
-    public sealed class Game
+    public sealed partial class Game
     {
         public SaveData S;
         public readonly Random Rng;
@@ -39,7 +47,7 @@ namespace Sigilbound.Core
         public HeroSave HeroByUid(int uid) => S.heroes.FirstOrDefault(h => h.uid == uid);
         public GearSave GearByUid(int uid) => uid == 0 ? null : S.gear.FirstOrDefault(g => g.uid == uid);
         public List<HeroSave> Team => S.team.Select(HeroByUid).Where(h => h != null).ToList();
-        string Today => Now().ToString("yyyy-MM-dd");
+        public string Today => Js.UtcDate(Now());
 
         // ---------- rewards / daily ----------
         public void Grant(Reward r)
@@ -95,16 +103,16 @@ namespace Sigilbound.Core
             return h;
         }
 
-        public static Stats BaseStats(HeroDef t, double level, double stars, Element el, Rarity? rarityOverride = null)
+        public static RawStats BaseStats(HeroDef t, double level, double stars, Element el, Rarity? rarityOverride = null)
         {
             var rar = rarityOverride ?? t.Rarity;
             var role = Mods(t.Role);
             int tier = (int)rar;
             double grow = (1 + (level - 1) * 0.05) * (1 + (stars - 1) * 0.15) * RarityMult(rar);
-            return new Stats
+            return new RawStats
             {
-                El = el, Hp = (int)Math.Round(1000 * role.Hp * grow), Atk = (int)Math.Round(100 * role.Atk * grow),
-                Def = (int)Math.Round(90 * role.Def * grow), Spd = (int)Math.Round(95 + tier * 2 + role.Spd + (stars - 1)), Crit = 15, Cdmg = 50,
+                El = el, Hp = 1000 * role.Hp * grow, Atk = 100 * role.Atk * grow, Def = 90 * role.Def * grow,
+                Spd = 95 + tier * 2 + role.Spd + (stars - 1), Crit = 15, Cdmg = 50,
             };
         }
 
@@ -137,10 +145,10 @@ namespace Sigilbound.Core
             var st = new Stats { El = t.Element };
             foreach (var kv in setCount)
                 for (int i = 0; i < kv.Value / 2; i++) { var b = SetBonus(kv.Key); Add(b.stat, b.val); st.Sets.Add(kv.Key); }
-            st.Hp = (int)Math.Round((hp + fHp) * (1 + pHp / 100));
-            st.Atk = (int)Math.Round((atk + fAtk) * (1 + pAtk / 100));
-            st.Def = (int)Math.Round((def + fDef) * (1 + pDef / 100));
-            st.Spd = (int)Math.Round((spd + fSpd) * (1 + pSpd / 100));
+            st.Hp = Js.RoundInt((hp + fHp) * (1 + pHp / 100));
+            st.Atk = Js.RoundInt((atk + fAtk) * (1 + pAtk / 100));
+            st.Def = Js.RoundInt((def + fDef) * (1 + pDef / 100));
+            st.Spd = Js.RoundInt((spd + fSpd) * (1 + pSpd / 100));
             st.Crit = (int)Math.Min(100, crit); st.Cdmg = (int)cdmg;
             return st;
         }
@@ -207,7 +215,7 @@ namespace Sigilbound.Core
             S.gear.Add(g);
             return g;
         }
-        public static int GearMainValue(GearSave g) => (int)Math.Round(SlotBase(g.Slot) * (1 + g.rarity * 0.25) * (1 + g.level * 0.15));
+        public static int GearMainValue(GearSave g) => Js.RoundInt(SlotBase(g.Slot) * (1 + g.rarity * 0.25) * (1 + g.level * 0.15));
         public static int GearUpgradeCost(GearSave g) => 120 * (g.level + 1) * g.rarity;
         public static int GearSellValue(GearSave g) => 150 * g.rarity * (1 + g.level);
         public static double GearScore(GearSave g) => GearMainValue(g) / (double)SlotBase(g.Slot) * 10 + g.subs.Sum(x => x.val);
@@ -291,17 +299,9 @@ namespace Sigilbound.Core
         // ---------- campaign ----------
         public static string StageLabel(int idx) => $"{idx / StagesPerChapter + 1}-{idx % StagesPerChapter + 1}";
         public static bool IsBossStage(int idx) => idx % StagesPerChapter == StagesPerChapter - 1;
-        public static int StageLevel(int idx) => Math.Min(60, (int)Math.Round(2 + idx * 0.95, MidpointRounding.AwayFromZero));
+        public static int StageLevel(int idx) => Math.Min(60, Js.RoundInt(2 + idx * 0.95));
         public static int ChapterOf(int idx) => idx / StagesPerChapter;
         public static Element ChapterElement(int chapter) => Elements[chapter % Elements.Length];
-
-        // Same deterministic generator as the web version, so a stage has the same enemies on both.
-        sealed class Seeded
-        {
-            long s;
-            public Seeded(int seed) { s = seed * 9301L + 49297; }
-            public double Next() { s = (s * 9301 + 49297) % 233280; return s / 233280.0; }
-        }
 
         public static EnemySpec Grade(int idx)
         {
@@ -310,7 +310,7 @@ namespace Sigilbound.Core
             double t = idx / (double)(TotalStages - 1);
             double chAdj = ChapterOf(idx) < Curve.Chapter.Length ? Curve.Chapter[ChapterOf(idx)] : 1;
             double mul = chAdj * (Curve.Start + (Curve.End - Curve.Start) * Math.Pow(t, Curve.Shape));
-            return new EnemySpec { Level = level, Stars = stars, Mul = mul, Spd = (int)Math.Round(idx * Curve.SpdPerStage, MidpointRounding.AwayFromZero), ShownLevel = StageLevel(idx) };
+            return new EnemySpec { Level = level, Stars = stars, Mul = mul, Spd = Js.RoundInt(idx * Curve.SpdPerStage), ShownLevel = StageLevel(idx) };
         }
 
         public static List<List<EnemySpec>> StageWaves(int idx)
@@ -342,7 +342,7 @@ namespace Sigilbound.Core
         public static Reward StageRewards(int idx, bool firstClear)
         {
             int level = StageLevel(idx);
-            var r = new Reward { Gold = (int)Math.Round(200 + level * 60.0), Xp = (int)Math.Round(60 + level * level * 3.2) };
+            var r = new Reward { Gold = Js.RoundInt(200 + level * 60.0), Xp = Js.RoundInt(60 + level * level * 3.2) };
             if (firstClear)
             {
                 r.Common = 1;

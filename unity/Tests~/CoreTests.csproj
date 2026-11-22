@@ -11,5 +11,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Assets/Sigilbound/Core/**/*.cs" />
+    <!-- The Unity compile check is its own project. -->
+    <Compile Remove="CompileCheck/**" />
+    <None Remove="CompileCheck/**" />
+    <None Include="fixtures/fixtures.json" CopyToOutputDirectory="PreserveNewest" LinkBase="fixtures" />
   </ItemGroup>
 </Project>

@@ -12,7 +12,8 @@ namespace Sigilbound.Core
     public sealed class Unit
     {
         public string Key; public bool Ally; public HeroDef Template; public string Name;
-        public Element El; public int MaxHp, Hp, Atk, Def, Spd, Crit, Cdmg;
+        public Element El; public int MaxHp, Hp, Atk, Def, Crit, Cdmg; public double Spd; // enemy speed can be fractional, as on the web
+        public bool Rival;
         public double Tm; public int[] Cds; public List<Effect> Effects = new List<Effect>();
         public bool Alive = true; public long DmgDealt; public int Level; public int Stars;
         public bool Boss, Titan; public int HeroUid;
@@ -50,6 +51,7 @@ namespace Sigilbound.Core
         }
 
         // ---------- unit factories ----------
+        public static Unit MakeUnit(bool ally, HeroDef t, Stats s) => Make(ally, t, s);
         static Unit Make(bool ally, HeroDef t, Stats s)
         {
             return new Unit
@@ -71,23 +73,28 @@ namespace Sigilbound.Core
             double mul = e.Mul * (e.Boss ? Curve.BossStat : 1);
             var u = Make(false, e.Template, new Stats
             {
-                El = e.El, Hp = (int)Math.Round(s.Hp * mul * (e.Boss ? Curve.BossHp : 1)), Atk = (int)Math.Round(s.Atk * mul),
-                Def = (int)Math.Round(s.Def * mul), Spd = s.Spd + e.Spd + (e.Boss ? 4 : 0), Crit = s.Crit, Cdmg = s.Cdmg,
+                El = e.El, Hp = Js.RoundInt(s.Hp * mul * (e.Boss ? Curve.BossHp : 1)), Atk = Js.RoundInt(s.Atk * mul),
+                Def = Js.RoundInt(s.Def * mul), Crit = (int)s.Crit, Cdmg = (int)s.Cdmg,
             });
-            u.Level = e.ShownLevel; u.Boss = e.Boss;
+            u.Spd = s.Spd + e.Spd + (e.Boss ? 4 : 0);
+            u.Level = e.ShownLevel; u.Boss = e.Boss; u.Stars = (int)Math.Floor(e.Stars);
             u.Name = (e.Boss ? "Warlord " : "Hollow ") + e.Template.ShortName;
             return u;
         }
         public static Unit TitanUnit(double teamPower, Element el)
         {
-            int lvl = Math.Max(10, Math.Min(60, (int)Math.Round(teamPower / 1200)));
+            int lvl = Math.Max(10, Math.Min(60, Js.RoundInt(teamPower / 1200)));
             var s = Game.BaseStats(Titan, lvl, 6, el);
-            var u = Make(false, Titan, new Stats { El = el, Hp = 99999999, Atk = (int)Math.Round(s.Atk * 1.1), Def = (int)Math.Round(s.Def * 0.8), Spd = 110, Crit = 15, Cdmg = 50 });
-            u.Level = lvl; u.Boss = true; u.Titan = true;
+            var u = Make(false, Titan, new Stats { El = el, Hp = 99999999, Atk = Js.RoundInt(s.Atk * 1.1), Def = Js.RoundInt(s.Def * 0.8), Spd = 110, Crit = 15, Cdmg = 50 });
+            u.Level = lvl; u.Stars = 6; u.Boss = true; u.Titan = true;
             return u;
         }
         public static Battle ForStage(Game g, int idx) =>
             new Battle(g.Team.Select(h => FromHero(g, h)).ToList(), Game.StageWaves(idx).Select(w => w.Select(FromEnemy).ToList()).ToList(), g.Rng);
+        public static Battle ForDungeon(Game g, DungeonKey key, int floor) =>
+            new Battle(g.Team.Select(h => FromHero(g, h)).ToList(), Trials.DungeonWaves(key, floor, g.TodayElement).Select(w => w.Select(FromEnemy).ToList()).ToList(), g.Rng);
+        public static Battle ForArena(Game g, Rival rv) =>
+            new Battle(g.Team.Select(h => FromHero(g, h)).ToList(), new List<List<Unit>> { Trials.RivalUnits(rv) }, g.Rng);
         public static Battle ForTitan(Game g)
         {
             var team = g.Team;
@@ -152,7 +159,7 @@ namespace Sigilbound.Core
                 {
                     double d = u.MaxHp * 0.04;
                     if (u.Titan) d = Math.Min(d, Allies.Max(a => a.Atk) * 3);
-                    ApplyDamage(u, (int)Math.Round(d), null, ev, false, 1, true);
+                    ApplyDamage(u, Js.RoundInt(d), null, ev, false, 1, true);
                 }
                 else if (e.Type == FxType.Regen) HealUnit(u, u.MaxHp * 0.08, ev);
             }
@@ -254,7 +261,7 @@ namespace Sigilbound.Core
             bool crit = _rng.NextDouble() * 100 < u.Crit && em >= 1;
             if (crit) dmg *= 1 + u.Cdmg / 100.0;
             dmg *= 0.95 + _rng.NextDouble() * 0.1;
-            ApplyDamage(t, Math.Max(1, (int)Math.Round(dmg)), u, ev, crit, em, false);
+            ApplyDamage(t, Math.Max(1, Js.RoundInt(dmg)), u, ev, crit, em, false);
         }
 
         void ApplyDamage(Unit t, int dmg, Unit src, List<BattleEvent> ev, bool crit, double em, bool dot)
@@ -282,7 +289,7 @@ namespace Sigilbound.Core
         void HealUnit(Unit t, double amount, List<BattleEvent> ev)
         {
             if (!t.Alive) return;
-            int amt = (int)Math.Round(Math.Min(amount, t.MaxHp - t.Hp));
+            int amt = Js.RoundInt(Math.Min(amount, t.MaxHp - t.Hp));
             t.Hp += amt;
             if (amt > 0) ev.Add(new BattleEvent { Type = EvType.Heal, Unit = t, Amount = amt });
         }
@@ -307,7 +314,7 @@ namespace Sigilbound.Core
             var existing = r.Effects.FirstOrDefault(e => e.Type == f.Type);
             if (f.Type == FxType.Shield)
             {
-                int val = (int)Math.Round(u.MaxHp * f.Pct);
+                int val = Js.RoundInt(u.MaxHp * f.Pct);
                 if (existing != null) { existing.Val = Math.Max(existing.Val, val); existing.Turns = 2; }
                 else r.Effects.Add(new Effect { Type = FxType.Shield, Val = val, Turns = 2, Fresh = self });
             }

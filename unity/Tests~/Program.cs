@@ -1,4 +1,5 @@
-// Core checks: content sanity, progression rules, battles, and a campaign win-rate sweep.
+// Core checks: content sanity, progression rules, battles, web parity (ParityTests.cs),
+// Trials and promo rules, and a campaign win-rate sweep.
 using System;
 using System.Linq;
 using Sigilbound.Core;
@@ -50,6 +51,8 @@ static class Program
         var g3 = new Game(seed: 9); g3.S.team = new[] { "seraphine", "ulfgar", "vaelith", "maelis" }.Select(id => { var x = g3.AddHero(id); x.stars = 5; x.level = 50; return x.uid; }).ToList();
         var t3 = Battle.ForTitan(g3); var tr3 = t3.RunAuto();
         Check(tr3 == BattleResult.Timeout && t3.BossTurns == TitanTurns, $"strong team survives all {TitanTurns} titan turns (dmg {t3.TitanDamage:N0})");
+
+        ParityTests.Run(Check);
 
         // Win-rate sweep like the web sim's fixed-team check (geared team at stage level).
         Console.WriteLine("\nStage win rates (fixed teams at stage level, 30 runs):");

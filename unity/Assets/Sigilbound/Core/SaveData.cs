@@ -1,5 +1,6 @@
-// Saved game state. Plain public fields and Lists only, so Unity's JsonUtility can
-// serialize it (it can't do dictionaries or properties).
+// Saved game state. Plain public fields and Lists only (Unity-serializer friendly).
+// On disk and in save codes it is stored in the web game's JSON layout (see SaveCodec),
+// so a save code moves freely between the web game and the Unity app in both directions.
 using System;
 using System.Collections.Generic;
 
@@ -29,9 +30,35 @@ namespace Sigilbound.Core
         public int win, summon, upgrade, titan;              // quest progress
         public bool cWin, cSummon, cUpgrade, cTitan, cAll;   // claimed
         public int titanTries = 3; public long titanBest;
+        // Trials (modes.js): winning dungeon runs left today, arena fights left today.
+        public int runsVault = Trials.DungeonRuns, runsTrial = Trials.DungeonRuns, runsForge = Trials.DungeonRuns;
+        public int arenaTries = Trials.ArenaTries;
     }
 
-    [Serializable] public sealed class SettingsSave { public int speed = 1; public bool auto; public bool autoReplay; }
+    [Serializable] public sealed class SettingsSave
+    {
+        public int speed = 1; public bool auto; public bool autoReplay;
+        public string cam = "angle";      // battle camera preset (Three-quarter is the default)
+        public int fpsCap = 60;           // 30 (cooler) or 60 (smoother)
+        public string quality = "auto";   // auto | Ultra | High | Medium | Low
+    }
+
+    [Serializable] public sealed class ArenaSave
+    {
+        public int points = 1000, best = 1000, wins, losses, seed = 1;
+        public string week = "";
+        public string pendingTier = "";   // weekly reward waiting to be claimed (tier name), "" = none
+    }
+
+    [Serializable] public sealed class ModesSave
+    {
+        public int floorsVault, floorsTrial, floorsForge;   // dungeon floors cleared
+        public int forgeSet;                                 // GameData.GearSet
+        public ArenaSave arena = new ArenaSave();
+        public List<string> tips = new List<string>();       // first-time tips already shown
+        public List<string> codes = new List<string>();      // promo code fingerprints already redeemed
+        public bool initialized;                             // ensureModes has run (arena week set)
+    }
 
     [Serializable] public sealed class SaveData
     {
@@ -46,7 +73,12 @@ namespace Sigilbound.Core
         public string loginLast = ""; public int loginDay;
         public DailySave daily = new DailySave();
         public SettingsSave settings = new SettingsSave();
+        public ModesSave modes = new ModesSave();
         public int wins, summons; public long titanBestAllTime;
         public string playerName = "";
+        public string gameVersion = "";
+        // The JSON this save was read from. Fields the Unity app doesn't use (sound volumes,
+        // the web's 2D toggle, online profile...) are kept from it when the save is written back.
+        public string sourceJson = "";
     }
 }

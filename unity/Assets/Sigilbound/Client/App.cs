@@ -60,17 +60,38 @@ namespace Sigilbound.Client
         }
 
         // ---------- save ----------
+        // Stored in the web game's JSON layout (SaveCodec), so save codes move between the two.
         static SaveData Load()
         {
             try
             {
                 var json = PlayerPrefs.GetString(SaveKey, "");
-                if (!string.IsNullOrEmpty(json)) return JsonUtility.FromJson<SaveData>(json) ?? new SaveData();
+                if (!string.IsNullOrEmpty(json)) return SaveCodec.FromJson(json) ?? new SaveData();
             }
             catch (Exception e) { Debug.LogWarning("Save unreadable, starting fresh: " + e.Message); }
             return new SaveData();
         }
-        public void Save() { PlayerPrefs.SetString(SaveKey, JsonUtility.ToJson(G.S)); PlayerPrefs.Save(); }
+        public void Save()
+        {
+            G.S.gameVersion = Application.version;
+            var json = SaveCodec.ToJson(G.S);
+            G.S.sourceJson = json;
+            PlayerPrefs.SetString(SaveKey, json); PlayerPrefs.Save();
+        }
+
+        // Replace this device's progress with a save code from the web game (or another device).
+        public bool ImportSaveCode(string code)
+        {
+            var s = SaveCodec.FromCode(code);
+            if (s == null) return false;
+            G = new Game(s);
+            G.EnsureDaily();
+            Save();
+            _lineupKey = "";
+            Screen = G.S.started ? ScreenId.Home : ScreenId.Intro;
+            return true;
+        }
+        public string ExportSaveCode() { Save(); return SaveCodec.ToCode(G.S); }
         void OnApplicationPause(bool paused) { if (paused) Save(); }
         void OnApplicationQuit() => Save();
 
