@@ -150,8 +150,9 @@ function syncShowcase() {
   if (!window.W3D || !W3D.showcase) return;
   const host = document.querySelector(".show-sprite[data-hero]");
   if (!host) { W3D.showcaseStop(); return; }
-  if (!W3D.showcase(host, host.dataset.hero, host.dataset.el) && W3D.supported() && !W3D.modelsReady)
-    W3D.whenReady().then(() => { if (host.isConnected) W3D.showcase(host, host.dataset.hero, host.dataset.el); });
+  const gear = typeof heroGearLook === "function" ? heroGearLook(heroByUid(UI.heroUid)) : null; // equipped gear shows on the model
+  if (!W3D.showcase(host, host.dataset.hero, host.dataset.el, gear) && W3D.supported() && !W3D.modelsReady)
+    W3D.whenReady().then(() => { if (host.isConnected) W3D.showcase(host, host.dataset.hero, host.dataset.el, gear); });
 }
 
 // ---------- screens ----------

@@ -12,31 +12,43 @@ const ART_FILES = {};
 // (winged/horned), staff style (orb/ice/sun), crown style (spike/coral/jagged), big, flame, pack.
 const SKIN = { pale: "#f3d6c1", fair: "#e9c09f", tan: "#c99068", brown: "#9a6544", deep: "#6b412b", ash: "#b9b4c4", blue: "#8fb3d9" };
 const LOOKS = {
-  brannoc:  { skin: "tan",   hair: "#5a3a22", style: "short",    gear: "bandana", armor: "#6e7f5a", accent: "#c9b26a", prop: "spear",   beard: "stubble" },
-  mira:     { skin: "fair",  hair: "#2f6f8f", style: "ponytail", gear: "none",    armor: "#3f7f9a", accent: "#e8e0c8", prop: "shield", kit: { shield: "round", studs: true, side: "sword" } },
-  pell:     { skin: "pale",  hair: "#c8642a", style: "messy",    gear: "none",    armor: "#8a4a2a", accent: "#ffb347", prop: "candle" },
-  odo:      { skin: "brown", hair: "#3b2a1a", style: "bald",     gear: "none",    armor: "#6b5a3a", accent: "#a8c070", prop: "club",    beard: "full" },
-  wren:     { skin: "fair",  hair: "#e8e2d0", style: "hood",     gear: "none",    armor: "#7a5a3e", accent: "#ffc84a", cloth: "#5c4330", prop: "lantern" },
-  kettle:   { skin: "ash",   hair: "#2a2a30", style: "long",     gear: "none",    armor: "#3a3442", accent: "#9a5ae8", prop: "hook",    scar: true },
-  ysolde:   { skin: "fair",  hair: "#b8241c", style: "long",     gear: "circlet", armor: "#5a1e1e", accent: "#ff7a3a", prop: "whip",    glow: "#ffb347" },
-  corvan:   { skin: "brown", hair: "#d0e6f0", style: "long",     gear: "none",    armor: "#20507a", accent: "#7fd4ff", prop: "staff",   beard: "full" },
-  hask:     { skin: "tan",   hair: "#4a4036", style: "short",    gear: "helm",    armor: "#6a7a6a", accent: "#bfe0b0", prop: "shield",  beard: "full", kit: { shield: "kite", side: "sword" } },
-  lumen:    { skin: "fair",  hair: "#f2d27a", style: "swept",    gear: "none",    armor: "#b8c2cf", accent: "#ffcc33", cloth: "#4f5a6c", prop: "sword",   glow: "#fff2b0", kit: { pack: false } },
-  nyx:      { skin: "pale",  hair: "#1e1a2a", style: "hood",     gear: "mask",    armor: "#26203a", accent: "#b48cff", prop: "daggers", glow: "#c9a3ff" },
-  tamsin:   { skin: "tan",   hair: "#8a6a2a", style: "braid",    gear: "none",    armor: "#5f7f3a", accent: "#e8d07a", prop: "bow" },
-  gorrum:   { skin: "deep",  hair: "#1a1410", style: "bald",     gear: "horns",   armor: "#4a2a1a", accent: "#ff5a1a", prop: "hammer",  beard: "full", glow: "#ff7a2a", kit: { big: true } },
-  velka:    { skin: "blue",  hair: "#e8f4ff", style: "long",     gear: "circlet", armor: "#3a6a8a", accent: "#bfefff", prop: "staff", kit: { staff: "ice" } },
-  aurelia:  { skin: "fair",  hair: "#e8b84a", style: "long",     gear: "helm",    armor: "#d9b24a", accent: "#f5f0e0", cloth: "#2a3f8f", prop: "shield",  glow: "#fff2b0", kit: { shield: "tower", side: "sword", helm: "winged", cape: true, capeColor: "#2a3f8f" } },
-  sable:    { skin: "pale",  hair: "#2a1a3a", style: "swept",    gear: "veil",    armor: "#2a1f3a", accent: "#c8b0ff", prop: "mirror", kit: { cape: true } },
-  kaito:    { skin: "fair",  hair: "#1a1a1a", style: "spiky",    gear: "bandana", armor: "#2f5a4a", accent: "#7affc0", prop: "katana",  glow: "#a8ffdf", kit: { cape: true } },
-  maelis:   { skin: "brown", hair: "#163a5a", style: "long",     gear: "crown",   armor: "#1a4a6a", accent: "#4ad0ff", prop: "trident", kit: { cape: true, crown: "coral" } },
-  thrain:   { skin: "tan",   hair: "#8a2a1a", style: "short",    gear: "none",    armor: "#5a3a2a", accent: "#ffa040", prop: "hammer",  beard: "braided", kit: { cape: true } },
-  oriel:    { skin: "deep",  hair: "#f0e6c8", style: "swept",    gear: "halo",    armor: "#e08a2c", accent: "#ffe27a", cloth: "#b5521f", prop: "staff",   glow: "#ffe27a", kit: { cape: true, staff: "sun", capeColor: "#c4561e" } },
-  vaelith:  { skin: "fair",  hair: "#ff5a2a", style: "flame",    gear: "crown",   armor: "#3a1010", accent: "#ffb020", prop: "sword",   glow: "#ffd060", kit: { cape: true, aura: true, flame: true } },
-  morwenna: { skin: "ash",   hair: "#120a1a", style: "long",     gear: "crown",   armor: "#1a0f24", accent: "#a050ff", prop: "orb",     glow: "#d090ff", kit: { cape: true, aura: true, crown: "jagged" } },
-  seraphine:{ skin: "pale",  hair: "#fff4d8", style: "long",     gear: "halo",    armor: "#f0e8d8", accent: "#ffd870", prop: "bell",    glow: "#fff0a0", kit: { cape: true, aura: true, capeColor: "#e0b648" } },
-  ulfgar:   { skin: "tan",   hair: "#c8ccd0", style: "long",     gear: "helm",    armor: "#5a6a7a", accent: "#bfe8ff", prop: "shield",  beard: "braided", kit: { shield: "round", big: true, side: "axe", helm: "horned", cape: true, aura: true } },
+  brannoc:  { skin: "tan",   hair: "#5a3a22", style: "short",    gear: "bandana", armor: "#4f7a34", accent: "#d8b04a", cloth: "#7a5232", prop: "spear",   beard: "stubble", kit: { band: "#8fe8a8", pennant: "#8fe8a8", belt: true } },
+  mira:     { skin: "fair",  hair: "#2f8f8f", style: "ponytail", gear: "none",    armor: "#3f7f9a", accent: "#e8e0c8", cloth: "#2a5a70", prop: "shield", kit: { shield: "round", studs: true, side: "sword", hair: "ponytail", belt: "#e8e0c8" } },
+  pell:     { skin: "pale",  hair: "#c8642a", style: "messy",    gear: "none",    armor: "#8a4a2a", accent: "#ffb347", cloth: "#6a3420", prop: "candle", kit: { robe: "short", robeColor: "#8a4a2a", belt: "#4a2a18", pack: false } },
+  odo:      { skin: "brown", hair: "#1e1610", style: "bald",     gear: "none",    armor: "#4e3626", accent: "#9ab84a", cloth: "#6b7a3a", pants: "#3a3026", prop: "club",    beard: "full", kit: { mantle: "moss", pack: false, belt: "#2a1e16" } },
+  wren:     { skin: "fair",  hair: "#e8e2d0", style: "hood",     gear: "none",    armor: "#7a5a3e", accent: "#ffc84a", cloth: "#5c4330", prop: "lantern", kit: { robe: "long", robeColor: "#6e5038", robeW: 0.86, belt: "#c8a040" } },
+  kettle:   { skin: "ash",   hair: "#2a2a30", style: "long",     gear: "none",    armor: "#5a5560", accent: "#9a5ae8", cloth: "#2a2a30", prop: "hook",    scar: true, kit: { coat: "#3a3a42", belt: true } },
+  ysolde:   { skin: "fair",  hair: "#c8281e", style: "long",     gear: "circlet", armor: "#5a1e1e", accent: "#ff7a3a", prop: "whip",    glow: "#ffb347", kit: { coil: true, belt: "#2a1010" } },
+  corvan:   { skin: "brown", hair: "#d0e6f0", style: "long",     gear: "none",    armor: "#20507a", accent: "#7fd4ff", cloth: "#173a5a", prop: "staff",   beard: "full", kit: { robe: "short", robeColor: "#20507a", staff: "drift", scarf: "#7fd4ff", belt: "#3a2a20" } },
+  hask:     { skin: "tan",   hair: "#4a4036", style: "short",    gear: "helm",    armor: "#5c656e", accent: "#d8e8c8", cloth: "#2f6b3a", prop: "shield",  beard: "full", kit: { shield: "kite", shieldFace: "#2f6b3a", side: "sword", helm: "great", tabard: "#2f6b3a", emblem: "#d8e8c8", pauldrons: "plate" } },
+  lumen:    { skin: "fair",  hair: "#f2d27a", style: "swept",    gear: "none",    armor: "#c8d0dc", accent: "#ffcc33", cloth: "#4f5a6c", prop: "sword",   glow: "#fff2b0", kit: { pack: false, pauldrons: "plate", pauldronColor: "#e8c860", belt: "#4f5a6c" } },
+  nyx:      { skin: "pale",  hair: "#1e1a2a", style: "hood",     gear: "mask",    armor: "#26203a", accent: "#b48cff", prop: "daggers", glow: "#c9a3ff", kit: { scarf: "#4a2a7a", belt: true } },
+  tamsin:   { skin: "tan",   hair: "#8a6a2a", style: "braid",    gear: "none",    armor: "#5f7f3a", accent: "#e8d07a", cloth: "#4a6a2a", prop: "bow", kit: { hat: "straw", hair: "braid", belt: "#6a4a2a", pack: false } },
+  gorrum:   { skin: "deep",  hair: "#1a1410", style: "bald",     gear: "horns",   armor: "#3a2a22", accent: "#ff5a1a", prop: "hammer",  beard: "full", glow: "#ff7a2a", kit: { big: true, seams: "#ff6a1a", pauldrons: "spike", pauldronColor: "#2a2222" } },
+  velka:    { skin: "blue",  hair: "#e8f4ff", style: "long",     gear: "circlet", armor: "#3a6a8a", accent: "#bfefff", prop: "staff", kit: { staff: "ice", staffLen: 0.72, robe: "long", robeColor: "#3a6a8a", pauldrons: "ice" } },
+  aurelia:  { skin: "fair",  hair: "#e8b84a", style: "long",     gear: "helm",    armor: "#d9b24a", accent: "#f5f0e0", cloth: "#2a3f8f", prop: "shield",  glow: "#fff2b0", kit: { shield: "tower", side: "sword", helm: "winged", cape: true, capeColor: "#2a3f8f", tabard: "#f5f0e0", emblem: "#d9b24a" } },
+  sable:    { skin: "pale",  hair: "#3a2050", style: "swept",    gear: "veil",    armor: "#232a48", accent: "#c8d8ff", prop: "mirror", kit: { cape: true, capeColor: "#161a30", robe: "long", robeColor: "#1c2240", shards: true } },
+  kaito:    { skin: "fair",  hair: "#1a1a1a", style: "spiky",    gear: "bandana", armor: "#2f5a4a", accent: "#7affc0", cloth: "#1e3a30", prop: "katana",  glow: "#a8ffdf", kit: { scarf: "#7affc0", scabbard: true, belt: "#1a1a1a", pauldrons: "plate", pauldronColor: "#2f5a4a" } },
+  maelis:   { skin: "brown", hair: "#163a5a", style: "long",     gear: "crown",   armor: "#1a4a6a", accent: "#4ad0ff", cloth: "#123048", prop: "trident", kit: { cape: true, crown: "coral", pauldrons: "shell" } },
+  thrain:   { skin: "tan",   hair: "#a8321a", style: "short",    gear: "none",    armor: "#5a3a2a", accent: "#ffa040", cloth: "#7a5034", prop: "hammer",  beard: "braided", kit: { cape: true, capeColor: "#5a2a1a", apron: true, beardBraid: true, pack: false } },
+  oriel:    { skin: "deep",  hair: "#f0e6c8", style: "swept",    gear: "halo",    armor: "#e08a2c", accent: "#ffe27a", cloth: "#b5521f", prop: "staff",   glow: "#ffe27a", kit: { staff: "sun", robe: "long", robeColor: "#c4561e", back: "sunburst" } },
+  vaelith:  { skin: "fair",  hair: "#ff5a2a", style: "flame",    gear: "crown",   armor: "#3a1010", accent: "#ffb020", prop: "sword",   glow: "#ffd060", kit: { cape: true, aura: true, flame: true, hair: "flame" } },
+  morwenna: { skin: "ash",   hair: "#120a1a", style: "long",     gear: "crown",   armor: "#1a0f24", accent: "#a050ff", prop: "orb",     glow: "#d090ff", kit: { cape: true, aura: true, crown: "jagged", robe: "long", robeColor: "#140b1e", collar: "spike" } },
+  seraphine:{ skin: "pale",  hair: "#fff4d8", style: "long",     gear: "halo",    armor: "#f0e8d8", accent: "#ffd870", prop: "bell",    glow: "#fff0a0", kit: { aura: true, robe: "long", robeColor: "#f4eee0", robeW: 1.18, bells: true, back: "wings" } },
+  ulfgar:   { skin: "tan",   hair: "#c8ccd0", style: "long",     gear: "helm",    armor: "#8a9aac", accent: "#bfe8ff", cloth: "#3a4a62", prop: "shield",  beard: "braided", kit: { shield: "round", big: true, side: "axe", helm: "horned", cape: true, capeColor: "#2a3a52", aura: true, mantle: "fur", beardBraid: true } },
 };
+
+// Compact description of a hero's equipped gear for the 3D model ({ helm: { r, s }, … }
+// with rarity 1-5 and set key), or null with nothing equipped. Card faces ignore gear.
+function heroGearLook(h) {
+  if (!h || !h.gear || typeof gearByUid !== "function") return null;
+  let out = null;
+  for (const slot of ["weapon", "helm", "chest", "boots"]) {
+    const g = h.gear[slot] && gearByUid(h.gear[slot]);
+    if (g) (out = out || {})[slot] = { r: g.rarity, s: g.set };
+  }
+  return out;
+}
 
 let _artId = 0;
 const shade = (hex, amt) => {
