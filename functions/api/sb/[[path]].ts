@@ -28,13 +28,37 @@ const SCHEMA = [
      body TEXT NOT NULL, created INTEGER NOT NULL, read INTEGER NOT NULL DEFAULT 0)`,
   `CREATE INDEX IF NOT EXISTS messages_pair ON messages (recipient, sender, id)`,
   `CREATE INDEX IF NOT EXISTS messages_sender ON messages (sender, created)`,
+  `CREATE TABLE IF NOT EXISTS blocks (
+     blocker TEXT NOT NULL, blocked TEXT NOT NULL, created INTEGER NOT NULL, PRIMARY KEY (blocker, blocked))`,
+  `CREATE TABLE IF NOT EXISTS reports (
+     id INTEGER PRIMARY KEY AUTOINCREMENT, reporter TEXT NOT NULL, target TEXT NOT NULL,
+     target_name TEXT, message_id INTEGER, message_body TEXT, reason TEXT, created INTEGER NOT NULL)`,
 ];
+
+// The installed apps (Capacitor) call from these origins; the website itself is same-origin.
+const APP_ORIGINS = new Set(["capacitor://localhost", "https://localhost", "http://localhost"]);
+let corsOrigin: string | null = null;
+
+// Basic word filter for names and messages (store guidelines ask for one on user content).
+const BLOCKED_WORDS = ["fuck", "shit", "bitch", "cunt", "asshole", "bastard", "dick", "pussy", "whore", "slut", "nigger", "nigga", "faggot", "retard"];
+const FILTER_RE = new RegExp(`(${BLOCKED_WORDS.join("|")})`, "gi");
+const filterText = (t: string) => t.replace(FILTER_RE, (w) => w[0] + "*".repeat(w.length - 1));
+const hasBlockedWord = (t: string) => { FILTER_RE.lastIndex = 0; const r = FILTER_RE.test(t); FILTER_RE.lastIndex = 0; return r; };
 let schemaReady = false;
 
+function corsHeaders(): Record<string, string> {
+  return corsOrigin ? {
+    "access-control-allow-origin": corsOrigin,
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+    "access-control-allow-headers": "content-type, authorization",
+    "access-control-max-age": "86400",
+    vary: "Origin",
+  } : {};
+}
 function reply(data: unknown, status = 200): Response {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "content-type": "application/json", "cache-control": "no-store" },
+    headers: { "content-type": "application/json", "cache-control": "no-store", ...corsHeaders() },
   });
 }
 const fail = (status: number, error: string) => reply({ error }, status);
@@ -88,7 +112,13 @@ const publicPlayer = (p: Player) => ({
   profile: p.profile ? JSON.parse(p.profile) : null,
 });
 
+const isBlocked = async (db: D1Database, x: string, y: string) =>
+  !!(await db.prepare("SELECT 1 FROM blocks WHERE (blocker = ?1 AND blocked = ?2) OR (blocker = ?2 AND blocked = ?1)").bind(x, y).first());
+
 export const onRequest: PagesFunction<Env> = async ({ request, env, params }) => {
+  const origin = request.headers.get("origin");
+  corsOrigin = origin && APP_ORIGINS.has(origin) ? origin : null;
+  if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders() });
   const db = env.SIGIL_DB;
   if (!db) return fail(503, "Online features aren't set up on this server yet.");
   if (!schemaReady) {
@@ -103,6 +133,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, params }) =>
     const b = await body(request);
     const name = String(b.name || "").trim();
     if (!NAME_RE.test(name)) return fail(400, "Names are 2-16 letters, numbers or spaces.");
+    if (hasBlockedWord(name)) return fail(400, "Please pick a different name.");
     const token = randomString(40, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
     const id = crypto.randomUUID();
     const now = Date.now();
@@ -131,6 +162,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, params }) =>
     if (b.name !== undefined) {
       const name = String(b.name).trim();
       if (!NAME_RE.test(name)) return fail(400, "Names are 2-16 letters, numbers or spaces.");
+      if (hasBlockedWord(name)) return fail(400, "Please pick a different name.");
       updates.push("name = ?"); values.push(name);
     }
     await db.prepare(`UPDATE players SET ${updates.join(", ")}, seen = ? WHERE id = ?`).bind(...values, Date.now(), me.id).run();
@@ -160,6 +192,7 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, params }) =>
     const other = await db.prepare("SELECT id, name, code, profile, seen FROM players WHERE code = ?").bind(code).first<Player>();
     if (!other) return fail(404, "No player has that friend code.");
     if (other.id === me.id) return fail(400, "That's your own code.");
+    if (await isBlocked(db, me.id, other.id)) return fail(403, "You can't add this player.");
     const count = await db.prepare("SELECT COUNT(*) AS n FROM friends WHERE a = ?1 OR b = ?1").bind(me.id).first<{ n: number }>();
     if ((count?.n || 0) >= MAX_FRIENDS) return fail(400, `You can have up to ${MAX_FRIENDS} friends.`);
     const [a, b] = pair(me.id, other.id);
@@ -219,9 +252,10 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, params }) =>
     const [x, y] = pair(me.id, to);
     const f = await db.prepare("SELECT status FROM friends WHERE a = ? AND b = ?").bind(x, y).first<{ status: string }>();
     if (f?.status !== "accepted") return fail(403, "You can only message friends.");
+    if (await isBlocked(db, me.id, to)) return fail(403, "You can't message this player.");
     const recent = await db.prepare("SELECT COUNT(*) AS n FROM messages WHERE sender = ? AND created > ?").bind(me.id, Date.now() - 60_000).first<{ n: number }>();
     if ((recent?.n || 0) >= MSG_PER_MINUTE) return fail(429, "You're sending messages too fast. Wait a moment.");
-    const res = await db.prepare("INSERT INTO messages (sender, recipient, body, created) VALUES (?, ?, ?, ?)").bind(me.id, to, text, Date.now()).run();
+    const res = await db.prepare("INSERT INTO messages (sender, recipient, body, created) VALUES (?, ?, ?, ?)").bind(me.id, to, filterText(text), Date.now()).run();
     return reply({ ok: true, id: res.meta.last_row_id });
   }
 
@@ -231,6 +265,59 @@ export const onRequest: PagesFunction<Env> = async ({ request, env, params }) =>
               (SELECT COUNT(*) FROM friends WHERE (a = ?1 OR b = ?1) AND status = 'pending' AND requester != ?1) AS requests`)
       .bind(me.id).first<{ messages: number; requests: number }>();
     return reply(r || { messages: 0, requests: 0 });
+  }
+
+  if (path === "block" && method === "POST") {
+    const other = String((await body(request)).id || "");
+    if (!other || other === me.id) return fail(400, "Pick a player to block.");
+    const [x, y] = pair(me.id, other);
+    await db.batch([
+      db.prepare("INSERT OR IGNORE INTO blocks (blocker, blocked, created) VALUES (?, ?, ?)").bind(me.id, other, Date.now()),
+      db.prepare("DELETE FROM friends WHERE a = ? AND b = ?").bind(x, y),
+    ]);
+    return reply({ ok: true });
+  }
+
+  if (path === "unblock" && method === "POST") {
+    const other = String((await body(request)).id || "");
+    await db.prepare("DELETE FROM blocks WHERE blocker = ? AND blocked = ?").bind(me.id, other).run();
+    return reply({ ok: true });
+  }
+
+  if (path === "blocks" && method === "GET") {
+    const rows = await db.prepare(
+      "SELECT p.id, p.name FROM blocks k JOIN players p ON p.id = k.blocked WHERE k.blocker = ? ORDER BY k.created DESC").bind(me.id).all();
+    return reply({ blocked: rows.results });
+  }
+
+  if (path === "report" && method === "POST") {
+    const b = await body(request);
+    const target = String(b.id || "");
+    const reason = String(b.reason || "").slice(0, 200);
+    const other = await db.prepare("SELECT name FROM players WHERE id = ?").bind(target).first<{ name: string }>();
+    if (!other) return fail(404, "That player no longer exists.");
+    let msgId: number | null = null, msgBody: string | null = null;
+    if (b.messageId) {
+      const m = await db.prepare("SELECT id, body FROM messages WHERE id = ? AND sender = ? AND recipient = ?")
+        .bind(Number(b.messageId), target, me.id).first<{ id: number; body: string }>();
+      if (m) { msgId = m.id; msgBody = m.body; }
+    }
+    const recent = await db.prepare("SELECT COUNT(*) AS n FROM reports WHERE reporter = ? AND created > ?").bind(me.id, Date.now() - 3600_000).first<{ n: number }>();
+    if ((recent?.n || 0) >= 20) return fail(429, "Too many reports. Try again later.");
+    await db.prepare("INSERT INTO reports (reporter, target, target_name, message_id, message_body, reason, created) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(me.id, target, other.name, msgId, msgBody, reason, Date.now()).run();
+    return reply({ ok: true });
+  }
+
+  if (path === "account/delete" && method === "POST") {
+    await db.batch([
+      db.prepare("DELETE FROM messages WHERE sender = ?1 OR recipient = ?1").bind(me.id),
+      db.prepare("DELETE FROM friends WHERE a = ?1 OR b = ?1").bind(me.id),
+      db.prepare("DELETE FROM blocks WHERE blocker = ?1 OR blocked = ?1").bind(me.id),
+      db.prepare("DELETE FROM reports WHERE reporter = ?1").bind(me.id),
+      db.prepare("DELETE FROM players WHERE id = ?1").bind(me.id),
+    ]);
+    return reply({ ok: true });
   }
 
   return fail(404, "Unknown endpoint.");

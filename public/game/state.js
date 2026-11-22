@@ -31,7 +31,9 @@ function load() {
   return newState();
 }
 function save() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (_) { /* ignore */ }
+  const json = JSON.stringify(G);
+  try { localStorage.setItem(SAVE_KEY, json); } catch (_) { /* ignore */ }
+  if (typeof NATIVE !== "undefined") NATIVE.persist(SAVE_KEY, json);
 }
 function resetSave() { G = newState(); save(); }
 const GAME_VERSION = "0.4";

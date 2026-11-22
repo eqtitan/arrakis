@@ -12,7 +12,15 @@ const ON = {
   lastProfilePush: 0,
 };
 try { ON.cfg = JSON.parse(localStorage.getItem(ONLINE_KEY) || "null"); } catch (_) { ON.cfg = null; }
-function saveOnline() { try { localStorage.setItem(ONLINE_KEY, JSON.stringify(ON.cfg)); } catch (_) { /* ignore */ } }
+function saveOnline() {
+  const json = ON.cfg ? JSON.stringify(ON.cfg) : null;
+  try { if (json) localStorage.setItem(ONLINE_KEY, json); else localStorage.removeItem(ONLINE_KEY); } catch (_) { /* ignore */ }
+  NATIVE.persist(ONLINE_KEY, json);
+}
+// The installed apps aren't served from the website, so they call it by full address.
+// This must be the site where functions/api/sb is deployed with its D1 database.
+const NATIVE_SERVER = "https://arrakis-c06.pages.dev";
+const API_BASE = NATIVE.isNative ? `${NATIVE_SERVER}/api/sb/` : "/api/sb/";
 
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 function ago(ts) {
@@ -27,7 +35,7 @@ class ApiError extends Error { constructor(msg, status) { super(msg); this.statu
 async function api(path, opts = {}) {
   let res;
   try {
-    res = await fetch(`/api/sb/${path}`, {
+    res = await fetch(API_BASE + path, {
       method: opts.method || "GET",
       headers: { "content-type": "application/json", ...(ON.cfg ? { authorization: `Bearer ${ON.cfg.token}` } : {}) },
       body: opts.body ? JSON.stringify(opts.body) : undefined,

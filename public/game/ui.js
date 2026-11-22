@@ -412,7 +412,7 @@ const ACTIONS = {
     closeModal();
     const color = RARITY[RARITY_KEYS[best]].color;
     FX.portal(innerWidth / 2, innerHeight / 2, color, 1100);
-    if (best >= 2) setTimeout(() => FX.flash(color), 950);
+    if (best >= 2) setTimeout(() => { FX.flash(color); NATIVE.haptic("heavy"); }, 950);
     setTimeout(() => showSummonResult(d, res, best), 1000);
   },
 };
@@ -647,7 +647,7 @@ async function showEvents(events, color = "#7dff7a") {
       if (e.type === "dmg") {
         FX.burst(c.x, c.y, e.dot ? "#7dff7a" : color, e.crit ? 30 : 16, e.crit ? 1.4 : 1);
         hitShake(key);
-        if (e.crit) { FX.shake(7); FX.flash(color); }
+        if (e.crit) { FX.shake(7); FX.flash(color); NATIVE.haptic("medium"); }
       } else if (e.type === "heal") FX.rise(c.x, c.y, "#7dff7a", 14);
       else if (e.type === "fx") {
         if (e.t === "shield") FX.burst(c.x, c.y, "#7fc8ff", 10, 0.5);
@@ -772,6 +772,7 @@ function finishBattle() {
     const gear = rollStageGear(idx);
     if (first) G.cleared++;
     G.stats.wins++; bumpQuest("win"); save();
+    NATIVE.haptic("success");
     if (typeof pushProfile === "function") pushProfile();
     const canReplay = G.settings.autoReplay;
     modal(`<div class="result-title victory">VICTORY</div>
@@ -794,5 +795,18 @@ function finishBattle() {
       <button class="btn grow" data-act="resultBack" data-to="heroes">Heroes</button></div>`);
   }
 }
+
+// Android hardware back button: close dialogs, leave battles, step back, then exit.
+const BACK_TO = { hero: "heroes", equip: "hero", friend: "friends", chat: "friend" };
+NATIVE.onBack(() => {
+  if (!$modal.classList.contains("hidden")) { closeModal(); return; }
+  if (B) { if (!B.finished) ACTIONS.bFlee(); return; }
+  if (UI.screen === "chat" && typeof stopChat === "function") stopChat();
+  if (UI.screen === "prep") UI.screen = (UI.prep && UI.prep.back) || "home";
+  else if (BACK_TO[UI.screen]) UI.screen = BACK_TO[UI.screen];
+  else if (UI.screen !== "home") UI.screen = "home";
+  else return NATIVE.exit();
+  render();
+});
 
 render();
