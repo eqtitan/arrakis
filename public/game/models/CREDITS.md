@@ -8,7 +8,6 @@ All models in this folder are by **Quaternius** (https://quaternius.com), releas
 | `hooded_adventurer.glb` | https://poly.pizza/m/y9KWOVG21R |
 | `adventurer.glb` | https://poly.pizza/m/5EGWBMpuXq |
 | `monarch.glb` | https://poly.pizza/m/I1gTjmuK2m |
-| `rogue.glb` | https://poly.pizza/m/DgOCW9ZCRJ |
 | `yeti.glb` | https://poly.pizza/m/ceRHrn8HHE |
 
 These copies are mesh-optimized (meshopt compression), taken from the CC0 npm package

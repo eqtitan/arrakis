@@ -51,7 +51,12 @@ const W3D = (() => {
   function preload() {
     const loader = new GLTFLoader();
     loader.setMeshoptDecoder(MeshoptDecoder);
-    const jobs = Object.entries(FILES).map(([base, file]) => loader.loadAsync(`models/${file}.glb`).then((g) => {
+    // Pages that can't serve .glb files may embed them as base64 in window.SB_MODEL_DATA.
+    const embedded = window.SB_MODEL_DATA || {};
+    const load = (file) => embedded[file]
+      ? loader.parseAsync(Uint8Array.from(atob(embedded[file]), (c) => c.charCodeAt(0)).buffer, "")
+      : loader.loadAsync(`models/${file}.glb`);
+    const jobs = Object.entries(FILES).map(([base, file]) => load(file).then((g) => {
       g.scene.updateMatrixWorld(true);
       let headY = 1.55;
       g.scene.traverse((o) => { if (o.isBone && o.name === "Head") { const v = new T.Vector3(); o.getWorldPosition(v); headY = v.y; } });
