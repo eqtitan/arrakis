@@ -737,11 +737,18 @@ function renderBattle() {
     : `<div class="hint">${G.settings.auto ? "🤖 Auto battle" : a && a.side === "B" ? "Enemy turn…" : "…"}</div>`;
 }
 
+// Floating numbers rise from above the name tag. Several hits on the same unit stack
+// upward (and alternate slightly left/right) instead of drawing on top of each other.
 function floatAt(key, text, cls) {
   const el = unitEl(key);
   if (!el) return;
+  // Newest number starts at the bottom; earlier ones are pushed up a row.
+  const live = [...el.querySelectorAll(".float")];
+  for (const o of live) o.style.setProperty("--fy", `${(parseFloat(o.style.getPropertyValue("--fy")) || 0) - 30}px`);
   const f = document.createElement("div");
   f.className = "float " + cls; f.textContent = text;
+  f.style.setProperty("--fy", "0px");
+  f.style.setProperty("--fx", `${live.length % 2 ? 16 : live.length ? -16 : 0}px`);
   el.appendChild(f);
   setTimeout(() => f.remove(), 1100);
 }

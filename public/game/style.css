@@ -435,3 +435,9 @@ h3 { letter-spacing: .3px; color: #f6e6c2; }
 .float.weak { color: #c9d4e6; font-size: 19px; }
 .float.strong { color: #ff8a4a; font-size: 24px; }
 .float.text { font-size: 13px; color: #dcebff; -webkit-text-stroke: 0; }
+/* stacked floats sit above the name tag and rise clear of it */
+.float { top: auto; bottom: calc(100% + 4px); transform: translate(calc(-50% + var(--fx, 0px)), var(--fy, 0px)); animation: floatup2 1.1s ease-out forwards; z-index: 4; }
+.ov .unit.ov3d .float { top: auto; }
+@keyframes floatup2 { 0% { opacity: 0; transform: translate(calc(-50% + var(--fx, 0px)), calc(var(--fy, 0px) + 8px)) scale(.8); }
+  12% { opacity: 1; transform: translate(calc(-50% + var(--fx, 0px)), var(--fy, 0px)) scale(1.08); }
+  70% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--fx, 0px)), calc(var(--fy, 0px) - 34px)) scale(1); } }
