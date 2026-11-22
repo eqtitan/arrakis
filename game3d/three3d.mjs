@@ -132,7 +132,7 @@ const W3D = (() => {
     geo.rod = new T.CylinderGeometry(0.5, 0.5, 1, 18);
     geo.disc = new T.CylinderGeometry(0.5, 0.5, 1, 36);
     geo.cone = new T.ConeGeometry(0.5, 1, 18);
-    geo.taper = new T.CylinderGeometry(0.5, 0.32, 1, 28, 3);
+    geo.taper = new T.CylinderGeometry(0.5, 0.32, 1, 36, 4);
     geo.bell = new T.CylinderGeometry(0.22, 0.5, 1, 16);
     geo.ring = new T.TorusGeometry(0.5, 0.07, 8, 40);
     geo.hook = new T.TorusGeometry(0.5, 0.18, 6, 14, Math.PI * 1.25);
@@ -168,7 +168,7 @@ const W3D = (() => {
   // A curved cloth sheet hanging down from y = 0: width w0 at the top flaring to w1 at the
   // bottom, bowed back (-Z) by `curve`. Cached; drawn double-sided.
   const sheets = new Map();
-  function sheet(w0, w1, h, curve, sx = 10, sy = 4) {
+  function sheet(w0, w1, h, curve, sx = 16, sy = 8) {
     const key = [w0, w1, h, curve].join("|");
     if (sheets.has(key)) return sheets.get(key);
     const pos = [], uv = [], idx = [];
@@ -1154,7 +1154,7 @@ const W3D = (() => {
         }
         const tip = pts[12];
         P(lash, "sphere", [tip.x, tip.y + 0.03, tip.z], [0.09, 0.07, 0.09], C.glowC);
-        liveMesh(g, live, "cone", [tip.x, tip.y + 0.12, tip.z], [0.08, 0.2, 0.08], C.glowC, flicker);
+        P(lash, "cone", [tip.x, tip.y + 0.12, tip.z], [0.08, 0.2, 0.08], C.glowC); // the flame rides on the lash
       });
     }
     // ---- left hand: shield or second dagger ----
