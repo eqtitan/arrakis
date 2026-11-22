@@ -6,10 +6,9 @@ name: Sigilbound Mobile
 # iOS: compiles the app for the simulator to prove the project builds; signed
 # TestFlight builds need an Apple Developer account (see mobile/README.md).
 
+# Runs once per push (not again for the pull request) to halve dependency downloads.
 on:
   push:
-    paths: ["public/game/**", "mobile/**", ".github/workflows/sigilbound-mobile.yml"]
-  pull_request:
     paths: ["public/game/**", "mobile/**", ".github/workflows/sigilbound-mobile.yml"]
   workflow_dispatch:
 
@@ -31,6 +30,10 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          # Save the dependency cache on every branch, so repeat builds don't re-download
+          # everything from Maven Central (which rate-limits CI runners).
+          cache-read-only: false
       - name: Copy the game into the Android project
         working-directory: mobile
         run: |
@@ -38,7 +41,11 @@ jobs:
           npm run sync:android
       - name: Build debug APK
         working-directory: mobile/android
-        run: ./gradlew assembleDebug --no-daemon
+        # Retry rate-limited (429) and flaky downloads with back-off.
+        run: >
+          ./gradlew assembleDebug --no-daemon
+          -Dorg.gradle.internal.repository.max.tentatives=6
+          -Dorg.gradle.internal.repository.initial.backoff=2000
       - name: Rename APK
         run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk Sigilbound.apk
       - uses: actions/upload-artifact@v4

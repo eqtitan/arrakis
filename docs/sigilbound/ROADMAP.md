@@ -48,6 +48,7 @@ _Last updated: 2026-11-22._
 - [ ] Note the changes in the release notes.
 
 ## Decisions log
+- **2026-11-22:** Focus is the Android app (APK). The web build stays as the shared code base and as the app's engine, but new work is checked and released through the APK.
 - **2026-11-22:** Fully free to play, with no shop or paid currency.
 - **2026-11-22:** Native apps built by wrapping the web game with Capacitor, so no computer is needed. The Unity port is parked.
 - **2026-11-22:** 3D heroes use CC0 Quaternius models recolored per hero. Every asset must be CC0 or owned, with provenance recorded in `models/CREDITS.md`.
