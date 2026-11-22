@@ -427,3 +427,11 @@ h3 { letter-spacing: .3px; color: #f6e6c2; }
 .summary-grid b { font-family: var(--display); color: var(--gold); }
 .setting { border-bottom-color: #3a2f22; }
 .bubble { background: linear-gradient(180deg, #2f2639, #241d2e); border: 1px solid #4f4030; }
+/* damage numbers: outlined so they read over bright battlefields */
+.float { color: #fff; font-size: 22px; -webkit-text-stroke: 1px #000; paint-order: stroke fill;
+  text-shadow: 0 2px 0 #000, 0 0 3px #000, 0 0 10px #000c; letter-spacing: .5px; }
+.float.crit { color: #ffd23a; font-size: 28px; -webkit-text-stroke: 1.5px #3a1a00; text-shadow: 0 2px 0 #000, 0 0 12px #ff9a2a; }
+.float.heal { color: #7dff9a; }
+.float.weak { color: #c9d4e6; font-size: 19px; }
+.float.strong { color: #ff8a4a; font-size: 24px; }
+.float.text { font-size: 13px; color: #dcebff; -webkit-text-stroke: 0; }
