@@ -299,3 +299,131 @@ textarea.code { width: 100%; height: 64px; background: var(--panel2); color: var
 .summary-grid div { background: var(--panel2); border-radius: 12px; padding: 10px 4px; text-align: center; display: flex; flex-direction: column; }
 .summary-grid b { font-size: 24px; }
 .summary-grid span { font-size: 11px; color: var(--dim); }
+
+/* =====================================================================
+   UI SKIN — "Gilded Sigil": dark arcane stone, burnished gold trim,
+   framed panels with corner filigree, serif display type.
+   Everything here is CSS/inline SVG drawn for this game (no external assets).
+   ===================================================================== */
+:root {
+  --bg: #0f0c15; --panel: #1b1624; --panel2: #251e31; --line: #4a3d2e;
+  --text: #f1e9da; --dim: #b0a48f; --gold: #f2c45c; --accent: #c9a25a;
+  --trim: #b88a3e; --trim-hi: #ffe2a0; --trim-lo: #6b4b1c;
+  --display: "Cinzel", "Cormorant SC", "Trajan Pro", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Noto Serif", serif;
+  --c-tl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='%23d9ac5a' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M1.5 15V5.5a4 4 0 0 1 4-4H15'/%3E%3Cpath d='M5 11c0-3.3 2.7-6 6-6' opacity='.7'/%3E%3C/g%3E%3Ccircle cx='4.6' cy='4.6' r='1.7' fill='%23ffe2a0'/%3E%3C/svg%3E");
+  --c-tr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg transform='matrix(-1 0 0 1 24 0)'%3E%3Cg fill='none' stroke='%23d9ac5a' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M1.5 15V5.5a4 4 0 0 1 4-4H15'/%3E%3Cpath d='M5 11c0-3.3 2.7-6 6-6' opacity='.7'/%3E%3C/g%3E%3Ccircle cx='4.6' cy='4.6' r='1.7' fill='%23ffe2a0'/%3E%3C/g%3E%3C/svg%3E");
+  --c-bl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg transform='matrix(1 0 0 -1 0 24)'%3E%3Cg fill='none' stroke='%23d9ac5a' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M1.5 15V5.5a4 4 0 0 1 4-4H15'/%3E%3Cpath d='M5 11c0-3.3 2.7-6 6-6' opacity='.7'/%3E%3C/g%3E%3Ccircle cx='4.6' cy='4.6' r='1.7' fill='%23ffe2a0'/%3E%3C/g%3E%3C/svg%3E");
+  --c-br: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg transform='matrix(-1 0 0 -1 24 24)'%3E%3Cg fill='none' stroke='%23d9ac5a' stroke-width='1.3' stroke-linecap='round'%3E%3Cpath d='M1.5 15V5.5a4 4 0 0 1 4-4H15'/%3E%3Cpath d='M5 11c0-3.3 2.7-6 6-6' opacity='.7'/%3E%3C/g%3E%3Ccircle cx='4.6' cy='4.6' r='1.7' fill='%23ffe2a0'/%3E%3C/g%3E%3C/svg%3E");
+}
+body {
+  background:
+    radial-gradient(ellipse 120% 60% at 50% 0%, #2d2140 0%, transparent 60%),
+    radial-gradient(ellipse 100% 50% at 50% 100%, #1d1424 0%, transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400'%3E%3Cg fill='none' stroke='%23c9a25a' stroke-opacity='.06'%3E%3Ccircle cx='200' cy='200' r='170'/%3E%3Ccircle cx='200' cy='200' r='150' stroke-dasharray='3 7'/%3E%3Ccircle cx='200' cy='200' r='92'/%3E%3Cpath d='M200 30 347 285H53Z'/%3E%3Cpath d='M200 370 53 115h294Z'/%3E%3C/g%3E%3C/svg%3E") center 140px / 520px no-repeat fixed,
+    var(--bg);
+}
+h1, h2, h3, .logo, .result-title, .skillname { font-family: var(--display); }
+h2 { letter-spacing: .5px; background: linear-gradient(180deg, #fff1c9, #e3ac4a 70%, #b98030); -webkit-background-clip: text; background-clip: text; color: transparent; }
+h3 { letter-spacing: .3px; color: #f6e6c2; }
+.logo { font-weight: 700; letter-spacing: 5px; filter: drop-shadow(0 2px 0 #3a2508) drop-shadow(0 0 14px #f2c45c44); }
+.hero-banner::after { content: ""; display: block; height: 10px; margin: 8px auto 0; width: 220px;
+  background: linear-gradient(90deg, transparent, var(--trim) 30%, var(--trim-hi) 50%, var(--trim) 70%, transparent) center / 100% 1px no-repeat,
+    radial-gradient(circle, var(--trim-hi) 0 3px, transparent 3.5px) center / 10px 10px no-repeat; }
+
+/* framed panels */
+.card, .mbox { position: relative; border: 1px solid #5c4a30;
+  background: linear-gradient(180deg, #221b2e 0%, #1a1523 100%);
+  box-shadow: inset 0 0 0 1px #0008, inset 0 0 0 3px #ffffff06, 0 6px 16px #0009; }
+.card::before, .mbox::before { content: ""; position: absolute; inset: 3px; pointer-events: none; border-radius: inherit; z-index: 0;
+  background: var(--c-tl) left top / 20px 20px no-repeat, var(--c-tr) right top / 20px 20px no-repeat,
+    var(--c-bl) left bottom / 20px 20px no-repeat, var(--c-br) right bottom / 20px 20px no-repeat; }
+.card > *, .mbox > * { position: relative; }
+.mbox { border-radius: 16px; border-color: #7a5f35; background: linear-gradient(180deg, #2a2136 0%, #1a1523 100%);
+  box-shadow: 0 0 0 1px #000, 0 0 0 4px #2a1f14, 0 0 0 5px #7a5f35, 0 20px 50px #000c; }
+.mbox::before { inset: 5px; }
+
+/* top bar: carved bar with a gold rule */
+.topbar { background: linear-gradient(180deg, #1d1726f0, #120e19f0); border-bottom: 0;
+  box-shadow: 0 1px 0 #000, 0 2px 0 var(--trim-lo), 0 3px 0 #0006; }
+.topbar::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--trim) 20%, var(--trim-hi) 50%, var(--trim) 80%, transparent); }
+.cur { background: linear-gradient(180deg, #0d0a12, #1c1626); border: 1px solid #5c4a30; box-shadow: inset 0 1px 2px #000; color: #f6e9cf; }
+
+/* bottom nav: stone bar, gold edge, glowing active tab */
+.nav { background: linear-gradient(180deg, #1a1522, #0d0a12); border-top: 0; box-shadow: 0 -1px 0 #000, 0 -2px 0 var(--trim-lo), 0 -8px 20px #0008; }
+.nav::before { content: ""; position: absolute; top: -2px; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--trim) 15%, var(--trim-hi) 50%, var(--trim) 85%, transparent); }
+.nav button { color: #9b8f7a; font-family: var(--display); letter-spacing: .3px; }
+.nav button .ic { filter: grayscale(.55) brightness(.85); transition: filter .2s, transform .2s; }
+.nav button.on { color: var(--gold); }
+.nav button.on .ic { filter: drop-shadow(0 0 6px #f2c45caa); transform: translateY(-2px) scale(1.08); }
+.nav button.on::before { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--trim-hi), transparent); box-shadow: 0 0 10px var(--gold); }
+.nav button.on::after { content: ""; position: absolute; inset: 4px 14% 2px; border-radius: 12px; z-index: -1;
+  background: radial-gradient(ellipse at 50% 20%, #f2c45c26, transparent 70%); }
+
+/* buttons: gilded plates */
+.btn { font-family: var(--display); letter-spacing: .4px; color: #2a1a05; border: 1px solid #4a3110;
+  background: linear-gradient(180deg, #fde3a0 0%, #e2b14e 38%, #b98330 62%, #d9a64a 100%);
+  box-shadow: inset 0 1px 0 #fff6d4, inset 0 -2px 0 #8a5d1c, 0 2px 0 #3a2508, 0 3px 8px #0007; text-shadow: 0 1px 0 #ffe9b066; }
+.btn:active { transform: translateY(1px); box-shadow: inset 0 1px 0 #fff6d4, inset 0 -1px 0 #8a5d1c, 0 1px 0 #3a2508; }
+.btn.sec { color: #f3e3c3; text-shadow: 0 1px 0 #000; border: 1px solid #6b5432;
+  background: linear-gradient(180deg, #3a2f45 0%, #261e30 55%, #1c1624 100%);
+  box-shadow: inset 0 1px 0 #ffffff1a, inset 0 0 0 1px #00000055, 0 2px 0 #08060b, 0 3px 6px #0006; }
+.btn.blue { border-color: #0f2c52; background: linear-gradient(180deg, #a6d6ff 0%, #4aa3ff 40%, #2563b5 70%, #3f8ae0 100%);
+  box-shadow: inset 0 1px 0 #e6f4ff, inset 0 -2px 0 #163f7a, 0 2px 0 #0b1d38, 0 3px 8px #0007; text-shadow: 0 1px 0 #0b2b55; }
+.btn.red { border-color: #4a0f0f; background: linear-gradient(180deg, #ffb0a0 0%, #ff6a5a 40%, #b52a2a 70%, #e0503e 100%);
+  box-shadow: inset 0 1px 0 #ffe0d8, inset 0 -2px 0 #6e1414, 0 2px 0 #2a0606, 0 3px 8px #0007; text-shadow: 0 1px 0 #4a0808; }
+.chip { font-family: var(--display); background: linear-gradient(180deg, #2a2236, #1b1624); border-color: #5c4a30; color: #d8cbb2; box-shadow: inset 0 1px 0 #ffffff12; }
+.chip.on { border-color: var(--gold); color: var(--gold); background: linear-gradient(180deg, #3d3020, #241c14); box-shadow: 0 0 10px #f2c45c33, inset 0 1px 0 #ffe2a033; }
+.tgl.on { background: linear-gradient(180deg, #fde3a0, #c99236); color: #2a1a05; }
+
+/* portraits: gilt bezel around the rarity frame */
+.por { box-shadow: 0 0 0 1px #000, 0 0 0 3px #2b2116, 0 0 0 4px #8a6a36, 0 6px 12px #000a; }
+.por .el { border: 1px solid var(--trim); box-shadow: 0 1px 3px #000; }
+.por .lv { border: 1px solid #6b5432; background: linear-gradient(180deg, #2a2236, #0d0a12); color: #f6e6c2; }
+.hcell.sel .por { box-shadow: 0 0 0 1px #000, 0 0 0 3px var(--gold), 0 0 16px #f2c45c88; }
+.hcell .nm { font-family: var(--display); letter-spacing: .2px; color: #ecdcbc; }
+
+/* progress bars: gold in a recessed groove */
+.bar { height: 7px; background: #07050a; box-shadow: inset 0 1px 2px #000, 0 0 0 1px #3a2f22; }
+.bar > i { background: linear-gradient(180deg, #ffe7a6, #d99b2f 60%, #a8701f); box-shadow: 0 0 6px #f2c45c66; }
+.quest { border-bottom: 1px solid #3a2f22; }
+
+/* campaign stages: engraved stone tiles */
+.stage { font-family: var(--display); background: linear-gradient(180deg, #2d2538, #1a1522); border: 1px solid #4f4030;
+  box-shadow: inset 0 1px 0 #ffffff14, inset 0 -2px 0 #0006, 0 2px 4px #0007; }
+.stage.done { border-color: #3f8a52; color: #8be0a0; background: linear-gradient(180deg, #23322a, #151d18); }
+.stage.next { color: #2a1a05; border-color: #5a3d12; background: linear-gradient(180deg, #fde3a0, #d9a64a 55%, #b98330); }
+.stage.boss { box-shadow: inset 0 0 0 1px #c0392b88, 0 0 8px #c0392b55; }
+
+/* hero detail */
+.stat-grid div { border-bottom: 1px dashed #4a3d2e; }
+.slot, .gearrow { background: linear-gradient(180deg, #2a2236, #1a1522); border-color: #4f4030; box-shadow: inset 0 1px 0 #ffffff10, inset 0 0 12px #0006; }
+.skillrow { border-bottom-color: #3a2f22; }
+.skillrow b { font-family: var(--display); color: #f6e6c2; }
+
+/* battle chrome */
+.bhead { background: linear-gradient(180deg, #000a, transparent); }
+.bhead .info { font-family: var(--display); letter-spacing: .3px; text-shadow: 0 1px 2px #000; }
+.skillbar { background: linear-gradient(180deg, #1a1522f2, #0b0810f8); border-top: 0; box-shadow: 0 -1px 0 #000, 0 -2px 0 var(--trim-lo); position: relative; }
+.skillbar::before { content: ""; position: absolute; top: -2px; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--trim) 15%, var(--trim-hi) 50%, var(--trim) 85%, transparent); }
+.skill { border: 1px solid #5c4a30; background: linear-gradient(180deg, #2f2639, #1b1624);
+  box-shadow: inset 0 1px 0 #ffffff14, inset 0 0 0 1px #0007, 0 3px 6px #0008; }
+.skill b { font-family: var(--display); letter-spacing: .3px; color: #f6e6c2; }
+.skill.sel { border-color: var(--gold); background: linear-gradient(180deg, #4a3a22, #2a2014);
+  box-shadow: 0 0 0 1px #000, 0 0 14px #f2c45c55, inset 0 1px 0 #ffe2a044; }
+.skillname { color: transparent; background: linear-gradient(180deg, #fff1c9, #f2c45c 60%, #c88a2a); -webkit-background-clip: text; background-clip: text;
+  filter: drop-shadow(0 2px 0 #000) drop-shadow(0 0 8px #000); text-shadow: none; }
+.result-title.victory { background: linear-gradient(180deg, #fff1c9, #f2c45c 55%, #b9802c); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 0 #3a2508) drop-shadow(0 0 16px #f2c45c55); }
+.result-title.defeat { color: #ff6a5a; filter: drop-shadow(0 2px 0 #2a0606); }
+
+/* inputs, toasts, misc */
+.inp, textarea.code { background: #0d0a12; border-color: #5c4a30; box-shadow: inset 0 1px 3px #000; }
+#toast div { background: linear-gradient(180deg, #2a2136f2, #15111cf2); border: 1px solid #7a5f35; box-shadow: 0 6px 16px #000a; }
+.update-card { border-color: var(--gold); background: linear-gradient(90deg, #4a3a22, #1f1828); }
+.summary-grid div { background: linear-gradient(180deg, #2a2236, #1a1522); border: 1px solid #4f4030; }
+.summary-grid b { font-family: var(--display); color: var(--gold); }
+.setting { border-bottom-color: #3a2f22; }
+.bubble { background: linear-gradient(180deg, #2f2639, #241d2e); border: 1px solid #4f4030; }
