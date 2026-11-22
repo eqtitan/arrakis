@@ -39,7 +39,7 @@ const W3D = (() => {
     hooded: { DarkBrown: "armor", Black: "cloth", Brown: "cloth", LightBrown: "accent", Gold: "accent", Metal: "trim", Metal_Dark: "blade", Brown2: "wood", White: "hair", Skin: "skin" },
     adventurer: { LightGreen: "armor", Green: "cloth", Brown: "pants", Brown2: "pants", Black: "boot", Grey: "boot", Hair: "hair", Eyebrows: "hair", Gold: "accent", Skin: "skin", Eye: "eye" },
     monarch: { Metal: "armor", Metal_Dark: "trim", Blue: "cloth", DarkBrown: "pants", Beige: "accent", Gold: "crown", Hair_White: "hair", Skin: "skin", Eye: "eye" },
-    titan: { Yeti_Main: "stone", Yeti_Secondary: "stoneDark", Eye_White: "glow", Eye_Black: "core", Yeti_Teeth: "fang", Tongue: "maw" },
+    titan: { Yeti_Main: "stone", Yeti_Secondary: "stoneDark", Eye_White: "socket", Eye_Black: "maw", Yeti_Teeth: "fang", Tongue: "tongue" },
   };
   const ANIMS = {
     idle: ["Idle_Sword", "Idle"], melee: ["Sword_Slash", "Punch_Right", "Punch"], cast: ["Gun_Shoot", "Interact", "Weapon", "Punch"],
@@ -259,7 +259,7 @@ const W3D = (() => {
     const model = cloneSkinned(lib.scene);
     // Titan: dark basalt; its eyes, maw and (in crackMaterial) seams glow in the day's element.
     const ec = el && ELEMENTS[el] ? ELEMENTS[el].color : "#e8553a";
-    const colors = base === "titan" ? { stone: "#4a4542", stoneDark: "#2a2624", fang: "#3a3430" } : roleColors(L, hollow);
+    const colors = base === "titan" ? { stone: "#34302d", stoneDark: "#1f1c1a", fang: "#4a443e", socket: "#141110", tongue: "#120c0a" } : roleColors(L, hollow);
     const roles = ROLES[base];
     const showCrown = base === "monarch" && L && L.gear === "crown";
     model.traverse((o) => {
@@ -269,14 +269,12 @@ const W3D = (() => {
         const role = roles[m.name];
         const c = m.clone();
         if (role === "crown" && !showCrown) { c.visible = false; return c; }
-        if (role === "glow" || role === "core" || role === "maw") {
-          const col = role === "core" ? mix(ec, "#ffffff", 0.55) : role === "maw" ? mul(ec, 0.7) : ec;
-          c.color.set(col); c.emissive = new T.Color(col); c.emissiveIntensity = role === "maw" ? 0.9 : 1.6; return c;
-        }
+        if (role === "maw") { c.color.set(mul(ec, 0.5)); c.emissive = new T.Color(ec); c.emissiveIntensity = 0.8; return c; }
         if (role === "eye" && (hollow || (L && L.glow))) { c.color.set(colors.eye); c.emissive = new T.Color(colors.eye); c.emissiveIntensity = 1.5; return c; }
         if (role && role !== "keep" && colors[role]) c.color.set(colors[role]);
         else if (hollow) c.color.lerp(new T.Color("#2e1f33"), 0.5);
         if (role === "armor" && base === "monarch") { c.metalness = 0.2; c.roughness = 0.55; }
+        if (base === "titan") { c.metalness = 0; c.roughness = 0.95; }
         if (role === "blade" || role === "trim") { c.metalness = 0.3; c.roughness = 0.5; }
         return c;
       };
@@ -725,15 +723,16 @@ float cNoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * 
   return mix(mix(mix(cHash(i), cHash(i + vec3(1,0,0)), f.x), mix(cHash(i + vec3(0,1,0)), cHash(i + vec3(1,1,0)), f.x), f.y),
              mix(mix(cHash(i + vec3(0,0,1)), cHash(i + vec3(1,0,1)), f.x), mix(cHash(i + vec3(0,1,1)), cHash(i + vec3(1,1,1)), f.x), f.y), f.z); }`)
         .replace("#include <emissivemap_fragment>", `#include <emissivemap_fragment>
-{ vec3 cp = vCrackP * 7.0; float n = cNoise(cp) * 0.65 + cNoise(cp * 2.3) * 0.35;
-  float line = 1.0 - smoothstep(0.0, 0.035, abs(n - 0.5));
-  totalEmissiveRadiance += uCrack * line * 2.2 * uPulse; diffuseColor.rgb *= 1.0 - line * 0.6; }`);
+{ vec3 cp = vCrackP * 4.0; float n = cNoise(cp) * 0.8 + cNoise(cp * 3.1) * 0.2;
+  float line = 1.0 - smoothstep(0.012, 0.045, abs(n - 0.5));
+  totalEmissiveRadiance += uCrack * line * 1.6 * uPulse; diffuseColor.rgb *= 1.0 - line * 0.8; }`);
     };
     m.customProgramCacheKey = () => "sb-crack";
     fx.push((t) => { uniforms.uPulse.value = 0.75 + Math.sin(t * 1.6) * 0.25; });
     return m;
   }
 
+  const EYE = { x: 0.2, y: 0.12, z: 0.42 }; // Titan eye position in its Head-bone space
   function buildTitanKit(model, el, fx) {
     const ec = ELEMENTS[el] ? ELEMENTS[el].color : "#e8553a";
     model.traverse((o) => {
@@ -755,9 +754,13 @@ float cNoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * 
       const s = socket(bones.Head, model, [0, 0, 0], null);
       s.add(build("H", (grp) => {
         for (const sx of [-1, 1]) {
-          part("cone", grp, [sx * 0.3, 0.42, -0.02], [0.16, 0.42, 0.16], rock, [0, 0, sx * -38]);
-          part("cone", grp, [sx * 0.46, 0.68, 0.08], [0.1, 0.32, 0.1], rockD, [-30, 0, sx * -12]);
-          part("cone", grp, [sx * 0.52, 0.86, 0.18], [0.035, 0.1, 0.035], g, [-50, 0, 0]);
+          part("cone", grp, [sx * 0.34, 0.5, -0.02], [0.22, 0.5, 0.22], rock, [0, 0, sx * -42]);
+          part("cone", grp, [sx * 0.56, 0.8, 0.08], [0.14, 0.4, 0.14], rockD, [-30, 0, sx * -14]);
+          part("cone", grp, [sx * 0.62, 1.02, 0.2], [0.05, 0.14, 0.05], g, [-50, 0, 0]);
+          // Heavy brow ridge slanting down towards the nose, and a slit of glowing eye beneath it.
+          part("box", grp, [sx * EYE.x, EYE.y + 0.09, EYE.z + 0.02], [0.34, 0.1, 0.16], rock, [12, 0, sx * -16]);
+          part("box", grp, [sx * EYE.x, EYE.y, EYE.z + 0.04], [0.22, 0.05, 0.04], g, [0, 0, sx * -14]);
+          part("sphere", grp, [sx * EYE.x, EYE.y, EYE.z + 0.03], [0.36, 0.16, 0.06], gh);
         }
         part("octa", grp, [0, 0.52, -0.12], [0.18, 0.34, 0.14], rockD, [-25, 0, 0]);
         part("octa", grp, [0, 0.38, -0.3], [0.14, 0.26, 0.12], rock, [-45, 0, 0]);
