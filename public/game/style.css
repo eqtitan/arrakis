@@ -268,3 +268,17 @@ textarea.code { width: 100%; height: 64px; background: var(--panel2); color: var
 .btime { display: block; font-size: 10px; opacity: .6; margin-top: 2px; text-align: right; }
 .cday { align-self: center; font-size: 11px; color: var(--dim); margin: 6px 0; }
 .chatbar { display: flex; gap: 8px; }
+
+/* ---------- 3D battles ---------- */
+.battle.b3d { background: #120e1a; }
+.stage3d { position: relative; flex: 1; overflow: hidden; min-height: 0; }
+.stage3d .w3d-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.stage3d .ov { position: absolute; inset: 0; pointer-events: none; }
+.ov .unit.ov3d { position: absolute; left: 0; top: 0; width: 86px; max-width: none; padding: 0; background: none; border: 0; pointer-events: auto; justify-content: flex-start; will-change: transform; }
+.ov .unit.ov3d.titan { width: 150px; }
+.ov .unit.ov3d .uname { text-shadow: 0 1px 2px #000, 0 0 4px #000; }
+.ov .unit.ov3d.dead { opacity: 0; pointer-events: none; transition: opacity .6s; }
+.ov .unit.ov3d.target, .ov .unit.ov3d.active { animation: none; transform-origin: center; }
+.ov .unit.ov3d .float { top: 0; }
+.stage3d .skillname { position: absolute; left: 0; right: 0; bottom: 34px; pointer-events: none; }
+.stage3d .bdesc { position: absolute; left: 0; right: 0; bottom: 8px; pointer-events: none; }

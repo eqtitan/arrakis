@@ -136,6 +136,7 @@ const SCREENS = {
       <div class="row" style="justify-content:center;gap:16px;margin-top:6px">
         <button class="chip" data-act="showHelp">How to play</button>
         <button class="chip" data-act="saveCode">Save code</button>
+        <button class="chip" data-act="toggleGfx">Battles: ${G.settings.flat ? "2D" : "3D"}</button>
         <button class="chip" data-act="askReset">Reset save</button></div>`;
   },
 
@@ -437,6 +438,10 @@ Object.assign(ACTIONS, {
       <div>💸 <b>Free</b>: There's no shop. Every shard is earned by playing.</div></div>
       <button class="btn" style="width:100%;margin-top:12px" data-act="closeModal">Got it</button>`);
   },
+  toggleGfx() {
+    G.settings.flat = !G.settings.flat; save();
+    toast(G.settings.flat ? "Battles will use 2D art (lighter on older phones)" : "Battles will use 3D");
+  },
   saveCode() {
     const code = exportSave();
     modal(`<h3>Save code</h3>
@@ -486,11 +491,11 @@ Object.assign(ACTIONS, {
     closeModal();
     if (!B) return;
     if (B.mode === "titan") { B.battle.over = true; B.battle.result = "timeout"; finishBattle(); }
-    else { B.token = null; B = null; FX.clear(); G.settings.autoReplay = false; render(); }
+    else { B.token = null; B = null; FX.clear(); W3D.unmount(); G.settings.autoReplay = false; render(); }
   },
   resultNext() { closeModal(); const idx = Math.min(G.cleared, TOTAL_STAGES - 1); startBattle({ mode: "stage", idx }); },
   resultReplay(d) { closeModal(); startBattle({ mode: "stage", idx: +d.idx }); },
-  resultBack(d) { closeModal(); FX.clear(); B = null; UI.screen = d.to || "campaign"; render(); },
+  resultBack(d) { closeModal(); FX.clear(); W3D.unmount(); B = null; UI.screen = d.to || "campaign"; render(); },
   resultStopReplay() { G.settings.autoReplay = false; save(); if (B) B.replayTimer && clearTimeout(B.replayTimer); render(); ACTIONS.resultBack({ to: "campaign" }); },
 });
 
@@ -516,7 +521,8 @@ function startBattle(cfg) {
   } else {
     battle = new Battle(allies, stageWaves(cfg.idx).map((w) => w.map(unitFromEnemy)));
   }
-  B = { id: ++battleSeq, battle, mode: cfg.mode, idx: cfg.idx, token: {}, actor: null, sel: 0, awaiting: false, skillName: "" };
+  B = { id: ++battleSeq, battle, mode: cfg.mode, idx: cfg.idx, token: {}, actor: null, sel: 0, awaiting: false, skillName: "",
+    use3d: !G.settings.flat && typeof W3D !== "undefined" && W3D.supported() };
   renderBattle();
   setTimeout(() => loop(B.token), 400);
 }
@@ -530,10 +536,15 @@ function battleTargetsFor(u, i) {
 }
 
 function unitClass(u, targets) {
-  return `unit ${u.side} ${u.boss ? "boss" : ""} ${u.titan ? "titan" : ""} ${!u.alive ? "dead" : ""} ${B.actor === u ? "active" : ""} ${targets.includes(u.key) ? "target" + (u.side === "A" ? " ally" : "") : ""}`;
+  return `unit ${B && B.use3d ? "ov3d" : ""} ${u.side} ${u.boss ? "boss" : ""} ${u.titan ? "titan" : ""} ${!u.alive ? "dead" : ""} ${B.actor === u ? "active" : ""} ${targets.includes(u.key) ? "target" + (u.side === "A" ? " ally" : "") : ""}`;
 }
 function unitHtml(u) {
   const t = { ...u.template, el: u.el };
+  if (B.use3d) {
+    return `<div class="unit ov3d ${u.side}" data-key="${u.key}">
+      <div class="uname"><span class="uel">${ELEMENTS[u.el].icon}</span>${u.titan ? "" : `<span class="ulv">${u.level}</span>`}<span class="unm">${u.titan ? u.name : u.side === "A" ? u.name.split(/[ ,]/)[0] : u.name.replace("Hollow ", "")}</span></div>
+      <div class="hp"><b></b><i></i></div><div class="tmb"><i></i></div><div class="fx"></div></div>`;
+  }
   return `<div class="unit ${u.side}" data-key="${u.key}">
     <div class="stand" style="animation-delay:${(-Math.random() * 3).toFixed(2)}s">${u.titan
       ? portrait(t, { el: u.el })
@@ -554,6 +565,25 @@ function updateUnit(el, u, targets) {
   const fx = u.effects.map((e) => `<span title="${EFFECTS[e.t].name}">${EFFECTS[e.t].icon}</span>`).join("");
   const fxEl = el.querySelector(".fx");
   if (fxEl.innerHTML !== fx) fxEl.innerHTML = fx;
+  if (B.use3d) W3D.setHighlight(u.key, targets.includes(u.key) ? (u.side === "A" ? "#5bd17a" : "#ff5a5a") : B.actor === u ? "#ffcf5a" : null);
+}
+
+// 3D: keep each unit's HUD (name, bars, tap area) pinned above its figure.
+function placeOverlays() {
+  if (!B || !B.use3d) return;
+  for (const el of $app.querySelectorAll(".ov .unit")) {
+    const head = W3D.screen(el.dataset.key, "head"), feet = W3D.screen(el.dataset.key, "feet");
+    if (!head || !feet) continue;
+    el.style.transform = `translate(${head.x}px, ${head.y - 34}px) translateX(-50%)`;
+    el.style.height = Math.max(70, feet.y - head.y + 44) + "px";
+  }
+}
+function addEnemies3d(root) {
+  const b = B.battle;
+  root.querySelectorAll(".ov .unit.B").forEach((el) => el.remove());
+  W3D.removeSide("B");
+  b.enemies.forEach((u, i) => W3D.addUnit(u, i, b.enemies.length));
+  root.querySelector(".ov").insertAdjacentHTML("beforeend", b.enemies.map(unitHtml).join(""));
 }
 const unitEl = (key) => $app.querySelector(`.unit[data-key="${key}"]`);
 
@@ -561,7 +591,19 @@ function renderBattle() {
   if (!B) return;
   const b = B.battle, a = B.actor;
   let root = $app.querySelector(".battle");
-  if (!root || root.dataset.bid !== String(B.id)) {
+  if (B.use3d && (!root || root.dataset.bid !== String(B.id))) {
+    $app.innerHTML = `<div class="battle b3d" data-bid="${B.id}">
+      <div class="bhead"></div>
+      <div class="stage3d"><div class="ov">${b.allies.map(unitHtml).join("")}</div>
+        <div class="skillname"></div><div class="bdesc small"></div></div>
+      <div class="skillbar"></div></div>`;
+    root = $app.querySelector(".battle");
+    W3D.mount(root.querySelector(".stage3d"), { chapter: B.mode === "titan" ? 9 : Math.floor(B.idx / STAGES_PER_CHAPTER), titan: B.mode === "titan" });
+    b.allies.forEach((u, i) => W3D.addUnit(u, i, b.allies.length));
+    W3D.onFrame(placeOverlays);
+    B.domWave = -1;
+  }
+  if (!B.use3d && (!root || root.dataset.bid !== String(B.id))) {
     const scene = B.mode === "titan" ? titanSceneUrl() : sceneUrl(Math.floor(B.idx / STAGES_PER_CHAPTER));
     $app.innerHTML = `<div class="battle" data-bid="${B.id}" style="background-image:linear-gradient(180deg,#0006,#0000 35%,#0000 60%,#000c),${scene}">
       <div class="bhead"></div><div class="side enemies"></div>
@@ -572,7 +614,8 @@ function renderBattle() {
     B.domWave = -1;
   }
   if (B.domWave !== b.wave) {
-    root.querySelector(".enemies").innerHTML = b.enemies.map(unitHtml).join("");
+    if (B.use3d) addEnemies3d(root);
+    else root.querySelector(".enemies").innerHTML = b.enemies.map(unitHtml).join("");
     B.domWave = b.wave;
   }
   const manual = B.awaiting && a && a.side === "A";
@@ -643,6 +686,15 @@ async function showEvents(events, color = "#7dff7a") {
       if (!it) continue;
       const { e, c } = it;
       if (it.text) floatAt(key, it.text, it.cls);
+      if (B && B.use3d) {
+        if (e.type === "dmg") {
+          W3D.burst(key, e.dot ? "#7dff7a" : color, e.crit); W3D.hit(key);
+          if (e.crit) { W3D.shake(); NATIVE.haptic("medium"); }
+        } else if (e.type === "heal") W3D.heal(key);
+        else if (e.type === "fx") W3D.buff(key, EFFECTS[e.t].buff);
+        else if (e.type === "death") W3D.die(key);
+        continue;
+      }
       if (!c) continue;
       if (e.type === "dmg") {
         FX.burst(c.x, c.y, e.dot ? "#7dff7a" : color, e.crit ? 30 : 16, e.crit ? 1.4 : 1);
@@ -695,6 +747,18 @@ async function doAct(u, choice, token) {
   const events = B.battle.act(u, choice.skill, choice.target);
   const actorEl = unitEl(u.key);
   const hitKeys = [...new Set(events.filter((e) => e.type === "dmg" && e.key !== u.key).map((e) => e.key))];
+  if (B.use3d) {
+    const melee = sk.mult > 0 && sk.target === "enemy" && spriteKind(u.template.id) === "melee";
+    await W3D.attack(u.key, hitKeys[0], melee);
+    if (sk.mult === 0) W3D.cast(u.key, color);
+    if (melee) hitKeys.forEach((k) => W3D.slash(k, color));
+    else if (hitKeys.length) await Promise.all(hitKeys.map((k) => W3D.projectile(u.key, k, color)));
+    if (B?.token !== token) return;
+    await showEvents(events, color);
+    await W3D.recover(u.key);
+    await sleep(250);
+    return;
+  }
   if (actorEl) {
     const dir = u.side === "A" ? -1 : 1;
     const lunge = sk.mult > 0 && spriteKind(u.template.id) === "melee" ? 26 : 8;
