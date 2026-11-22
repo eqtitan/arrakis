@@ -339,11 +339,11 @@ const W3D = (() => {
     camera.fov = camFov = camera.aspect < 0.75 ? 62 : 50;
     const pitch = 34 * D2R, pts = [];
     for (const sx of [-1, 1]) {
-      for (const y of [0, 2.75]) { pts.push([sx * 2.35, y, 2.6]); pts.push([sx * 2.35, y, 2.0]); }
-      for (const y of [0, 3.2]) pts.push([sx * 2.45, y, -3.2]);
+      for (const y of [0, 2.75]) { pts.push([sx * 2.45, y, 2.6]); pts.push([sx * 2.45, y, 2.0]); }
+      for (const y of [0, 3.2]) pts.push([sx * 2.85, y, -3.6]);
     }
-    pts.push([0, 3.75, -3.7]);                          // HUD tags above the back row
-    if (mountTitan) { pts.push([0, 5.6, -3.8]); pts.push([-2.3, 3.4, -3.8]); pts.push([2.3, 3.4, -3.8]); }
+    pts.push([0, 3.75, -3.95]);                         // HUD tags above the back row
+    if (mountTitan) { pts.push([0, 5.6, -4.0]); pts.push([-2.3, 3.4, -4.0]); pts.push([2.3, 3.4, -4.0]); }
     const v = new T.Vector3();
     const fits = (dist) => {
       camera.position.set(camTarget.x, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(pitch) * dist);
@@ -859,11 +859,16 @@ const W3D = (() => {
       o.parent.getWorldPosition(_sp);
       if (!s.on) { s.p.copy(_sp); s.on = true; }
       const vel = _sp.clone().sub(s.p).divideScalar(dt); s.p.copy(_sp);
+      // The battle run-in moves units at ~20 m/s; treat anything past 3 m/s as 3 m/s so cloth
+      // trails rather than flipping over (it rose through the HUD on device).
+      if (vel.length() > 3) vel.setLength(3);
       o.parent.getWorldQuaternion(_sq); vel.applyQuaternion(_sq.invert());
       const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
-      const tx = clamp((vel.z * 0.11 - vel.y * 0.05) * gain, -0.5, 1.0), tz = clamp(-vel.x * 0.11 * gain, -0.7, 0.7);
-      s.vx += ((tx - s.ax) * 70 - s.vx * 9) * dt; s.ax += s.vx * dt;
-      s.vz += ((tz - s.az) * 70 - s.vz * 9) * dt; s.az += s.vz * dt;
+      const tx = clamp((vel.z * 0.08 - vel.y * 0.04) * gain, -0.12, 0.42), tz = clamp(-vel.x * 0.08 * gain, -0.3, 0.3);
+      // Critically damped (k = 70, c = 2·√70): settles without overshoot.
+      s.vx += ((tx - s.ax) * 70 - s.vx * 16.7) * dt; s.ax += s.vx * dt;
+      s.vz += ((tz - s.az) * 70 - s.vz * 16.7) * dt; s.az += s.vz * dt;
+      s.ax = clamp(s.ax, -0.15, 0.45); s.az = clamp(s.az, -0.32, 0.32);
       o.rotation.x += s.ax; o.rotation.z += s.az;
     };
   }
@@ -1527,8 +1532,8 @@ const W3D = (() => {
           const upper = liveGroup(g, live, [0, 0.14, z], (o, t) => {
             o.rotation.x = 0.1 + Math.sin(t * 1.3 + o.id) * 0.035;
             const lo = o.children[o.children.length - 1], sp = o.userData.sp;
-            lo.rotation.x = 0.06 + Math.sin(t * 1.9 + 0.8 + o.id) * 0.1 + (sp ? sp.ax * 0.7 : 0);
-            lo.rotation.z = Math.sin(t * 1.1 + o.id) * 0.05 + (sp ? sp.az * 0.5 : 0);
+            lo.rotation.x = 0.06 + Math.sin(t * 1.9 + 0.8 + o.id) * 0.08 + (sp ? sp.ax * 0.4 : 0);
+            lo.rotation.z = Math.sin(t * 1.1 + o.id) * 0.04 + (sp ? sp.az * 0.3 : 0);
           }, 1);
           P(upper, sheet(0.24, 0.42, 0.52, 0.09), [0, 0, -0.01], [1, 1, 1], cloth);
           P(upper, sheet(0.22, 0.39, 0.5, 0.085), [0, -0.01, -0.002], [1, 1, 1], Mc(mix(L.accent, "#000000", 0.35))); // lining
@@ -1732,10 +1737,10 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   // Rows spread with the team size; with 4+ units every other one steps back, so the HUD tags
   // and the figures overlap less.
   function slot(ally, i, n) {
-    const spread = n <= 1 ? 0 : Math.min(ally ? 3.7 : 4.0, (ally ? 0.95 : 1.0) * (n - 1));
+    const spread = n <= 1 ? 0 : Math.min(ally ? 4.0 : 4.8, (ally ? 1.0 : 2.2) * (n - 1));
     const x = n <= 1 ? 0 : -spread / 2 + i * (spread / (n - 1));
-    const step = n >= 4 && i % 2 ? 0.5 : 0;
-    return ally ? new T.Vector3(x, 0, 2.0 + step) : new T.Vector3(x, 0, -3.2 - step);
+    const step = n >= 4 && i % 2 ? (ally ? 0.5 : 0.35) : 0;
+    return ally ? new T.Vector3(x, 0, 2.0 + step) : new T.Vector3(x, 0, -3.6 - step);
   }
 
   // Gear shown on a battle unit: allies use their equipped items (u.gear, or looked up from
@@ -1785,7 +1790,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     const root = new T.Group();
     root.add(built.model);
     built.model.scale.multiplyScalar(scale);
-    const pos = u.titan ? new T.Vector3(0, 0, -3.8) : slot(ally, i, n);
+    const pos = u.titan ? new T.Vector3(0, 0, -4.0) : slot(ally, i, n);
     root.position.copy(pos);
     // Allies idle in a three-quarter turn toward the camera (angled in toward the middle of the
     // line) so the player sees faces, chests and gear; they turn to the target only to attack.

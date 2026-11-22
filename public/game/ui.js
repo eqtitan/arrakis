@@ -701,7 +701,8 @@ function placeOverlays() {
   tags.sort((a, b) => b.feet - a.feet);
   tags.forEach((t, i) => {
     for (let j = 0; j < i; j++) { const o = tags[j]; if (Math.abs(o.x - t.x) < 78 && t.y > o.y - 30 && t.y < o.y + 30) t.y = o.y - 30; }
-    t.el.style.transform = `translate(${t.x}px, ${t.y}px) translateX(-50%)`;
+    const half = t.el.classList.contains("titan") ? 75 : 43, x = Math.max(half + 2, Math.min($app.clientWidth - half - 2, t.x)); // keep tags on screen
+    t.el.style.transform = `translate(${x}px, ${t.y}px) translateX(-50%)`;
     t.el.style.height = Math.max(70, t.feet - t.y + 10) + "px";
   });
 }
