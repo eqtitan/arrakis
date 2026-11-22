@@ -39,7 +39,8 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
   - `monarch`: plate armor and a beard, with an optional crown.
   - `hooded`: hooded cloak, shoulder pads, optional sword.
   - `adventurer`: shirt and trousers, beard.
-- **Recolor:** `ROLES` maps each model material to a role (armor, cloth, pants, accent,
+- **Recolor:** an optional `cloth` color in `LOOKS` sets sleeves and trousers separately from the armor. Use it, and a `kit.capeColor`, to tell same-element heroes apart.
+  `ROLES` maps each model material to a role (armor, cloth, pants, accent,
   trim, blade, hair, skin, crown, eye). The colors come from each hero's `LOOKS` entry in
   `public/game/art.js` (armor, accent, hair, skin, glow).
 - **Signature kit (props and headgear):** because several heroes share a base, each hero's

@@ -258,7 +258,8 @@ const W3D = (() => {
     const tint = (c) => hollow ? mix(c, "#2e1f33", 0.5) : c;
     const skin = SKIN[L.skin];
     return {
-      armor: tint(L.armor), cloth: tint(mul(L.armor, 0.62)), pants: tint(mix(L.armor, "#2a2522", 0.6)), accent: tint(L.accent),
+      // Optional LOOKS.cloth gives sleeves/trousers/tunic their own colour (otherwise a darker armour shade).
+      armor: tint(L.armor), cloth: tint(L.cloth || mul(L.armor, 0.62)), pants: tint(mix(L.cloth || L.armor, "#2a2522", L.cloth ? 0.35 : 0.6)), accent: tint(L.accent),
       trim: tint(mix(L.accent, "#c8ccd4", 0.4)), blade: tint("#c8d0dc"), wood: tint("#6b4a29"), boot: tint("#2a1f1a"),
       hair: tint(L.hair), skin: tint(skin), crown: tint(L.accent), eye: hollow ? "#ff2a2a" : L.glow || "#1a141f",
     };

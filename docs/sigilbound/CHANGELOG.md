@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.11.1 (2026-11-22)
+- Light heroes are distinct: Aurelia in gold plate with a royal-blue cape, Oriel in amber and sunset orange, Lumen in silver steel with gold trim, Sister Wren in a brown habit, and Seraphine in ivory with a gold cape. 2D portraits match.
+
+
 ## 0.11.0 (2026-11-22)
 - True colors in 3D: color management is now on, so heroes render in their intended colors instead of washed out. Lighting and exposure were retuned to match, and the ground lifted to a neutral tone.
 

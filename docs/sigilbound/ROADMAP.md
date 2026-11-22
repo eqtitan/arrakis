@@ -30,7 +30,7 @@ _Last updated: 2026-11-22._
 1. **Hero card art.** Generate the 24 portraits with the prompts in `ART_DIRECTION.md`, then wire them into `ART_FILES`. *Owner: you (images) + art-director.*
 2. **3D hero polish (follow-ups from the 0.10.0 art pass).**
    - ~~**Color pipeline**~~ fixed in 0.11.0.
-   - **Light heroes:** Seraphine, Oriel, Aurelia and Lumen are too alike.
+   - ~~**Light heroes**~~ given distinct palettes in 0.11.1.
    - **Hask, Brannoc and Odo** are similar beige tones.
    - **Ysolde's whip** reads like a bow.
    - **Velka's staff head** clips the HUD.
