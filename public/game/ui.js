@@ -134,6 +134,7 @@ const SCREENS = {
       <button class="btn" data-act="playNext">${G.cleared < TOTAL_STAGES ? `▶ Continue Campaign · ${stageLabel(G.cleared)}` : "▶ Campaign complete! Replay stages"}</button>
       <div class="row" style="justify-content:center;gap:16px;margin-top:6px">
         <button class="chip" data-act="showHelp">How to play</button>
+        <button class="chip" data-act="saveCode">Save code</button>
         <button class="chip" data-act="askReset">Reset save</button></div>`;
   },
 
@@ -202,7 +203,8 @@ const SCREENS = {
     return `<div class="row spread"><button class="btn sec sm" data-act="go" data-to="heroes">‹ Heroes</button>
         <div class="row"><button class="btn sec sm" data-act="toggleLock">${h.locked ? "🔒 Locked" : "🔓 Lock"}</button>
         <button class="btn sec sm" data-act="askRelease">Release</button></div></div>
-      <div class="card row" style="gap:14px">${portrait(t, { big: true })}
+      <div class="card row showcase" style="gap:14px;background-image:linear-gradient(90deg,#120e1a33,#120e1aee 55%),${sceneUrl(ELEMENT_KEYS.indexOf(t.el))}">
+        <div class="show-sprite">${heroSprite(t.id, t.el)}</div>
         <div class="grow"><h2 style="font-size:18px">${t.name}</h2>
           <div class="stars" style="font-size:15px">${starStr(h.stars)}<span class="dim">${"☆".repeat(MAX_STARS - h.stars)}</span></div>
           <div class="small" style="color:${RARITY[t.rarity].color}">${RARITY[t.rarity].name}</div>
@@ -434,6 +436,28 @@ Object.assign(ACTIONS, {
       <div>💸 <b>Free</b>: There's no shop. Every shard is earned by playing.</div></div>
       <button class="btn" style="width:100%;margin-top:12px" data-act="closeModal">Got it</button>`);
   },
+  saveCode() {
+    const code = exportSave();
+    modal(`<h3>Save code</h3>
+      <p class="small dim">Copy this to back up your progress, move it to another device, or send it with a bug report. Paste a code below to load it. Loading replaces the progress on this device.</p>
+      <textarea id="savecode" class="code" readonly>${code}</textarea>
+      <button class="btn sec" style="width:100%;margin:8px 0" data-act="copySave">Copy my save code</button>
+      <textarea id="loadcode" class="code" placeholder="Paste a save code here"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn sec grow" data-act="closeModal">Close</button><button class="btn grow" data-act="loadSave">Load code</button></div>
+      <p class="small dim" style="text-align:center;margin-top:8px">Version ${GAME_VERSION}</p>`);
+  },
+  copySave() {
+    const ta = document.getElementById("savecode");
+    const done = () => toast("Save code copied");
+    try { navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); toast("Selected. Copy it with your device's copy command."); }); }
+    catch (_) { ta.select(); toast("Selected. Copy it with your device's copy command."); }
+  },
+  loadSave() {
+    const v = document.getElementById("loadcode").value.trim();
+    if (!v) return toast("Paste a save code first.");
+    if (importSave(v)) { closeModal(); UI.screen = "home"; toast("Save loaded"); }
+    else toast("That code didn't work. Check that you copied all of it.");
+  },
   askReset() {
     modal(`<h3>Reset all progress?</h3><p class="small dim">This deletes your save on this device. It can't be undone.</p>
       <div class="row"><button class="btn sec grow" data-act="closeModal">Cancel</button><button class="btn red grow" data-act="doReset">Reset</button></div>`);
@@ -461,11 +485,11 @@ Object.assign(ACTIONS, {
     closeModal();
     if (!B) return;
     if (B.mode === "titan") { B.battle.over = true; B.battle.result = "timeout"; finishBattle(); }
-    else { B.token = null; B = null; G.settings.autoReplay = false; render(); }
+    else { B.token = null; B = null; FX.clear(); G.settings.autoReplay = false; render(); }
   },
   resultNext() { closeModal(); const idx = Math.min(G.cleared, TOTAL_STAGES - 1); startBattle({ mode: "stage", idx }); },
   resultReplay(d) { closeModal(); startBattle({ mode: "stage", idx: +d.idx }); },
-  resultBack(d) { closeModal(); B = null; UI.screen = d.to || "campaign"; render(); },
+  resultBack(d) { closeModal(); FX.clear(); B = null; UI.screen = d.to || "campaign"; render(); },
   resultStopReplay() { G.settings.autoReplay = false; save(); if (B) B.replayTimer && clearTimeout(B.replayTimer); render(); ACTIONS.resultBack({ to: "campaign" }); },
 });
 
@@ -510,8 +534,10 @@ function unitClass(u, targets) {
 function unitHtml(u) {
   const t = { ...u.template, el: u.el };
   return `<div class="unit ${u.side}" data-key="${u.key}">
-    <div class="stand" style="animation-delay:${(-Math.random() * 3).toFixed(2)}s">${portrait(t, { el: u.el, lv: u.titan ? "" : "Lv" + u.level, hollow: u.side === "B" && !u.titan })}</div>
-    <div class="uname">${u.name}</div>
+    <div class="stand" style="animation-delay:${(-Math.random() * 3).toFixed(2)}s">${u.titan
+      ? portrait(t, { el: u.el })
+      : heroSprite(u.template.id, u.el, { hollow: u.side === "B" })}</div>
+    <div class="uname"><span class="uel">${ELEMENTS[u.el].icon}</span>${u.titan ? "" : `<span class="ulv">${u.level}</span>`}<span class="unm">${u.titan ? u.name : u.side === "A" ? u.name.split(/[ ,]/)[0] : u.name.replace("Hollow ", "")}</span></div>
     <div class="hp"><b></b><i></i></div>
     <div class="tmb"><i></i></div>
     <div class="fx"></div>
@@ -573,6 +599,20 @@ function floatAt(key, text, cls) {
   f.className = "float " + cls; f.textContent = text;
   el.appendChild(f);
   setTimeout(() => f.remove(), 1100);
+}
+function animateSprite(unitElement, kind) {
+  const armF = unitElement.querySelector(".sp-armf"), armB = unitElement.querySelector(".sp-armb");
+  const dur = 420 / G.settings.speed;
+  if (!armF) return;
+  if (kind === "melee") {
+    armF.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(-130deg)", offset: 0.35 }, { transform: "rotate(55deg)", offset: 0.6 }, { transform: "rotate(0deg)" }], { duration: dur, easing: "ease-in-out" });
+    armB.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(25deg)", offset: 0.4 }, { transform: "rotate(0deg)" }], { duration: dur });
+  } else {
+    armF.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(-150deg)", offset: 0.4 }, { transform: "rotate(-150deg)", offset: 0.7 }, { transform: "rotate(0deg)" }], { duration: dur * 1.3, easing: "ease-in-out" });
+    armB.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(150deg)", offset: 0.4 }, { transform: "rotate(150deg)", offset: 0.7 }, { transform: "rotate(0deg)" }], { duration: dur * 1.3, easing: "ease-in-out" });
+    const aura = unitElement.querySelector(".sp-aura");
+    if (aura) aura.animate([{ opacity: 1, transform: "scale(1)" }, { opacity: 1, transform: "scale(1.6)", offset: 0.5 }, { opacity: 1, transform: "scale(1)" }], { duration: dur * 1.3 });
+  }
 }
 function hitShake(key) {
   const el = unitEl(key);
@@ -656,7 +696,8 @@ async function doAct(u, choice, token) {
   const hitKeys = [...new Set(events.filter((e) => e.type === "dmg" && e.key !== u.key).map((e) => e.key))];
   if (actorEl) {
     const dir = u.side === "A" ? -1 : 1;
-    const lunge = sk.mult > 0 ? 26 : 8;
+    const lunge = sk.mult > 0 && spriteKind(u.template.id) === "melee" ? 26 : 8;
+    animateSprite(actorEl, sk.mult > 0 && spriteKind(u.template.id) === "melee" ? "melee" : "cast");
     actorEl.querySelector(".stand").animate([{ transform: "translateY(0) scale(1)" }, { transform: `translateY(${dir * lunge}px) scale(1.08)` }, { transform: "translateY(0) scale(1)" }],
       { duration: 380 / G.settings.speed, easing: "ease-out" });
     if (sk.mult === 0) FX.rise(FX.center(actorEl).x, FX.center(actorEl).y, color, 10);

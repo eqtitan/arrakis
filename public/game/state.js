@@ -34,6 +34,20 @@ function save() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(G)); } catch (_) { /* ignore */ }
 }
 function resetSave() { G = newState(); save(); }
+const GAME_VERSION = "0.4";
+function exportSave() {
+  return "SB1." + btoa(unescape(encodeURIComponent(JSON.stringify(G))));
+}
+function importSave(code) {
+  try {
+    if (!code.startsWith("SB1.")) return false;
+    const data = JSON.parse(decodeURIComponent(escape(atob(code.slice(4).replace(/\s/g, "")))));
+    if (!data || !Array.isArray(data.heroes) || typeof data.gold !== "number") return false;
+    G = Object.assign(newState(), data);
+    save();
+    return true;
+  } catch (_) { return false; }
+}
 
 const uid = () => G.nextUid++;
 const heroByUid = (u) => G.heroes.find((h) => h.uid === u);

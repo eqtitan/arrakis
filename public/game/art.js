@@ -112,6 +112,29 @@ function beardSvg(L) {
   }
 }
 
+
+// Head, face, hair and headgear in 100x100 portrait coordinates. Needs the
+// s{id} skin gradient, g{id} glow filter and m{id} metal gradient in <defs>.
+function headSvg(L, id, skin, eye, glowEyes, hood) {
+  return `
+    ${hood ? `<path d="M28 54 Q26 20 50 18 Q74 20 72 54 L70 76 L30 76Z" fill="${shade(L.armor, -0.05)}"/>` : ""}
+    <ellipse cx="34.5" cy="50" rx="2.5" ry="4" fill="${shade(skin, -0.1)}"/><ellipse cx="65.5" cy="50" rx="2.5" ry="4" fill="${shade(skin, -0.1)}"/>
+    <path d="M35 46 Q35 30 50 30 Q65 30 65 46 Q65 62 50 66 Q35 62 35 46Z" fill="url(#s${id})"/>
+    ${hood ? `<path d="M35 44 Q36 30 50 29 Q64 30 65 44 Q58 36 50 36 Q42 36 35 44Z" fill="#000" opacity=".35"/>` : ""}
+    <path d="M40.5 45.5 L46 44.5 M54 44.5 L59.5 45.5" stroke="${shade(L.hair, -0.1)}" stroke-width="1.4" stroke-linecap="round"/>
+    ${glowEyes ? `<g filter="url(#g${id})"><ellipse cx="43.5" cy="49" rx="3" ry="2" fill="${eye}"/><ellipse cx="56.5" cy="49" rx="3" ry="2" fill="${eye}"/></g>` : ""}
+    <ellipse cx="43.5" cy="49" rx="2.6" ry="1.5" fill="${glowEyes ? eye : "#fff"}"/><ellipse cx="56.5" cy="49" rx="2.6" ry="1.5" fill="${glowEyes ? eye : "#fff"}"/>
+    ${glowEyes ? "" : `<circle cx="43.8" cy="49" r="1.15" fill="${eye}"/><circle cx="56.8" cy="49" r="1.15" fill="${eye}"/>`}
+    <path d="M50 50 L48.6 55.5 L51 55.8" stroke="${shade(skin, -0.22)}" stroke-width=".9" fill="none" stroke-linecap="round"/>
+    <path d="M46 59.2 Q50 60.6 54 59.2" stroke="${shade(skin, -0.3)}" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <ellipse cx="41" cy="55" rx="3" ry="1.6" fill="#ff7a7a" opacity=".15"/><ellipse cx="59" cy="55" rx="3" ry="1.6" fill="#ff7a7a" opacity=".15"/>
+    ${L.scar ? `<path d="M57 42 L62 54" stroke="#7a3a3a" stroke-width="1.2"/>` : ""}
+    ${beardSvg(L)}
+    ${hood ? "" : hairFront(L)}
+    ${headgear(L, id)}
+`;
+}
+
 // Main entry: returns an inline SVG string for a hero/enemy portrait.
 function heroArt(templateId, el, opts = {}) {
   if (ART_FILES[templateId] && !opts.hollow) return `<img class="art" src="${ART_FILES[templateId]}" alt="">`;
@@ -146,21 +169,7 @@ function heroArt(templateId, el, opts = {}) {
     <path d="M38 73 L50 86 L62 73" stroke="${L.accent}" stroke-width="2" fill="none"/>
     <path d="M50 88 L54 93 L50 98 L46 93Z" fill="${L.accent}"/>
     <path d="M44 60 L56 60 L57 74 L43 74Z" fill="${shade(skin, -0.15)}"/>
-    ${hood ? `<path d="M28 54 Q26 20 50 18 Q74 20 72 54 L70 76 L30 76Z" fill="${shade(L.armor, -0.05)}"/>` : ""}
-    <ellipse cx="34.5" cy="50" rx="2.5" ry="4" fill="${shade(skin, -0.1)}"/><ellipse cx="65.5" cy="50" rx="2.5" ry="4" fill="${shade(skin, -0.1)}"/>
-    <path d="M35 46 Q35 30 50 30 Q65 30 65 46 Q65 62 50 66 Q35 62 35 46Z" fill="url(#s${id})"/>
-    ${hood ? `<path d="M35 44 Q36 30 50 29 Q64 30 65 44 Q58 36 50 36 Q42 36 35 44Z" fill="#000" opacity=".35"/>` : ""}
-    <path d="M40.5 45.5 L46 44.5 M54 44.5 L59.5 45.5" stroke="${shade(L.hair, -0.1)}" stroke-width="1.4" stroke-linecap="round"/>
-    ${glowEyes ? `<g filter="url(#g${id})"><ellipse cx="43.5" cy="49" rx="3" ry="2" fill="${eye}"/><ellipse cx="56.5" cy="49" rx="3" ry="2" fill="${eye}"/></g>` : ""}
-    <ellipse cx="43.5" cy="49" rx="2.6" ry="1.5" fill="${glowEyes ? eye : "#fff"}"/><ellipse cx="56.5" cy="49" rx="2.6" ry="1.5" fill="${glowEyes ? eye : "#fff"}"/>
-    ${glowEyes ? "" : `<circle cx="43.8" cy="49" r="1.15" fill="${eye}"/><circle cx="56.8" cy="49" r="1.15" fill="${eye}"/>`}
-    <path d="M50 50 L48.6 55.5 L51 55.8" stroke="${shade(skin, -0.22)}" stroke-width=".9" fill="none" stroke-linecap="round"/>
-    <path d="M46 59.2 Q50 60.6 54 59.2" stroke="${shade(skin, -0.3)}" stroke-width="1" fill="none" stroke-linecap="round"/>
-    <ellipse cx="41" cy="55" rx="3" ry="1.6" fill="#ff7a7a" opacity=".15"/><ellipse cx="59" cy="55" rx="3" ry="1.6" fill="#ff7a7a" opacity=".15"/>
-    ${L.scar ? `<path d="M57 42 L62 54" stroke="#7a3a3a" stroke-width="1.2"/>` : ""}
-    ${beardSvg(L)}
-    ${hood ? "" : hairFront(L)}
-    ${headgear(L, id)}
+    ${headSvg(L, id, skin, eye, glowEyes, hood)}
   </g>
   ${hollow ? `<path d="M40 34 L44 42 L41 48 M60 60 L56 66" stroke="#ff3030" stroke-width=".8" opacity=".55" fill="none"/>
     <rect width="100" height="100" fill="#200010" opacity=".25"/>` : ""}
@@ -364,5 +373,95 @@ const FX = (() => {
         c.beginPath(); c.arc(x + Math.cos(a + k * 2) * d * e, y + Math.sin(a + k * 2) * d * e, 2.5, 0, 7); c.fill(); c.globalAlpha = 1; } });
     }
   }
-  return { burst, slash, projectile, rise, dissolve, shake, flash, portal, center };
+  function clear() { parts = []; if (ctx) ctx.clearRect(0, 0, innerWidth, innerHeight); }
+  return { burst, slash, projectile, rise, dissolve, shake, flash, portal, center, clear };
 })();
+
+// ---------- full-body battle sprites ----------
+// viewBox 0 0 100 150. Parts are grouped so CSS / Web Animations can move them:
+//   .sp-body (breathing), .sp-armf (weapon arm, pivots at 70,58), .sp-armb (off arm,
+//   pivots at 30,58), .sp-cape (sway). Weapons are drawn in hand-local coordinates.
+const RANGED = new Set(["staff", "orb", "bell", "lantern", "candle", "mirror", "bow"]);
+function weaponInHand(kind, L, id) {
+  const wood = "#6a4a2a", metal = `url(#m${id})`, a = L.accent;
+  switch (kind) {
+    case "spear": return `<path d="M0 14 L0 -40" stroke="${wood}" stroke-width="2.4"/><path d="M0 -48 L3.5 -38 L0 -40 L-3.5 -38Z" fill="${metal}"/>`;
+    case "sword": return `<path d="M0 2 L0 -34" stroke="${metal}" stroke-width="4" stroke-linecap="round"/><path d="M-6 0 L6 0" stroke="${a}" stroke-width="2.5"/><path d="M0 -6 L0 -32" stroke="#fff" stroke-width="1" opacity=".6"/>`;
+    case "katana": return `<path d="M0 4 Q3 -16 8 -36" stroke="${metal}" stroke-width="2.6" fill="none"/><path d="M-4 0 L4 1" stroke="${a}" stroke-width="2.5"/>`;
+    case "staff": return `<path d="M0 22 L0 -34" stroke="${wood}" stroke-width="2.6"/><circle cx="0" cy="-38" r="4.5" fill="${a}"/><circle cx="0" cy="-38" r="8" fill="${a}" opacity=".3" class="sp-glow"/>`;
+    case "hammer": return `<path d="M0 10 L0 -26" stroke="${wood}" stroke-width="3"/><rect x="-9" y="-36" width="18" height="12" rx="2" fill="${metal}"/><rect x="-9" y="-31" width="18" height="2.5" fill="${a}"/>`;
+    case "trident": return `<path d="M0 16 L0 -34" stroke="${metal}" stroke-width="2.4"/><path d="M-6 -30 L-6 -42 M0 -34 L0 -46 M6 -30 L6 -42 M-6 -30 Q0 -26 6 -30" stroke="${metal}" stroke-width="2.2" fill="none"/>`;
+    case "bow": return `<path d="M2 -30 Q-12 0 2 30" stroke="${wood}" stroke-width="2.4" fill="none"/><path d="M2 -30 L2 30" stroke="#ddd" stroke-width=".7"/>`;
+    case "lantern": return `<path d="M0 0 L0 6" stroke="#555" stroke-width="1.2"/><rect x="-5" y="6" width="10" height="12" rx="2.5" fill="#3a3020"/><rect x="-3.2" y="8.5" width="6.4" height="7" rx="1.5" fill="${a}"/><circle cx="0" cy="12" r="10" fill="${a}" opacity=".25" class="sp-glow"/>`;
+    case "candle": return `<rect x="-3" y="-12" width="6" height="12" fill="#f0e6d0"/><path d="M0 -12 Q-3 -18 0 -22 Q3 -18 0 -12Z" fill="${a}"/><circle cx="0" cy="-17" r="8" fill="${a}" opacity=".3" class="sp-glow"/>`;
+    case "club": return `<path d="M0 6 L3 -26" stroke="${wood}" stroke-width="5.5" stroke-linecap="round"/><circle cx="3" cy="-28" r="5.5" fill="${shade(wood, -0.05)}"/>`;
+    case "hook": return `<path d="M0 6 L0 -24 Q0 -32 -6 -32 Q-10 -30 -8 -26" stroke="${metal}" stroke-width="2.4" fill="none"/>`;
+    case "whip": return `<path d="M0 0 Q12 -10 6 -24 Q0 -36 12 -44" stroke="${a}" stroke-width="2" fill="none"/>`;
+    case "daggers": return `<path d="M0 2 L4 -18" stroke="${metal}" stroke-width="2.4"/>`;
+    case "mirror": return `<path d="M0 0 L0 -10" stroke="${a}" stroke-width="2.4"/><ellipse cx="0" cy="-18" rx="6" ry="8" fill="#cfe4ff" stroke="${a}" stroke-width="2"/>`;
+    case "orb": return `<circle cx="0" cy="-8" r="6" fill="${a}"/><circle cx="0" cy="-8" r="11" fill="${a}" opacity=".25" class="sp-glow"/><circle cx="-2" cy="-10" r="2" fill="#fff" opacity=".6"/>`;
+    case "bell": return `<path d="M-7 -4 Q-7 -18 0 -18 Q7 -18 7 -4 L9 -1 L-9 -1Z" fill="#ffd870" stroke="#a07a20" stroke-width=".8"/><circle cx="0" cy="1" r="2" fill="#a07a20"/>`;
+    default: return "";
+  }
+}
+function heroSprite(templateId, el, opts = {}) {
+  const L = LOOKS[templateId];
+  if (!L) return heroArt(templateId, el, opts);
+  const id = ++_artId;
+  const hollow = !!opts.hollow;
+  const skin = SKIN[L.skin];
+  const eye = hollow ? "#ff3030" : L.glow || "#2a2030";
+  const glowEyes = hollow || !!L.glow;
+  const hood = L.style === "hood";
+  const ec = ELEMENTS[el].color;
+  const t = HERO[templateId];
+  const cape = t && (t.rarity === "legendary" || t.rarity === "epic");
+  const armD = shade(L.armor, -0.12), pants = shade(L.armor, -0.3), boot = "#2a2018";
+  const shield = L.prop === "shield";
+  const dual = L.prop === "daggers";
+  return `<svg class="sprite" viewBox="0 0 100 150" aria-hidden="true" overflow="visible">
+  <defs>
+    <linearGradient id="a${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${shade(L.armor, 0.15)}"/><stop offset="1" stop-color="${shade(L.armor, -0.2)}"/></linearGradient>
+    <linearGradient id="m${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8eef4"/><stop offset=".5" stop-color="#8a96a4"/><stop offset="1" stop-color="#4a5260"/></linearGradient>
+    <radialGradient id="s${id}" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="${shade(skin, 0.06)}"/><stop offset="1" stop-color="${shade(skin, -0.12)}"/></radialGradient>
+    <radialGradient id="au${id}"><stop offset="0" stop-color="${ec}" stop-opacity=".55"/><stop offset="1" stop-color="${ec}" stop-opacity="0"/></radialGradient>
+    <filter id="g${id}" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
+    ${hollow ? `<filter id="h${id}"><feColorMatrix type="saturate" values=".35"/><feComponentTransfer><feFuncR type="linear" slope=".95"/><feFuncG type="linear" slope=".82"/><feFuncB type="linear" slope=".95"/></feComponentTransfer></filter>` : ""}
+  </defs>
+  <ellipse cx="50" cy="144" rx="30" ry="6" fill="#000" opacity=".45"/>
+  <ellipse class="sp-aura" cx="50" cy="132" rx="34" ry="12" fill="url(#au${id})"/>
+  <g ${hollow ? `filter="url(#h${id})"` : ""}>
+    <g class="sp-legs">
+      <rect x="38" y="104" width="9" height="30" rx="3" fill="${pants}"/><rect x="53" y="104" width="9" height="30" rx="3" fill="${pants}"/>
+      <path d="M36 130 h12 v8 q0 3 -3 3 h-11 q-2 0 -1 -3Z" fill="${boot}"/><path d="M52 130 h12 v8 q0 3 -3 3 h-9 q-2 0 -1 -3Z" fill="${boot}"/>
+    </g>
+    <g class="sp-body">
+      ${cape ? `<path class="sp-cape" d="M33 56 Q50 52 67 56 L76 124 Q50 130 24 124Z" fill="${shade(L.accent, -0.35)}" opacity=".95"/>` : ""}
+      <g class="sp-armb">
+        <path d="M31 58 Q22 72 25 90" stroke="${armD}" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <circle cx="25" cy="92" r="4" fill="url(#s${id})"/>
+        ${shield ? `<path d="M12 80 L30 76 L32 100 Q24 112 14 106 Q9 96 12 80Z" fill="url(#m${id})" stroke="${L.accent}" stroke-width="1.6"/><circle cx="21.5" cy="91" r="3" fill="${L.accent}"/>` : ""}
+        ${dual ? `<g transform="translate(25 92) rotate(-14)">${weaponInHand("daggers", L, id)}</g>` : ""}
+      </g>
+      <path d="M33 56 Q50 50 67 56 L70 94 L30 94Z" fill="url(#a${id})"/>
+      <path d="M30 94 L70 94 L75 110 L25 110Z" fill="${armD}"/>
+      <rect x="30" y="88" width="40" height="5" fill="${L.accent}" opacity=".9"/>
+      <path d="M40 57 L50 70 L60 57" stroke="${L.accent}" stroke-width="1.8" fill="none"/>
+      <path d="M50 74 L53 78 L50 82 L47 78Z" fill="${L.accent}"/>
+      <ellipse cx="32" cy="59" rx="8" ry="5.5" fill="${shade(L.armor, -0.05)}" stroke="${L.accent}" stroke-width="1"/>
+      <ellipse cx="68" cy="59" rx="8" ry="5.5" fill="${shade(L.armor, -0.05)}" stroke="${L.accent}" stroke-width="1"/>
+      <g transform="translate(10 -12) scale(.8)">
+        ${hairBack(L)}
+        <path d="M44 60 L56 60 L57 74 L43 74Z" fill="${shade(skin, -0.15)}"/>
+        ${headSvg(L, id, skin, eye, glowEyes, hood)}
+      </g>
+      <g class="sp-armf">
+        <path d="M69 58 Q78 72 75 90" stroke="${armD}" stroke-width="8" fill="none" stroke-linecap="round"/>
+        <g transform="translate(75 92)">${shield ? weaponInHand("sword", L, id) : weaponInHand(L.prop, L, id)}<circle r="4" fill="url(#s${id})"/></g>
+      </g>
+    </g>
+  </g>
+
+</svg>`;
+}
+const spriteKind = (templateId) => (LOOKS[templateId] && RANGED.has(LOOKS[templateId].prop) ? "cast" : "melee");
