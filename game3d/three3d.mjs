@@ -155,6 +155,8 @@ const W3D = (() => {
     geo.hook = new T.TorusGeometry(0.5, 0.18, 6, 14, Math.PI * 1.25);
     geo.crook = new T.TorusGeometry(0.5, 0.2, 6, 12, Math.PI);
     geo.octa = new T.OctahedronGeometry(0.5);
+    // Rock: a lumpy, faceted stone for the Titan's shards and crest.
+    geo.rock = (() => { const g = new T.IcosahedronGeometry(0.5, 1), p = g.attributes.position, v = new T.Vector3(); for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i); const n = 1 + 0.12 * Math.sin(v.x * 23.1 + v.y * 17.3) * Math.cos(v.z * 19.7 - v.y * 7.1); p.setXYZ(i, v.x * n, v.y * n, v.z * n); } g.computeVertexNormals(); return g; })();
     geo.half = new T.CylinderGeometry(0.5, 0.5, 1, 12, 1, false, 0, Math.PI);
     geo.dome = new T.SphereGeometry(0.5, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2);
     // Kit parts: boxes with rounded edges (unit size; non-uniform scale keeps them chamfered).
@@ -1484,8 +1486,14 @@ const W3D = (() => {
         if (K.belt) {
           const bc = M(K.belt === true ? "#3a2a20" : K.belt);
           P(g, "rod", [0, 0.1, 0.0], [0.38, 0.05, 0.32], bc);
-          P(g, "box", [0, 0.1, 0.16], [0.07, 0.06, 0.02], C.gold);
-          P(g, "box", [-0.16, 0.04, 0.05], [0.06, 0.1, 0.08], bc);
+          // Buckle with a pin, a stitched pouch with a flap and toggle, and a small vial.
+          P(g, "ring", [0, 0.1, 0.162], [0.06, 0.05, 0.3], C.gold);
+          P(g, "box", [0, 0.1, 0.165], [0.008, 0.045, 0.01], C.gold);
+          P(g, "box", [-0.16, 0.04, 0.05], [0.065, 0.1, 0.08], bc);
+          P(g, "box", [-0.165, 0.08, 0.06], [0.07, 0.035, 0.085], M(mul(K.belt === true ? "#3a2a20" : K.belt, 0.8)), [-12, 0, 0]);
+          P(g, "sphere", [-0.165, 0.065, 0.1], [0.014, 0.014, 0.014], C.gold);
+          P(g, "rod", [0.16, 0.05, 0.07], [0.03, 0.07, 0.03], glow(mix(L.accent, "#ffffff", 0.2), 0.85));
+          P(g, "rod", [0.16, 0.095, 0.07], [0.02, 0.02, 0.02], C.wood);
         }
         if (K.scabbard) {
           P(g, "box", [-0.19, -0.05, -0.02], [0.03, 0.7, 0.05], M("#1c1c22"), [62, 0, -8]);
@@ -1735,26 +1743,26 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
         // The base mesh's mouth curves up into a grin. Heavy cheek slabs press down over its
         // corners and lower tusks jut up, so the glowing opening reads as a snarl (∩).
         for (const sx of [-1, 1]) {
-          part("octa", grp, [sx * 0.22, 0.17, 0.55], [0.2, 0.09, 0.12], rock, [10, 0, sx * 38]);
+          part("rock", grp, [sx * 0.22, 0.17, 0.55], [0.2, 0.09, 0.12], rock, [10, 0, sx * 38]);
           part("cone", grp, [sx * 0.13, 0.05, 0.58], [0.06, 0.16, 0.06], lit("#5a4e44"), [-12, 0, sx * -12]);
         }
         part("box", grp, [0, -0.03, 0.53], [0.42, 0.06, 0.12], rockD, [-8, 0, 0]);
-        part("octa", grp, [0, 0.62, 0.12], [0.3, 0.6, 0.26], rockD, [-15, 0, 0]);
-        part("octa", grp, [0.13, 0.56, -0.06], [0.22, 0.44, 0.2], rock, [-35, 0, -22]);
-        part("octa", grp, [-0.13, 0.56, -0.06], [0.22, 0.44, 0.2], rock, [-35, 0, 22]);
-        part("octa", grp, [0, 0.44, -0.3], [0.2, 0.4, 0.18], rockD, [-60, 0, 0]);
+        part("rock", grp, [0, 0.62, 0.12], [0.3, 0.6, 0.26], rockD, [-15, 0, 0]);
+        part("rock", grp, [0.13, 0.56, -0.06], [0.22, 0.44, 0.2], rock, [-35, 0, -22]);
+        part("rock", grp, [-0.13, 0.56, -0.06], [0.22, 0.44, 0.2], rock, [-35, 0, 22]);
+        part("rock", grp, [0, 0.44, -0.3], [0.2, 0.4, 0.18], rockD, [-60, 0, 0]);
       }));
     }
     // Shards along the back and on each shoulder.
     if (bones.Torso) socket(bones.Torso, model, [0, 0, 0], null).add(build("T", (grp) => {
       [[0, 0.45, -0.38, 0.5], [0.22, 0.32, -0.35, 0.36], [-0.22, 0.32, -0.35, 0.36], [0, 0.15, -0.44, 0.34]].forEach(([x, y, z, h], i) => {
-        part("octa", grp, [x, y, z], [0.16, h, 0.14], i % 2 ? rockD : rock, [-50, 0, x * -60]);
+        part("rock", grp, [x, y, z], [0.16, h, 0.14], i % 2 ? rockD : rock, [-50, 0, x * -60]);
       });
       part("sphere", grp, [0, 0.3, -0.33], [0.1, 0.1, 0.1], g);
     }));
     for (const bn of ["UpperArmL", "UpperArmR"]) if (bones[bn]) socket(bones[bn], model, [0, 0, 0], null).add(build(bn, (grp) => {
-      part("octa", grp, [0, 0.12, 0], [0.24, 0.38, 0.22], rock, [0, 0, 20]);
-      part("octa", grp, [0.06, 0.02, 0.12], [0.14, 0.26, 0.14], rockD, [30, 0, -10]);
+      part("rock", grp, [0, 0.12, 0], [0.24, 0.38, 0.22], rock, [0, 0, 20]);
+      part("rock", grp, [0.06, 0.02, 0.12], [0.14, 0.26, 0.14], rockD, [30, 0, -10]);
       part("sphere", grp, [0, 0.12, 0], [0.4, 0.4, 0.4], gh);
     }));
   }
