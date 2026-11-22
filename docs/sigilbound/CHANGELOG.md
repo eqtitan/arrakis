@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.18.3 (2026-11-22)
+- Heroes and enemies stand on the edge of the battle circle (allies along the near side, enemies along the far side), all facing the centre. Battle header fits on one line again.
+
+
 ## 0.18.2 (2026-11-22)
 - Your heroes now stand as far apart as the enemies (2.2 m gaps), with the camera re-fitted to the wider line.
 
