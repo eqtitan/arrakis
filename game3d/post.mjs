@@ -23,6 +23,7 @@ import * as T from "three";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { FullScreenQuad } from "three/examples/jsm/postprocessing/Pass.js";
 import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
+import { createPostFX2, attachSceneDepth, patchFinalFrag, finalUniforms, PFX2_TIERS } from "./postfx2.mjs";
 
 // ---------------------------------------------------------------------------------------------
 // Quality tiers
@@ -184,7 +185,7 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
 
   let preset = QUALITY[opts.quality] || QUALITY.High;
   let cssW = 1, cssH = 1, rw = 1, rh = 1;
-  let sceneRT = null, ldrRT = null, bloom = null, active = false;
+  let sceneRT = null, ldrRT = null, bloom = null, active = false, pfx = null, ssaoOff = false;
   const clearSave = new T.Color(), bgClear = new T.Color(), fogSave = new T.Color();
 
   const finalMat = new T.ShaderMaterial({
@@ -193,8 +194,9 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
       tScene: { value: null }, tBloom: { value: null },
       lift: { value: new T.Vector3() }, gammaInv: { value: new T.Vector3(1, 1, 1) }, gain: { value: new T.Vector3(1, 1, 1) },
       saturation: { value: 1 }, vignette: { value: 0 }, dither: { value: 1 },
+      ...finalUniforms(),
     },
-    defines: {}, vertexShader: VERT, fragmentShader: FINAL_FRAG,
+    defines: {}, vertexShader: VERT, fragmentShader: patchFinalFrag(FINAL_FRAG),
     depthTest: false, depthWrite: false, toneMapped: false,
   });
   const fxaaMat = new T.ShaderMaterial({
@@ -233,6 +235,15 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
     if (!active) return;
     const samples = Math.min(preset.msaa | 0, renderer.capabilities.maxSamples || 0);
     sceneRT = makeSceneTarget(renderer, rw, rh, samples, preset.target === "half" && halfFloatOK(renderer));
+    // 24-bit depth on the scene target (r149 defaults to 16-bit without a DepthTexture, which
+    // z-fights where kit meets the body), plus the postfx2 passes (SSAO, LUT, DoF, sharpen).
+    const fx = PFX2_TIERS[preset.name] || PFX2_TIERS.Medium;
+    try { attachSceneDepth(renderer, sceneRT); } catch (e) { console.warn("Sigilbound: depth attach failed", e); }
+    try {
+      pfx = pfx || createPostFX2(renderer, rw, rh, { tier: preset.name, focusTarget: opts.focusTarget });
+      pfx.setTier(preset.name);
+      if (ssaoOff || !fx.depth) pfx.ssao.enabled = false;
+    } catch (e) { console.warn("Sigilbound: postfx2 unavailable", e); pfx = null; }
     if (preset.fxaa || samples === 0) {   // no MSAA -> FXAA on the final LDR image
       ldrRT = new T.WebGLRenderTarget(rw, rh, { depthBuffer: false, stencilBuffer: false });
       ldrRT.texture.generateMipmaps = false;
@@ -244,6 +255,7 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
 
   function resizeTargets() {
     if (sceneRT) sceneRT.setSize(rw, rh);
+    if (pfx) pfx.setSize(rw, rh, renderer.getPixelRatio() / (window.devicePixelRatio || 1));
     if (ldrRT) { ldrRT.setSize(rw, rh); fxaaMat.uniforms.resolution.value.set(1 / rw, 1 / rh); }
     if (bloom) {
       bloom.setSize(Math.max(2, Math.round(rw * preset.bloomScale)), Math.max(2, Math.round(rh * preset.bloomScale)));
@@ -326,6 +338,7 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
     const bloomOn = !!bloom && (params.bloomStrength == null ? preset.bloomStrength : params.bloomStrength) > 0;
     setDefine("USE_BLOOM", bloomOn);
     if (bloomOn) finalMat.uniforms.tBloom.value = renderBloom(sceneRT.texture);
+    if (pfx) pfx.render(sceneRT, camera);
 
     // 3. final
     const u = finalMat.uniforms, g = params.gamma;
@@ -336,6 +349,7 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
     u.saturation.value = params.saturation; u.vignette.value = params.vignette; u.dither.value = params.dither;
     const neutral = params.vignette === 0 && params.saturation === 1 && [0, 1, 2].every((i) => params.lift[i] === 0 && g[i] === 1 && params.gain[i] === 1);
     setDefine("USE_GRADE", !neutral);
+    if (pfx) pfx.bindFinal(finalMat.uniforms, setDefine, sceneRT);
     quad.material = finalMat;
     if (ldrRT) {
       renderer.setRenderTarget(ldrRT); quad.render(renderer);
@@ -349,6 +363,7 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
   function dispose() {
     destroyTargets();
     finalMat.dispose(); fxaaMat.dispose(); quad.dispose();
+    if (pfx) { pfx.dispose(); pfx = null; }
     renderer.setPixelRatio(origPixelRatio);
   }
 
@@ -356,8 +371,10 @@ export function createPipeline(renderer, scene, camera, opts = {}) {
   buildTargets();
   { const v = renderer.getSize(new T.Vector2()); setSize(v.x, v.y); }
 
+  // The quality manager's first step down on High: drop SSAO before the whole tier.
+  function setSSAO(on) { ssaoOff = !on; if (pfx) pfx.ssao.enabled = !!on && !!(PFX2_TIERS[preset.name] || {}).ssao; }
   return {
-    render, setSize, setQuality, dispose, params,
+    render, setSize, setQuality, dispose, params, setSSAO, get pfx() { return pfx; },
     get quality() { return preset.name; },
     get preset() { return preset; },
     get active() { return active; },
@@ -497,7 +514,7 @@ export function createQualityManager(opts = {}) {
   let current = forced || storedTier || (QUALITY[opts.initial] ? opts.initial : null) || deviceHint();
   let auto = !forced;
   let last = -1, start = 0, frames = 0, warm = warmupWindows, good = 0, fps = 0, dts = [];
-  let downedThisSession = false, upsThisSession = 0;
+  let downedThisSession = false, upsThisSession = 0, softenedTier = null;
 
   const persist = () => save({ v: 2, tier: current, forced, t: Date.now() });
   function resetWindow(now) { start = now; frames = 0; dts = []; }
@@ -524,6 +541,8 @@ export function createQualityManager(opts = {}) {
     if (f < minFps) {
       good = 0;
       if (capped) return;
+      // First try a cheaper version of this tier (e.g. High without SSAO) before a full step.
+      if (opts.soften && softenedTier !== current && opts.soften(current)) { softenedTier = current; warm = warmupWindows; return; }
       if (i < TIERS.length - 1) { downedThisSession = true; set(TIERS[i + 1], "slow"); }
     } else if (f >= upFps && i > 0 && !downedThisSession && upsThisSession < 1) {
       if (++good >= upWindows) { upsThisSession++; set(TIERS[i - 1], "fast"); }

@@ -14,6 +14,7 @@ import { createPipeline, createQualityManager, deviceHint } from "./post.mjs";
 import { buildArena } from "./scenery.mjs";
 import { applyCharacterLook, roleFromGame, tagRole } from "./shading.mjs";
 import { createVFX } from "./vfx.mjs";
+import { lutPresetForChapter } from "./postfx2.mjs";
 
 // Proper colour management: hex colours (LOOKS, palettes) are sRGB and get converted to
 // linear for lighting, then back to sRGB on output. Legacy mode skipped that conversion,
@@ -307,7 +308,10 @@ const W3D = (() => {
     camera = new T.PerspectiveCamera(50, 1, 0.1, 150);
     // Post-processing and adaptive quality (post.mjs): the tier sets pixel ratio, MSAA, shadow
     // map size and bloom, and steps down on sustained low fps.
-    try { pipe = createPipeline(renderer, scene, camera, { quality: Q.current }); pipe.params.exposure = GFX.exposure; }
+    try {
+      pipe = createPipeline(renderer, scene, camera, { quality: Q.current, focusTarget: camTarget }); pipe.params.exposure = GFX.exposure;
+      if (pipe.pfx) pipe.pfx.lut.setPreset(lutPresetForChapter(opts.titan ? 9 : (opts.chapter || 0), !!opts.titan)); // per-arena colour grade
+    }
     catch (e) { console.warn("Sigilbound: post-processing unavailable", e); pipe = null; }
     renderer.domElement.addEventListener("webglcontextrestored", () => { if (pipe && qm) pipe.setQuality(qm.current); });
     // Skill effects (vfx.mjs): pooled per-element casts, projectiles, impacts, auras.
@@ -367,9 +371,11 @@ const W3D = (() => {
   function setCamera(k) { if (CAMS[k] && typeof G !== "undefined") { G.settings.cam = k; if (typeof save === "function") save(); } if (renderer) resize(); }
   // Shared quality manager (one per session; remembers the tier in localStorage).
   let pipe = null, qm = null;
-  const lookTier = () => (qm ? qm.current : "High").toLowerCase();
+  let lookOverride = null;
+  const lookTier = () => lookOverride || (qm ? qm.current : "High").toLowerCase();
   function quality(r) {
-    if (!qm) qm = createQualityManager({ initial: deviceHint(r), onChange: (n) => { if (pipe) pipe.setQuality(n); } });
+    if (!qm) qm = createQualityManager({ initial: deviceHint(r), onChange: (n) => { if (pipe) { pipe.setSSAO(true); pipe.setQuality(n); } },
+      soften: (tier) => { if (pipe && pipe.pfx && pipe.pfx.ssao.enabled && (tier === "High" || tier === "Ultra")) { pipe.setSSAO(false); return true; } return false; } });
     return qm;
   }
   function setQuality(name) { quality(renderer).force(name || "auto"); }
@@ -2227,7 +2233,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   // localStorage (keyed by game version so model or palette changes re-shoot them).
   const FACE_SIZE = 256;
   const faceVer = (window.SB_VERSION && window.SB_VERSION.version) || "dev";
-  const FACE_KEY = "sigilbound.faces.v1";
+  const FACE_KEY = "sigilbound.faces.v2";
   const faces = new Map();
   try {
     const stored = JSON.parse(localStorage.getItem(FACE_KEY) || "null");
@@ -2243,7 +2249,8 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
   function shootFace(id, el, hollow) {
     const base = id === "titan" ? "titan" : BASE[id] || "adventurer";
-    const built = buildRigged(id, base, hollow, el);
+    lookOverride = "ultra"; // card faces get the full look (subdivided heads), shot once and cached
+    let built; try { built = buildRigged(id, base, hollow, el); } finally { lookOverride = null; }
     if (!built) return null;
     if (!faceRenderer) {
       faceRenderer = new T.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
