@@ -256,7 +256,8 @@ const W3D = (() => {
     scene.background = gradientTexture(sc[0], sc[1]);
     scene.fog = new T.Fog(new T.Color(sc[1]), 18, 48);
     scene.environment = envMap(renderer); // small generated PMREM: highlights on metal kit
-    scene.add(new T.HemisphereLight(new T.Color(mix(sc[1], "#ffffff", 0.35)), new T.Color(sc[2]), GFX.hemi));
+    const hemi = new T.HemisphereLight(new T.Color(mix(sc[1], "#ffffff", 0.35)), new T.Color(sc[2]), GFX.hemi);
+    scene.add(hemi);
     const sun = new T.DirectionalLight(0xfff1dd, GFX.sun);
     sun.position.set(-5, 10, 6); sun.castShadow = true;
     sun.shadow.mapSize.set(GFX.shadow, GFX.shadow); sun.shadow.radius = 3; sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
@@ -272,6 +273,7 @@ const W3D = (() => {
       arena = buildArena(scene, { chapter: opts.titan ? 9 : (opts.chapter || 0), titan: !!opts.titan, quality: Q.current.toLowerCase(), renderer });
     } catch (e) { console.warn("Sigilbound: arena failed, using the plain field", e); arena = null; }
     if (!arena) plainField(sc, opts);
+    else if (arena.colors && arena.colors.hemiSky) { hemi.color.copy(arena.colors.hemiSky); if (arena.colors.hemiGround) hemi.groundColor.copy(arena.colors.hemiGround); }
     sun.shadow.camera.left = sun.shadow.camera.bottom = -9; sun.shadow.camera.right = sun.shadow.camera.top = 9;
 
     camera = new T.PerspectiveCamera(50, 1, 0.1, 150);
