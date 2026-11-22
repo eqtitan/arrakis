@@ -93,6 +93,22 @@ const W3D = (() => {
     seraphine: { hide: ["hood"], h: 1.02 },
     ulfgar: { h: 1.08, bulk: [1.25, 1.05, 1.2], arms: 1.2, legs: 1.15, sh: 0.03 },
   };
+  // Faces: brow angle (deg; positive = stern, negative = kind), mouth (smile/flat/frown/smirk)
+  // and iris colour per hero. Beards hide the mouth on bearded heads.
+  const FACE = {
+    brannoc: { brow: 4, mouth: "smile", iris: "#5a3a1a" }, mira: { brow: 2, mouth: "flat", iris: "#2a7a8a" },
+    pell: { brow: -10, mouth: "smile", iris: "#3a6a2a" }, odo: { brow: -6, mouth: "smile", iris: "#3a2a1a" },
+    wren: { brow: -12, mouth: "smile", iris: "#6a4a2a" }, kettle: { brow: 14, mouth: "smirk", iris: "#7a4ad8" },
+    ysolde: { brow: 16, mouth: "smirk", iris: "#ffa030" }, corvan: { brow: -8, mouth: "flat", iris: "#3a8ad8" },
+    hask: { brow: 12, mouth: "frown", iris: "#4a5a3a" }, lumen: { brow: 6, mouth: "smile", iris: "#f0c040" },
+    nyx: { brow: 14, mouth: "flat", iris: "#c9a3ff" }, tamsin: { brow: -4, mouth: "smile", iris: "#5a7a2a" },
+    gorrum: { brow: 18, mouth: "frown", iris: "#ff7a2a" }, velka: { brow: -14, mouth: "frown", iris: "#9ad8ff" },
+    aurelia: { brow: 8, mouth: "flat", iris: "#e8c860" }, sable: { brow: 10, mouth: "smirk", iris: "#b48cff" },
+    kaito: { brow: 16, mouth: "flat", iris: "#4affb0" }, maelis: { brow: 10, mouth: "smirk", iris: "#2ad0ff" },
+    thrain: { brow: 8, mouth: "smile", iris: "#8a4a1a" }, oriel: { brow: -8, mouth: "smile", iris: "#ffd060" },
+    vaelith: { brow: 18, mouth: "frown", iris: "#ffb020" }, morwenna: { brow: 14, mouth: "smirk", iris: "#d090ff" },
+    seraphine: { brow: -12, mouth: "smile", iris: "#ffe080" }, ulfgar: { brow: 10, mouth: "flat", iris: "#8acaff" },
+  };
   const bodyOf = (id) => Object.assign({}, BODY[id], (window.SB_BODY_TEST || {})[id]);
   const ANIMS = {
     idle: ["Idle_Sword", "Idle"], melee: ["Sword_Slash", "Punch_Right", "Punch"], cast: ["Gun_Shoot", "Interact", "Weapon", "Punch"],
@@ -1353,6 +1369,30 @@ const W3D = (() => {
           P(g, "disc", [0, top - 0.04, 0], [0.62, 0.02, 0.62], straw, [-6, 0, 0]);
           P(g, "cone", [0, top + 0.06, -0.01], [0.32, 0.2, 0.32], straw);
           P(g, "rod", [0, top - 0.02, -0.01], [0.27, 0.04, 0.27], band);
+        }
+        // ---- face: eyes, brows and mouth that read at the battle camera ----
+        // The base heads have tiny dark eyes and no mouth. Small coloured irises with a catch-
+        // light, per-hero brows (angle = mood) and a mouth line give each hero an expression.
+        if (!hollow && !(K.face === false)) {
+          const F = Object.assign({ brow: 6, mouth: "flat", iris: "#4a3a2a" }, FACE[id] || {});
+          const ex = headSrc === "hooded" ? 0.046 : 0.045, ey = headSrc === "hooded" ? 0.113 : 0.109, ez = headSrc === "hooded" ? 0.118 : 0.11;
+          const masked = gearHead === "mask";
+          const iris = glow(F.iris), white = glow("#fbf6ee"), browM = M(mul(L.hair, 0.55)), lip = M(mix(SKIN[L.skin] || "#c99068", "#5a2a2a", 0.55));
+          for (const s of [-1, 1]) {
+            P(g, "sphere", [s * ex, ey, ez], [0.026, 0.028, 0.008], white);
+            P(g, "sphere", [s * ex, ey - 0.001, ez + 0.003], [0.016, 0.02, 0.006], iris);
+            P(g, "sphere", [s * ex + 0.004, ey + 0.005, ez + 0.006], [0.006, 0.006, 0.003], white);
+            // Brow: inner end lower for a stern look (positive angle), higher for a kind one.
+            if (!(gearHead === "helm" && K.helm === "great")) P(g, "box", [s * (ex + 0.002), ey + 0.026, ez + 0.002], [0.036, 0.009, 0.008], browM, [0, 0, s * F.brow]);
+          }
+          const hasBeard = headSrc !== "hooded" && !B.shave && !hide.has("hair");
+          if (!hasBeard && !masked) {
+            const my = ey - 0.06, mz = ez + 0.004;
+            if (F.mouth === "smile") for (const s of [-1, 1]) P(g, "box", [s * 0.011, my + 0.002, mz], [0.022, 0.005, 0.006], lip, [0, 0, s * 14]);
+            else if (F.mouth === "frown") for (const s of [-1, 1]) P(g, "box", [s * 0.011, my, mz], [0.022, 0.005, 0.006], lip, [0, 0, s * -12]);
+            else if (F.mouth === "smirk") { P(g, "box", [-0.004, my, mz], [0.022, 0.005, 0.006], lip); P(g, "box", [0.013, my + 0.003, mz], [0.012, 0.005, 0.006], lip, [0, 0, 22]); }
+            else P(g, "box", [0, my, mz], [0.03, 0.005, 0.006], lip);
+          }
         }
         if (hooded && (L.glow || hollow) && gearHead !== "halo") eyes(g);
 
