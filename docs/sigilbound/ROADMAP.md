@@ -39,7 +39,7 @@ _Last updated: 2026-11-22._
 
    *Owner: art-director.*
 3. **Friends & chat live.** Unblocked by blockers 1 and 2. *Owner: engineering.*
-4. ~~**Sound & music.**~~ Shipped in 0.9.0, with volume sliders in 0.10.0. The in-app update banner works without a restart as of 0.13.1.
+4. ~~**Sound & music.**~~ Shipped in 0.7.0, with volume sliders in 0.8.0. The in-app update banner works without a restart as of 0.13.1.
 5. **Play Store release build.** A release signing key in GitHub secrets, an AAB build, and the store listing. *Owner: pmo (checklist) + engineering.*
 6. **TestFlight.** Once there's an Apple account: signing secrets and an upload step in the workflow. *Owner: engineering.*
 
