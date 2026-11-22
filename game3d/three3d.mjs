@@ -1355,6 +1355,12 @@ const W3D = (() => {
           const top = 0.12, len = K.robe === "long" ? hipY + top - 0.07 : 0.45;
           const w = K.robeW || 1;
           P(g, "taper", [0, top - len / 2, 0.0], [0.5 * w, len, 0.42 * w], robeC, [180, 0, 0]);
+          // Layered cloth: a shorter, slightly wider overskirt with its own hem.
+          if (K.robe === "long") {
+            const ol = len * 0.42, over = Mc(mix(K.robeColor || L.cloth || L.armor, "#000000", 0.18));
+            P(g, "taper", [0, top - ol / 2 + 0.01, 0.0], [0.53 * w, ol, 0.45 * w], over, [180, 0, 0]);
+            P(g, "taper", [0, top - ol + 0.02, 0.0], [0.555 * w, 0.03, 0.47 * w], trimC, [180, 0, 0]);
+          }
           P(g, "taper", [0, top - len + 0.03, 0.0], [0.53 * w, 0.06, 0.45 * w], trimC, [180, 0, 0]);
           if (K.robe === "long" && K.stole !== false) P(g, "box", [0, top - len / 2, 0.205 * w], [0.12, len * 0.96, 0.02], trimC, [-9, 0, 0]);
           if (K.bells) for (let i = 0; i < 6; i++) {
@@ -1426,6 +1432,9 @@ const W3D = (() => {
         } else { // plate
           P(pg, "dome", [side * 0.02, -0.01, 0], [0.26, 0.17, 0.25], base0, [0, 0, tiltZ]);
           P(pg, "ring", [side * 0.0, -0.035, 0], [0.13, 0.13, 0.4], trim, [90, 0, tiltZ]);
+          // Lames: two narrower plates stepping down the upper arm, with rivets on the cap.
+          for (let i = 1; i <= 2; i++) P(pg, "dome", [side * (0.03 + i * 0.012), -0.035 - i * 0.03, 0], [0.24 - i * 0.025, 0.1, 0.23 - i * 0.025], base0, [0, 0, tiltZ - side * 8 * i]);
+          for (let i = -1; i <= 1; i++) P(pg, "sphere", [side * 0.075, 0.035, i * 0.06], [0.018, 0.018, 0.018], trim);
           if (gc && gc.r >= 3) P(pg, "dome", [side * 0.05, -0.07, 0], [0.22, 0.12, 0.22], base0, [0, 0, side * -65]);
           if (gc && gc.r >= 4) P(pg, "ring", [side * 0.035, -0.075, 0], [0.12, 0.12, 0.35], trim, [90, 0, side * -65]);
         }
@@ -1505,6 +1514,7 @@ const W3D = (() => {
             lo.rotation.z = Math.sin(t * 1.1 + o.id) * 0.05 + (sp ? sp.az * 0.5 : 0);
           }, 1);
           P(upper, sheet(0.24, 0.42, 0.52, 0.09), [0, 0, -0.01], [1, 1, 1], cloth);
+          P(upper, sheet(0.22, 0.39, 0.5, 0.085), [0, -0.01, -0.002], [1, 1, 1], Mc(mix(L.accent, "#000000", 0.35))); // lining
           const lower = pivot(upper, [0, -0.47, -0.01]);
           P(lower, sheet(0.4, 0.56, 0.06 + 0.5 * capeLen, 0.11), [0, 0.06, 0], [1, 1, 1], cloth);
           P(lower, sheet(0.56, 0.57, 0.045, 0.11, 10, 1), [0, -0.5 * capeLen + 0.02, 0.003], [1.01, 1, 1.01], trim);
