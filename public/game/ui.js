@@ -137,6 +137,8 @@ const SCREENS = {
         <button class="chip" data-act="showHelp">How to play</button>
         <button class="chip" data-act="saveCode">Save code</button>
         <button class="chip" data-act="toggleGfx">Battles: ${G.settings.flat ? "2D" : "3D"}</button>
+        <button class="chip" data-act="toggleSound">Sound: ${G.settings.sound === false ? "Off" : "On"}</button>
+        <button class="chip" data-act="toggleMusic">Music: ${G.settings.music === false ? "Off" : "On"}</button>
         <button class="chip" data-act="askReset">Reset save</button></div>
       <div class="small dim" style="text-align:center">Sigilbound ${VERSION_LABEL}${SBV.date ? ` · ${SBV.date}` : ""}</div>`;
   },
@@ -337,11 +339,11 @@ const ACTIONS = {
       <button class="btn" style="width:100%" data-act="closeModal">Let's go</button>`);
   },
   closeModal() { closeModal(); },
-  claimLogin() { const r = claimLogin(); if (r) toast(`Login reward: ${rewardText(r)}`); },
+  claimLogin() { const r = claimLogin(); if (r) { SOUND.play("coin"); toast(`Login reward: ${rewardText(r)}`); } },
   claimQuest(d) {
     const q = DAILY_QUESTS.find((x) => x.id === d.id);
     if (!q || G.daily.claimed[q.id] || questProgress(q.id) < q.goal) return;
-    G.daily.claimed[q.id] = true; grant(q.reward); save();
+    G.daily.claimed[q.id] = true; grant(q.reward); save(); SOUND.play("coin");
     toast(`Quest complete: ${rewardText(q.reward)}`);
   },
   playNext() { ACTIONS.prepStage({ idx: Math.min(G.cleared, TOTAL_STAGES - 1) }); },
@@ -414,7 +416,9 @@ const ACTIONS = {
     closeModal();
     const color = RARITY[RARITY_KEYS[best]].color;
     FX.portal(innerWidth / 2, innerHeight / 2, color, 1100);
+    SOUND.play("cast", { volume: 0.5, rate: 0.6, jitter: 0 });
     if (best >= 2) setTimeout(() => { FX.flash(color); NATIVE.haptic("heavy"); }, 950);
+    setTimeout(() => SOUND.play(best >= 3 ? "legendary" : best >= 2 ? "victory" : "confirm", { jitter: 0 }), 950);
     setTimeout(() => showSummonResult(d, res, best), 1000);
   },
 };
@@ -439,6 +443,8 @@ Object.assign(ACTIONS, {
       <div>💸 <b>Free</b>: There's no shop. Every shard is earned by playing.</div></div>
       <button class="btn" style="width:100%;margin-top:12px" data-act="closeModal">Got it</button>`);
   },
+  toggleSound() { G.settings.sound = G.settings.sound === false; save(); if (G.settings.sound) SOUND.play("confirm"); },
+  toggleMusic() { G.settings.music = G.settings.music === false; save(); SOUND.refreshMusic(); },
   toggleGfx() {
     G.settings.flat = !G.settings.flat; save();
     toast(G.settings.flat ? "Battles will use 2D art (lighter on older phones)" : "Battles will use 3D");
@@ -492,11 +498,11 @@ Object.assign(ACTIONS, {
     closeModal();
     if (!B) return;
     if (B.mode === "titan") { B.battle.over = true; B.battle.result = "timeout"; finishBattle(); }
-    else { B.token = null; B = null; FX.clear(); W3D.unmount(); G.settings.autoReplay = false; render(); }
+    else { B.token = null; B = null; FX.clear(); W3D.unmount(); SOUND.stopMusic(); G.settings.autoReplay = false; render(); }
   },
   resultNext() { closeModal(); const idx = Math.min(G.cleared, TOTAL_STAGES - 1); startBattle({ mode: "stage", idx }); },
   resultReplay(d) { closeModal(); startBattle({ mode: "stage", idx: +d.idx }); },
-  resultBack(d) { closeModal(); FX.clear(); W3D.unmount(); B = null; UI.screen = d.to || "campaign"; render(); },
+  resultBack(d) { closeModal(); FX.clear(); W3D.unmount(); SOUND.stopMusic(); B = null; UI.screen = d.to || "campaign"; render(); },
   resultStopReplay() { G.settings.autoReplay = false; save(); if (B) B.replayTimer && clearTimeout(B.replayTimer); render(); ACTIONS.resultBack({ to: "campaign" }); },
 });
 
@@ -506,6 +512,7 @@ document.addEventListener("click", (e) => {
   const act = el.dataset.act;
   const fn = ACTIONS[act];
   if (!fn) return;
+  if (act !== "bTarget") SOUND.play("tap", { volume: 0.45, jitter: 0 });
   fn({ ...el.dataset });
   if ((!act.startsWith("b") || act === "bagSlot") && !B) render();
 });
@@ -528,6 +535,7 @@ function startBattle(cfg) {
   } else {
     battle = new Battle(allies, stageWaves(cfg.idx).map((w) => w.map(unitFromEnemy)));
   }
+  SOUND.startMusic();
   B = { id: ++battleSeq, battle, mode: cfg.mode, idx: cfg.idx, token: {}, actor: null, sel: 0, awaiting: false, skillName: "",
     use3d: !G.settings.flat && typeof W3D !== "undefined" && W3D.supported() };
   renderBattle();
@@ -693,6 +701,10 @@ async function showEvents(events, color = "#7dff7a") {
       if (!it) continue;
       const { e, c } = it;
       if (it.text) floatAt(key, it.text, it.cls);
+      if (e.type === "dmg" && !e.dot) SOUND.play(e.crit ? "crit" : "hit", { volume: e.crit ? 1 : 0.8 });
+      else if (e.type === "heal") SOUND.play("heal", { volume: 0.5 });
+      else if (e.type === "fx") SOUND.play("buff", { volume: 0.35 });
+      else if (e.type === "death") SOUND.play(key.startsWith("A") ? "downed" : "kill", { volume: 0.9 });
       if (B && B.use3d) {
         if (e.type === "dmg") {
           W3D.burst(key, e.dot ? "#7dff7a" : color, e.crit); W3D.hit(key);
@@ -756,6 +768,7 @@ async function doAct(u, choice, token) {
   const hitKeys = [...new Set(events.filter((e) => e.type === "dmg" && e.key !== u.key).map((e) => e.key))];
   if (B.use3d) {
     const melee = sk.mult > 0 && sk.target === "enemy" && spriteKind(u.template.id) === "melee";
+    SOUND.play(melee ? "swing" : "cast", { volume: 0.6 });
     await W3D.attack(u.key, hitKeys[0], melee);
     if (sk.mult === 0) W3D.cast(u.key, color);
     if (melee) hitKeys.forEach((k) => W3D.slash(k, color));
@@ -825,6 +838,7 @@ function finishBattle() {
     G.daily.titanBest = Math.max(G.daily.titanBest, dmg);
     G.stats.titanBest = Math.max(G.stats.titanBest, dmg);
     grant(tier); bumpQuest("titan"); save();
+    SOUND.stopMusic(); SOUND.play("bigKill"); setTimeout(() => SOUND.play("coin"), 600);
     modal(`<div class="result-title victory">Titan Battle</div>
       <p style="text-align:center;font-size:26px;font-weight:900">💥 ${fmt(dmg)}</p>
       <p style="text-align:center">${rewardText(tier)}</p>
@@ -844,6 +858,7 @@ function finishBattle() {
     if (first) G.cleared++;
     G.stats.wins++; bumpQuest("win"); save();
     NATIVE.haptic("success");
+    SOUND.stopMusic(); SOUND.play("victory", { jitter: 0 }); setTimeout(() => SOUND.play("coin"), 450);
     if (typeof pushProfile === "function") pushProfile();
     const canReplay = G.settings.autoReplay;
     modal(`<div class="result-title victory">VICTORY</div>
@@ -860,6 +875,7 @@ function finishBattle() {
     }
   } else {
     G.settings.autoReplay = false; save();
+    SOUND.stopMusic(); SOUND.play("downed", { rate: 0.8, jitter: 0 });
     modal(`<div class="result-title defeat">DEFEAT</div>
       <p class="small" style="text-align:center">Tips: level heroes with gold training, equip and upgrade gear, bring elements that beat the enemy, and summon new heroes.</p>
       <div class="row"><button class="btn sec grow" data-act="resultReplay" data-idx="${idx}">Retry</button>
