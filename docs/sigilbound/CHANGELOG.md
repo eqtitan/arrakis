@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.16.0 (2026-11-22)
+- Ultra graphics mode (Settings → Graphics quality): full native screen resolution, maximum edge smoothing, 4096 shadows, full-resolution glow, sharper reflections, denser grass and scatter, sharper textures. Manual only; Auto never picks it.
+
+
 ## 0.15.1 (2026-11-22)
 - Battle fixes from device testing: capes no longer flip up during fast moves (Sable), enemy row spread out so models and name tags don't overlap, tags stay on screen, status changes shown as one small tag per hero.
 

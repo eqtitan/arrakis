@@ -519,8 +519,8 @@ Object.assign(ACTIONS, {
         const q = gfxQuality();
         const opt = (k, label) => `<button class="chip ${q.choice === k ? "on" : ""}" data-act="setGfxQuality" data-q="${k}">${label}</button>`;
         return `<div class="setting"><div><b>Graphics quality</b><div class="small dim">${q.choice === "auto"
-          ? `Auto picks the best your phone can run smoothly${q.tier ? ` (now: ${q.tier})` : ""}` : "Lower it if battles stutter or the phone gets warm"}</div></div>
-          <div class="row wrap" style="gap:6px">${opt("auto", "Auto")}${opt("High", "High")}${opt("Medium", "Medium")}${opt("Low", "Low")}</div></div>`;
+          ? `Auto picks the best your phone can run smoothly${q.tier ? ` (now: ${q.tier})` : ""}` : q.choice === "Ultra" ? "Maximum detail at full screen resolution. Uses more battery and may warm the phone." : "Lower it if battles stutter or the phone gets warm"}</div></div>
+          <div class="row wrap" style="gap:6px">${opt("auto", "Auto")}${opt("Ultra", "Ultra")}${opt("High", "High")}${opt("Medium", "Medium")}${opt("Low", "Low")}</div></div>`;
       })()}
       ${B ? "" : `<div class="row" style="gap:8px;margin-top:10px">
         <button class="btn sec sm grow" data-act="saveCode">Save code</button>
@@ -531,7 +531,7 @@ Object.assign(ACTIONS, {
   },
   setGfxQuality(d) {
     W3D.setQuality(d.q);
-    toast(d.q === "auto" ? "Graphics: Auto" : `Graphics: ${d.q}`);
+    toast(d.q === "auto" ? "Graphics: Auto" : d.q === "Ultra" ? "Graphics: Ultra (applies from the next battle)" : `Graphics: ${d.q}`);
     ACTIONS.openSettings();
   },
   toggleGfx() {

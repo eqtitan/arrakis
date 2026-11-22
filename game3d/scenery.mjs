@@ -2,7 +2,7 @@
 //
 // buildArena(scene, opts) → { update(t), dispose(), lights, colors, stats }
 //   opts: { chapter: 0..9, titan: bool, palette: [skyTop, horizon, ground, prop, accent],
-//           quality: "high"|"medium"|"low", renderer, fog: true (set scene.fog/background) }
+//           quality: "ultra"|"high"|"medium"|"low", renderer, fog: true (set scene.fog/background) }
 //
 // Scenery kind = chapter % 5: 0 forest, 1 shore, 2 badlands, 3 marsh, 4 ruins + crystals; titan =
 // volcanic basalt with lava and embers. Each chapter also has its own material theme (THEMES).
@@ -69,6 +69,7 @@ const KIND = [
 ];
 
 const QUALITY = {
+  ultra:  { tex: 1024, grid: 160, tufts: 2600, scatter2: 700, rocks: 300, props: 1, motes: 260, aniso: 16, casters: true, ringSeg: 300 },
   high:   { tex: 512, grid: 120, tufts: 1500, scatter2: 420, rocks: 190, props: 1, motes: 160, aniso: 4, casters: true, ringSeg: 220 },
   medium: { tex: 256, grid: 90,  tufts: 850,  scatter2: 240, rocks: 120, props: 0.7, motes: 90, aniso: 2, casters: true, ringSeg: 160 },
   low:    { tex: 128, grid: 64,  tufts: 380,  scatter2: 100, rocks: 60,  props: 0.45, motes: 0, aniso: 1, casters: false, ringSeg: 110 },

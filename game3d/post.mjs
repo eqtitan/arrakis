@@ -35,6 +35,15 @@ import { FXAAShader } from "three/examples/jsm/shaders/FXAAShader.js";
 //   falls back to "byte"), "byte" = RGBA8 (half the bandwidth; the canvas is 8-bit anyway).
 // bloomScale: bloom chain input resolution relative to the render size (UnrealBloomPass halves again).
 export const QUALITY = Object.freeze({
+  // Ultra: manual-only "max everything" for flagship phones. Native resolution (dpr capped at 3),
+  // as much MSAA as the GPU allows (clamped to MAX_SAMPLES), 4096 shadows, full-res bloom.
+  // Never chosen by Auto and never auto-stepped (TIERS below excludes it).
+  Ultra: Object.freeze({
+    name: "Ultra", pixelRatio: 3.0, post: true, msaa: 8, fxaa: false, target: "half",
+    shadowMapSize: 4096, shadowType: T.PCFSoftShadowMap, propShadows: true,
+    bloom: true, bloomStrength: 1.45, bloomScale: 1.0,
+    maxLights: 8, textureSize: 512,
+  }),
   High: Object.freeze({
     name: "High", pixelRatio: 2.0, post: true, msaa: 4, fxaa: false, target: "half",
     shadowMapSize: 2048, shadowType: T.PCFSoftShadowMap, propShadows: true,
@@ -54,7 +63,7 @@ export const QUALITY = Object.freeze({
     maxLights: 3, textureSize: 128,
   }),
 });
-export const TIERS = ["High", "Medium", "Low"];
+export const TIERS = ["High", "Medium", "Low"]; // auto-stepping ladder (Ultra is manual-only)
 
 // Look parameters (live-tweakable through pipeline.params). NEUTRAL turns grade + vignette off.
 export const DEFAULT_PARAMS = Object.freeze({

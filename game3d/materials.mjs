@@ -247,7 +247,7 @@ const _texVariant = new Map();
  */
 export function proceduralTexture(kind, opts = {}) {
   if (!GEN[kind]) throw new Error("proceduralTexture: unknown kind " + kind);
-  const S = Math.min(256, Math.max(16, 1 << Math.round(Math.log2(opts.size || 128))));
+  const S = Math.min(512, Math.max(16, 1 << Math.round(Math.log2(opts.size || 128))));
   const seed = opts.seed == null ? 1 : opts.seed | 0;
   const rep = opts.repeat == null ? [1, 1] : Array.isArray(opts.repeat) ? opts.repeat : [opts.repeat, opts.repeat];
   const aniso = opts.anisotropy || 1;

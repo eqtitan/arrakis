@@ -255,7 +255,7 @@ const W3D = (() => {
     const sc = opts.titan ? ["#1a0a0a", "#c0401a", "#24100c", "#100606"] : sceneColors(opts.chapter);
     scene.background = gradientTexture(sc[0], sc[1]);
     scene.fog = new T.Fog(new T.Color(sc[1]), 18, 48);
-    scene.environment = envMap(renderer); // small generated PMREM: highlights on metal kit
+    scene.environment = envMap(renderer, { size: quality(renderer).current === "Ultra" ? 256 : 64 }); // generated PMREM: highlights on metal kit (sharper on Ultra)
     const hemi = new T.HemisphereLight(new T.Color(mix(sc[1], "#ffffff", 0.35)), new T.Color(sc[2]), GFX.hemi);
     scene.add(hemi);
     const sun = new T.DirectionalLight(0xfff1dd, GFX.sun);
@@ -2212,7 +2212,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
   function scSetup() {
     const r = new T.WebGLRenderer({ antialias: true, alpha: true });
-    r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    r.setPixelRatio(Math.min(qm && qm.current === "Ultra" ? 3 : 2, window.devicePixelRatio || 1)); // hero viewer: native res on Ultra
     r.outputEncoding = T.sRGBEncoding;
     r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = GFX.exposure;
     r.setClearColor(0x000000, 0);
