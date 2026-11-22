@@ -852,8 +852,12 @@ const W3D = (() => {
   const _sp = new T.Vector3(), _sq = new T.Quaternion();
   function springy(fn, gain) {
     return (o, t) => {
+      const s = o.userData.sp || (o.userData.sp = { p: new T.Vector3(), t, ax: 0, az: 0, vx: 0, vz: 0, on: false, addX: 0, addZ: 0 });
+      // Take off last frame's offset first: base animations set only some axes (a cape sets X
+      // but not Z), so adding on top every frame made the other axis drift without bound
+      // (on a 60-120 fps phone, Sable's cape ended up standing on end).
+      o.rotation.x -= s.addX; o.rotation.z -= s.addZ; s.addX = s.addZ = 0;
       fn(o, t);
-      const s = o.userData.sp || (o.userData.sp = { p: new T.Vector3(), t, ax: 0, az: 0, vx: 0, vz: 0, on: false });
       const dt = Math.min(0.05, Math.max(0.001, t - s.t)); s.t = t;
       if (!o.parent) return;
       o.parent.getWorldPosition(_sp);
@@ -869,7 +873,8 @@ const W3D = (() => {
       s.vx += ((tx - s.ax) * 70 - s.vx * 16.7) * dt; s.ax += s.vx * dt;
       s.vz += ((tz - s.az) * 70 - s.vz * 16.7) * dt; s.az += s.vz * dt;
       s.ax = clamp(s.ax, -0.15, 0.45); s.az = clamp(s.az, -0.32, 0.32);
-      o.rotation.x += s.ax; o.rotation.z += s.az;
+      if (!isFinite(s.ax) || !isFinite(s.az)) { s.ax = s.az = s.vx = s.vz = 0; }
+      o.rotation.x += s.ax; o.rotation.z += s.az; s.addX = s.ax; s.addZ = s.az;
     };
   }
 
@@ -1872,6 +1877,25 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     for (const cb of frameCbs) cb();
     raf = requestAnimationFrame(loop);
   }
+  // Dev/QA only (window.SB_DEBUG): run the per-frame kit motion `n` times at `hz`, as a phone
+  // would over n/hz seconds, without rendering. Used to check drift that only shows after
+  // thousands of frames (headless renders at a few fps).
+  // `jostle` adds small knockback-like sideways and forward moves (as hits and turns do in a fight).
+  function debugStep(n = 6000, hz = 120, jostle = 0) {
+    if (!window.SB_DEBUG) return false;
+    let t = performance.now() / 1000;
+    for (let i = 0; i < n; i++) {
+      t += 1 / hz;
+      for (const v of views.values()) {
+        if (jostle) v.root.position.set(v.home.x + Math.sin(t * 2.3 + v.phase) * jostle * Math.max(0, Math.sin(t * 0.7)), v.home.y, v.home.z + Math.sin(t * 3.1) * jostle * 0.5);
+        if (v.mixer) v.mixer.update(1 / hz);
+        if (!v.dead) for (const f of v.fx) f(t);
+        v.root.updateMatrixWorld(true);
+      }
+    }
+    if (jostle) for (const v of views.values()) v.root.position.copy(v.home);
+    return true;
+  }
   function tween(dur, fn) { return new Promise((done) => tweens.push({ dur, fn, done, k: 0 })); }
   const ease = (k) => 1 - Math.pow(1 - k, 3);
   const easeIO = (k) => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
@@ -2299,7 +2323,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, victory, setHighlight, setQuality,
     get quality() { return qm ? qm.current : null; }, get qualityAuto() { return qm ? qm.auto : true; },
     burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop,
-    has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
+    debugStep, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };
 })();
 
