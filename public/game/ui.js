@@ -771,7 +771,8 @@ function floatAt(key, text, cls) {
   if (!el) return;
   // Newest number starts at the bottom; earlier ones are pushed up a row.
   const live = [...el.querySelectorAll(".float")];
-  for (const o of live) o.style.setProperty("--fy", `${(parseFloat(o.style.getPropertyValue("--fy")) || 0) - 30}px`);
+  const step = /\btag\b/.test(cls) ? 20 : 26;
+  for (const o of live) o.style.setProperty("--fy", `${(parseFloat(o.style.getPropertyValue("--fy")) || 0) - step}px`);
   const f = document.createElement("div");
   f.className = "float " + cls; f.textContent = text;
   f.style.setProperty("--fy", "0px");
@@ -813,6 +814,16 @@ async function showEvents(events, color = "#7dff7a") {
     else if (e.type === "fx") { text = EFFECTS[e.t].icon + " " + EFFECTS[e.t].name; cls = "text"; }
     else if (e.type === "text") { text = e.text; cls = "text"; }
     if (text || e.type === "death") (groups[e.key] = groups[e.key] || []).push({ text, cls, e, c });
+  }
+  // Status changes on one unit (ATK Up, SPD Up, Turn Meter...) collapse into a single short tag
+  // so AoE buffs don't stack five lines over every hero.
+  for (const list of Object.values(groups)) {
+    const tags = list.filter((it) => it.cls === "text" && it.e.type !== "dmg" && it.e.type !== "absorb");
+    if (tags.length > 1) {
+      const merged = tags.map((it) => it.text).join("  ");
+      tags.forEach((it, i) => { it.text = i === 0 ? merged : null; });
+    }
+    for (const it of tags) if (it.text) it.cls = "text tag";
   }
   const maxLen = Math.max(0, ...Object.values(groups).map((g) => g.length));
   for (let i = 0; i < maxLen; i++) {

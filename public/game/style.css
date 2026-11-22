@@ -441,3 +441,11 @@ h3 { letter-spacing: .3px; color: #f6e6c2; }
 @keyframes floatup2 { 0% { opacity: 0; transform: translate(calc(-50% + var(--fx, 0px)), calc(var(--fy, 0px) + 8px)) scale(.8); }
   12% { opacity: 1; transform: translate(calc(-50% + var(--fx, 0px)), var(--fy, 0px)) scale(1.08); }
   70% { opacity: 1; } 100% { opacity: 0; transform: translate(calc(-50% + var(--fx, 0px)), calc(var(--fy, 0px) - 34px)) scale(1); } }
+/* calmer battle text on phones: smaller numbers, status changes as one small pill */
+.float { font-size: 19px; }
+.float.crit { font-size: 23px; }
+.float.strong { font-size: 21px; }
+.float.weak { font-size: 17px; }
+.float.text { font-size: 12px; }
+.float.tag { font-size: 10.5px; font-weight: 700; color: #f3e6c8; -webkit-text-stroke: 0; text-shadow: none; letter-spacing: 0;
+  background: #120d18d9; border: 1px solid #7a5f3599; border-radius: 999px; padding: 1px 7px; }
