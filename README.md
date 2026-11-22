@@ -121,8 +121,9 @@ It's a separate side project from the optimizer and shares no code with it.
   summoning with pity, an essence exchange, daily login and quests.
 - **No monetization:** there's no shop and no paid currency.
   Every shard is earned in play. Progress saves to `localStorage`.
-- **3D battles** (`three3d.js`, Three.js r149 vendored in `vendor/`): 3D heroes, scenery,
-  animations and particle effects, with the HTML HUD pinned over each unit. It falls back
+- **3D battles** (`three3d.js`, built from `game3d/three3d.mjs` with `npm run build:game3d`):
+  rigged, animated CC0 hero models by Quaternius (`models/`, see `models/CREDITS.md`) recolored
+  per hero, scenery, animations and particle effects, with the HTML HUD pinned over each unit. It falls back
   to the 2D sprites without WebGL, and Home → *Battles: 3D/2D* switches it off.
 - Art is drawn in code (`art.js`): vector hero portraits, chapter backdrops and
   canvas battle effects. To use real artwork, add images under `public/game/art/`

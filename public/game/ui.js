@@ -513,6 +513,12 @@ document.addEventListener("click", (e) => {
 function startBattle(cfg) {
   const team = G.team.map(heroByUid).filter(Boolean);
   if (!team.length) return toast("Choose at least one hero.");
+  // First 3D battle: give the hero models a moment to finish loading.
+  if (!G.settings.flat && typeof W3D !== "undefined" && W3D.supported() && !W3D.modelsReady) {
+    toast("Loading 3D heroes…");
+    W3D.whenReady().then(() => startBattle(cfg));
+    return;
+  }
   const allies = team.map(unitFromHero);
   let battle;
   if (cfg.mode === "titan") {

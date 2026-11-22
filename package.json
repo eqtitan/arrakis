@@ -9,11 +9,13 @@
     "preview": "vite preview",
     "pages:dev": "vite build && wrangler pages dev dist --compatibility-date=2025-07-18 --port=8789",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "build:game3d": "esbuild game3d/three3d.mjs --bundle --minify --format=iife --legal-comments=eof --target=es2019 --outfile=public/game/three3d.js"
   },
-  "dependencies": {},
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250718.0",
+    "esbuild": "^0.24.2",
+    "three": "^0.149.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
     "vitest": "^2.1.4",
