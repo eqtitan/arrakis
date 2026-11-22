@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.13.1 (2026-11-22)
+- Update banner appears while the app is open: checks every 5 minutes and pops a notice, no restart needed.
+
+
 ## 0.13.0 (2026-11-22)
 - Hero detail page shows the live 3D hero: idle animation, drag to spin, tap to see an attack.
 

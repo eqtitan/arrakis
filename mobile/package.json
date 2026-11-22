@@ -1,7 +1,7 @@
 {
   "name": "sigilbound-mobile",
   "private": true,
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "Native Android/iOS shells for the Sigilbound web game (public/game) via Capacitor.",
   "scripts": {
     "copy-web": "rm -rf www && cp -r ../public/game www && cp node_modules/@capacitor/core/dist/capacitor.js www/capacitor.js && sed -i.bak 's#<script src=\"native.js\"></script>#<script src=\"capacitor.js\"></script>\\n  <script src=\"native.js\"></script>#' www/index.html && rm -f www/index.html.bak",
