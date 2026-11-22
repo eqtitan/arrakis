@@ -17,8 +17,10 @@ namespace Sigilbound.Client
     {
         public static Color Hex(string hex) { ColorUtility.TryParseHtmlString(hex, out var c); return c; }
 
-        public static readonly Color Bg = Hex("#14111c"), Panel = Hex("#1f1a2b"), Panel2 = Hex("#2a2339"), Line = Hex("#3a3150");
-        public static readonly Color Text = Hex("#ece6f6"), Dim = Hex("#a59cb8"), Gold = Hex("#ffcf5a"), GoldDark = Hex("#b3802a");
+        // The web game's gilded skin (style.css :root).
+        public static readonly Color Bg = Hex("#0f0c15"), Panel = Hex("#1b1624"), Panel2 = Hex("#251e31"), Line = Hex("#4a3d2e");
+        public static readonly Color Text = Hex("#f1e9da"), Dim = Hex("#b0a48f"), Gold = Hex("#f2c45c"), GoldDark = Hex("#b3802a");
+        public static readonly Color Trim = Hex("#b88a3e"), TrimHi = Hex("#ffe2a0"), TrimLo = Hex("#6b4b1c"), Bronze = Hex("#5c4a30");
         public static readonly Color Good = Hex("#5bd17a"), Bad = Hex("#ff5a5a"), Blue = Hex("#4aa3ff");
 
         public static Color Element(Element e) => e switch

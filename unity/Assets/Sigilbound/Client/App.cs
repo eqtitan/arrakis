@@ -22,7 +22,7 @@ namespace Sigilbound.Client
         }
     }
 
-    public enum ScreenId { Intro, Home, Campaign, Prep, Heroes, Hero, Equip, Summon, Titan, Battle, Friends, FriendProfile, Chat, Blocked }
+    public enum ScreenId { Intro, Home, Campaign, Prep, Heroes, Hero, Equip, Summon, Titan, Battle, Friends, FriendProfile, Chat, Blocked, Trials, Dungeon, ArenaPvp }
 
     public sealed partial class App : MonoBehaviour
     {
@@ -44,12 +44,14 @@ namespace Sigilbound.Client
 
         void Awake()
         {
-            Application.targetFrameRate = 60;
             UnityEngine.Screen.orientation = ScreenOrientation.Portrait;
             UnityEngine.Screen.sleepTimeout = SleepTimeout.NeverSleep;
             G = new Game(Load());
             G.EnsureDaily();
             Arena = Arena.Create();
+            // Frame-rate cap (60, or 30 to run cooler) and graphics tier mapped to URP settings.
+            Quality.Create(gameObject, G.S.settings.quality, G.S.settings.fpsCap).Sun = Arena.Sun;
+            Quality.I.Apply();
             Vfx.Create(Arena.Cam);
             Battle = gameObject.AddComponent<BattleController>();
             Battle.App = this;
@@ -57,6 +59,7 @@ namespace Sigilbound.Client
             Online.App = this;
             Screen = G.S.started ? ScreenId.Home : ScreenId.Intro;
             Arena.Build(Math.Min(GameData.Chapters.Length - 1, G.S.cleared / GameData.StagesPerChapter), false);
+            Arena.FrameMenu();
         }
 
         // ---------- save ----------
@@ -88,6 +91,7 @@ namespace Sigilbound.Client
             G.EnsureDaily();
             Save();
             _lineupKey = "";
+            Quality.I?.Set(G.S.settings.quality, G.S.settings.fpsCap);
             Screen = G.S.started ? ScreenId.Home : ScreenId.Intro;
             return true;
         }
@@ -111,10 +115,11 @@ namespace Sigilbound.Client
 
         void Back()
         {
+            if (Screen == ScreenId.Battle) { Battle.BackPressed(); return; }
             if (ModalOpen) { CloseModal(); return; }
             switch (Screen)
             {
-                case ScreenId.Battle: Battle.AskRetreat(); break;
+                case ScreenId.Titan: case ScreenId.Dungeon: case ScreenId.ArenaPvp: Go(ScreenId.Trials); break;
                 case ScreenId.Hero: Go(ScreenId.Heroes); break;
                 case ScreenId.Equip: Go(ScreenId.Hero); break;
                 case ScreenId.Prep: Go(_prepBack); break;
@@ -173,6 +178,7 @@ namespace Sigilbound.Client
         void OnGUI()
         {
             Ui.Begin();
+            GUI.enabled = !ModalOpen; // a modal blocks taps on the screen behind it
             if (Screen == ScreenId.Battle) { Battle.DrawHud(); DrawModalAndToasts(); return; }
             var safe = Ui.Safe;
             float top = safe.y, bottom = safe.yMax;
@@ -190,6 +196,9 @@ namespace Sigilbound.Client
                 case ScreenId.Equip: DrawEquip(content); break;
                 case ScreenId.Summon: DrawSummon(content); break;
                 case ScreenId.Titan: DrawTitan(content); break;
+                case ScreenId.Trials: DrawTrials(content); break;
+                case ScreenId.Dungeon: DrawDungeon(content); break;
+                case ScreenId.ArenaPvp: DrawArenaPvp(content); break;
                 case ScreenId.Friends: DrawFriends(content); break;
                 case ScreenId.FriendProfile: DrawFriendProfile(content); break;
                 case ScreenId.Chat: DrawChat(content); break;
@@ -199,44 +208,50 @@ namespace Sigilbound.Client
             DrawModalAndToasts();
         }
 
+        // Carved top bar with a gold rule: currencies and the settings button.
         void DrawTopBar(Rect r)
         {
-            GUI.DrawTexture(new Rect(0, 0, Ui.W, r.yMax), Ui.Solid(new Color(0.08f, 0.07f, 0.11f, 0.92f)));
-            float x = 10;
+            GUI.DrawTexture(new Rect(0, 0, Ui.W, r.yMax), Ui.GradientTex(Palette.Hex("#1d1726"), Palette.Hex("#120e19"), null, 2));
+            Ui.GoldRule(new Rect(0, r.yMax - 1, Ui.W, 1));
+            float x = 8;
             void Chip(string text, Color c)
             {
-                var w = Mathf.Max(52, text.Length * 8.2f + 18);
-                Ui.Panel(new Rect(x, r.y + 8, w, 28), Palette.Panel2, Palette.Panel2, 13);
-                Ui.Text(new Rect(x, r.y + 8, w, 28), text, 13, c, FontStyle.Bold, TextAnchor.MiddleCenter);
-                x += w + 6;
+                var w = Mathf.Max(48, text.Length * 7.4f + 16);
+                Ui.Panel(new Rect(x, r.y + 8, w, 28), Palette.Hex("#0d0a12"), Palette.Bronze, 13);
+                Ui.Text(new Rect(x, r.y + 8, w, 28), text, 12, c, FontStyle.Bold, TextAnchor.MiddleCenter);
+                x += w + 5;
             }
             Chip("● " + Ui.Fmt(G.S.gold), Palette.Gold);
-            Chip("Worn " + G.S.shardCommon, Palette.Hex("#c9a37b"));
-            Chip("Mystic " + G.S.shardMystic, Palette.Blue);
-            Chip("Radiant " + G.S.shardRadiant, Palette.Hex("#ffb02e"));
+            Chip("◆ " + G.S.shardCommon, Palette.Hex("#c9a37b"));
+            Chip("◆ " + G.S.shardMystic, Palette.Blue);
+            Chip("◆ " + G.S.shardRadiant, Palette.Hex("#ffb02e"));
+            Chip("◇ " + G.S.essence, Palette.Hex("#8fd8ff"));
+            if (Ui.Button(new Rect(Ui.W - 46, r.y + 6, 38, 32), "≡", Ui.Kind.Secondary, 16)) OpenSettings();
         }
 
         void DrawNav(Rect r)
         {
-            GUI.DrawTexture(r, Ui.Solid(new Color(0.08f, 0.07f, 0.11f, 0.96f)));
-            GUI.DrawTexture(new Rect(r.x, r.y, r.width, 1), Ui.Solid(Palette.Line));
-            var items = new (ScreenId id, string label)[] { (ScreenId.Home, "Home"), (ScreenId.Campaign, "Campaign"), (ScreenId.Heroes, "Heroes"), (ScreenId.Summon, "Summon"), (ScreenId.Titan, "Titan"), (ScreenId.Friends, "Friends") };
+            // Stone bar with a gold edge and a glowing active tab (style.css .nav).
+            GUI.DrawTexture(r, Ui.GradientTex(Palette.Hex("#1a1522"), Palette.Hex("#0d0a12"), null, 2));
+            Ui.GoldRule(new Rect(r.x, r.y, r.width, 1));
+            var items = new (ScreenId id, string label)[] { (ScreenId.Home, "Home"), (ScreenId.Campaign, "Campaign"), (ScreenId.Heroes, "Heroes"), (ScreenId.Summon, "Summon"), (ScreenId.Trials, "Trials"), (ScreenId.Friends, "Friends") };
             float w = Ui.W / items.Length;
             for (int i = 0; i < items.Length; i++)
             {
                 var it = items[i];
                 bool on = Screen == it.id || (it.id == ScreenId.Heroes && (Screen == ScreenId.Hero || Screen == ScreenId.Equip))
+                    || (it.id == ScreenId.Trials && (Screen == ScreenId.Titan || Screen == ScreenId.Dungeon || Screen == ScreenId.ArenaPvp))
                     || (it.id == ScreenId.Friends && (Screen == ScreenId.FriendProfile || Screen == ScreenId.Chat || Screen == ScreenId.Blocked));
                 var cell = new Rect(i * w, r.y, w, 64);
                 if (Ui.Button(cell, "", Ui.Kind.Ghost)) { if (it.id == ScreenId.Friends) OpenFriends(); else Go(it.id); }
-                if (on) GUI.DrawTexture(new Rect(cell.x + w / 2 - 14, r.y + 6, 28, 4), Ui.RoundTex(Palette.Gold, null, 2));
-                Ui.Text(new Rect(cell.x, r.y + 12, w, 40), it.label, 12, on ? Palette.Gold : Palette.Dim, FontStyle.Bold, TextAnchor.MiddleCenter);
-                int badge = it.id == ScreenId.Home ? HomeBadge() : it.id == ScreenId.Titan ? G.S.daily.titanTries
+                if (on) { GUI.DrawTexture(new Rect(cell.x + 6, r.y + 4, w - 12, 56), Ui.RoundTex(new Color(0.95f, 0.77f, 0.36f, 0.12f), null, 12)); Ui.GoldRule(new Rect(cell.x + w * 0.22f, r.y + 1, w * 0.56f, 2)); }
+                Ui.Text(new Rect(cell.x, r.y + 12, w, 40), it.label, 12, on ? Palette.Gold : Palette.Hex("#9b8f7a"), FontStyle.Bold, TextAnchor.MiddleCenter, false, true);
+                int badge = it.id == ScreenId.Home ? HomeBadge() : it.id == ScreenId.Trials ? G.TrialsBadge()
                     : it.id == ScreenId.Friends && Online.SignedIn ? Online.Unread.messages + Online.Unread.requests : 0;
                 if (badge > 0)
                 {
                     var b = new Rect(cell.x + w / 2 + 14, r.y + 8, 18, 18);
-                    GUI.DrawTexture(b, Ui.RoundTex(it.id == ScreenId.Titan ? Palette.Blue : Palette.Bad, null, 9));
+                    GUI.DrawTexture(b, Ui.RoundTex(it.id == ScreenId.Trials ? Palette.Blue : Palette.Bad, null, 9));
                     Ui.Text(b, badge.ToString(), 11, Color.white, FontStyle.Bold, TextAnchor.MiddleCenter);
                 }
             }
@@ -250,12 +265,13 @@ namespace Sigilbound.Client
 
         void DrawModalAndToasts()
         {
+            GUI.enabled = true;
             if (ModalOpen)
             {
                 GUI.DrawTexture(new Rect(0, 0, Ui.W, Ui.H), Ui.Solid(new Color(0, 0, 0, 0.7f)));
                 var box = new Rect(16, Mathf.Max(Ui.Safe.y + 20, (Ui.H - _modalHeight) / 2), Ui.W - 32, _modalHeight);
-                Ui.Panel(box, Palette.Panel, Palette.Line, 18);
-                if (!string.IsNullOrEmpty(_modalTitle)) Ui.Text(new Rect(box.x, box.y + 14, box.width, 34), _modalTitle, 24, Palette.Gold, FontStyle.Bold, TextAnchor.MiddleCenter);
+                Ui.Card(box, true); // the web's framed .mbox
+                if (!string.IsNullOrEmpty(_modalTitle)) Ui.Heading(new Rect(box.x, box.y + 14, box.width, 34), _modalTitle, 24, TextAnchor.MiddleCenter);
                 _modalBody?.Invoke(new Rect(box.x + 16, box.y + 56, box.width - 32, box.height - 72));
             }
             _toasts.RemoveAll(t => t.until < Time.unscaledTime);

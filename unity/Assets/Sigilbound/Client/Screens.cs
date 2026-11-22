@@ -22,14 +22,14 @@ namespace Sigilbound.Client
         void DrawIntro(Rect area)
         {
             float y = area.y + 20;
-            Ui.Text(new Rect(0, y, Ui.W, 44), "SIGILBOUND", 34, Palette.Gold, FontStyle.Bold, TextAnchor.MiddleCenter); y += 48;
+            Ui.Heading(new Rect(0, y, Ui.W, 44), "SIGILBOUND", 34, TextAnchor.MiddleCenter); y += 48;
             Ui.Text(new Rect(30, y, Ui.W - 60, 40), "The Sigil has shattered. Choose the first champion to answer your call.", 14, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter, true);
             y = area.yMax - 3 * 92 - 30;
             foreach (var id in Starters)
             {
                 var t = Hero(id);
                 var r = Row(ref y, 82);
-                Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.92f), Palette.Rarity(t.Rarity));
+                Ui.Card(r);
                 Ui.Text(new Rect(r.x + 14, r.y + 8, r.width - 28, 24), t.Name, 18, Palette.Text, FontStyle.Bold);
                 Ui.Text(new Rect(r.x + 14, r.y + 32, r.width - 28, 20), Tag(t), 13, Palette.Dim);
                 Ui.Text(new Rect(r.x + 14, r.y + 52, r.width - 28, 20), string.Join(" · ", t.Skills.Select(s => s.Name)), 12, Palette.Text);
@@ -51,12 +51,12 @@ namespace Sigilbound.Client
             float content = 640;
             _scroll = Scroller.Begin(area, _scroll, content);
             float y = 8;
-            Ui.Text(new Rect(0, y, Ui.W, 40), "SIGILBOUND", 30, Palette.Gold, FontStyle.Bold, TextAnchor.MiddleCenter); y += 40;
+            Ui.Heading(new Rect(0, y, Ui.W, 40), "SIGILBOUND", 30, TextAnchor.MiddleCenter); y += 40;
             Ui.Text(new Rect(0, y, Ui.W, 20), $"Campaign {G.S.cleared}/{TotalStages} · {G.S.heroes.Count} heroes · {G.S.wins} wins", 13, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter); y += 30;
             y += 170; // space where the team stands in 3D
 
             var r = Row(ref y, 64);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.92f));
+            Ui.Card(r);
             bool login = G.LoginAvailable;
             Ui.Text(new Rect(r.x + 14, r.y + 8, 220, 24), $"Daily Login · Day {(G.S.loginDay - (login ? 0 : 1)) % 7 + 1}", 16, Palette.Text, FontStyle.Bold);
             Ui.Text(new Rect(r.x + 14, r.y + 32, 230, 22), login ? LoginRewards[G.S.loginDay % LoginRewards.Length].ToString() : "Come back tomorrow", 12, Palette.Dim);
@@ -65,8 +65,8 @@ namespace Sigilbound.Client
 
             float qh = 40 + DailyQuests.Length * 44;
             r = Row(ref y, qh);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.92f));
-            Ui.Text(new Rect(r.x + 14, r.y + 8, 200, 24), "Daily Quests", 16, Palette.Text, FontStyle.Bold);
+            Ui.Card(r);
+            Ui.Text(new Rect(r.x + 14, r.y + 8, 200, 24), "Daily Quests", 17, Palette.TrimHi, FontStyle.Bold, TextAnchor.MiddleLeft, false, true);
             float qy = r.y + 38;
             foreach (var q in DailyQuests)
             {
@@ -83,8 +83,10 @@ namespace Sigilbound.Client
             if (Ui.Button(r, G.S.cleared < TotalStages ? $"Continue Campaign · {Game.StageLabel(next)}" : "Campaign complete! Replay stages", Ui.Kind.Primary, 17))
                 OpenPrep(next, false, ScreenId.Home);
             r = Row(ref y, 40);
-            if (Ui.Button(new Rect(r.x, r.y, r.width / 2 - 5, 40), "How to play", Ui.Kind.Chip, 13)) ShowHelp();
-            if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.y, r.width / 2 - 5, 40), "Reset save", Ui.Kind.Chip, 13))
+            float third = (r.width - 10) / 3;
+            if (Ui.Button(new Rect(r.x, r.y, third, 40), "Settings", Ui.Kind.Chip, 13)) OpenSettings();
+            if (Ui.Button(new Rect(r.x + third + 5, r.y, third, 40), "How to play", Ui.Kind.Chip, 13)) ShowHelp();
+            if (Ui.Button(new Rect(r.x + (third + 5) * 2, r.y, third, 40), "Reset save", Ui.Kind.Chip, 13))
                 Modal("Reset all progress?", 200, b =>
                 {
                     Ui.Text(new Rect(b.x, b.y, b.width, 50), "This deletes your save on this device. It can't be undone.", 14, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
@@ -95,13 +97,14 @@ namespace Sigilbound.Client
             Scroller.End();
         }
 
-        void ShowHelp() => Modal("How to play", 420, b =>
+        void ShowHelp() => Modal("How to play", 470, b =>
             {
-                Ui.Text(new Rect(b.x, b.y, b.width, 300),
+                Ui.Text(new Rect(b.x, b.y, b.width, 350),
                     "Battles: units act when their Turn Meter fills, so faster heroes act more often. On your hero's turn, pick a skill, then tap a highlighted target.\n\n" +
                     "Elements: Flame beats Gale, Gale beats Tide, Tide beats Flame. Light and Shadow beat each other.\n\n" +
                     "Grow: win battles for XP or train with gold. At max level, rank up by using heroes with the same star count.\n\n" +
-                    "Titan: three tries a day. Everything is free.", 13, Palette.Text, FontStyle.Normal, TextAnchor.UpperLeft, true);
+                    "Trials: the Titan (3 tries a day), Dungeons for gold, XP and the gear set you want (3 winning runs each a day), and the Arena (5 fights a day, Bronze to Sigil).\n\n" +
+                    "Free: there's no shop. Every shard is earned by playing.", 13, Palette.Text, FontStyle.Normal, TextAnchor.UpperLeft, true);
                 if (Ui.Button(new Rect(b.x, b.yMax - 46, b.width, 44), "Got it")) CloseModal();
             });
 
@@ -112,7 +115,7 @@ namespace Sigilbound.Client
             float content = 50 + Chapters.Length * 70 + 70;
             _scroll = Scroller.Begin(area, _scroll, content);
             float y = 8;
-            Ui.Text(new Rect(Pad, y, 300, 32), "Campaign", 22, Palette.Text, FontStyle.Bold); y += 40;
+            Ui.Heading(new Rect(Pad, y, 300, 32), "Campaign"); y += 40;
             for (int c = 0; c < Chapters.Length; c++)
             {
                 int first = c * StagesPerChapter;
@@ -239,7 +242,7 @@ namespace Sigilbound.Client
             y += 230; // the hero stands here in 3D
 
             var r = Row(ref y, atCap ? 110 : 96);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.94f));
+            Ui.Card(r);
             Ui.Text(new Rect(r.x + 14, r.y + 8, 200, 22), $"Level {h.level} / {cap}", 15, Palette.Text, FontStyle.Bold);
             Ui.Text(new Rect(r.xMax - 160, r.y + 8, 146, 22), atCap ? "MAX" : $"{h.xp} / {XpToNext(h.level)} XP", 12, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleRight);
             Ui.Bar(new Rect(r.x + 14, r.y + 34, r.width - 28, 6), atCap ? 1 : h.xp / (float)XpToNext(h.level), Palette.Gold);
@@ -256,13 +259,13 @@ namespace Sigilbound.Client
             }
 
             r = Row(ref y, 110);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.94f));
+            Ui.Card(r);
             string[] stats = { $"HP  {Ui.Fmt(st.Hp)}", $"ATK  {st.Atk}", $"DEF  {st.Def}", $"SPD  {st.Spd}", $"Crit  {st.Crit}%", $"Crit DMG  {st.Cdmg}%" };
             for (int i = 0; i < stats.Length; i++) Ui.Text(new Rect(r.x + 14 + (i % 2) * (r.width / 2), r.y + 10 + (i / 2) * 26, r.width / 2 - 20, 24), stats[i], 14, Palette.Text);
             Ui.Text(new Rect(r.x + 14, r.y + 86, r.width - 28, 18), st.Sets.Count > 0 ? "Sets: " + string.Join(", ", st.Sets.Select(s => $"{s} ({SetBonus(s).desc})")) : "Equip 2 pieces of a set for a bonus.", 11, Palette.Dim);
 
             r = Row(ref y, 116);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.94f));
+            Ui.Card(r);
             Ui.Text(new Rect(r.x + 14, r.y + 8, 100, 24), "Gear", 15, Palette.Text, FontStyle.Bold);
             if (Ui.Button(new Rect(r.xMax - 114, r.y + 6, 100, 30), "Auto-equip", Ui.Kind.Secondary, 12)) { G.AutoEquip(h); Save(); Toast("Best available gear equipped"); }
             float gw = (r.width - 28 - 18) / 4;
@@ -277,7 +280,7 @@ namespace Sigilbound.Client
             }
 
             r = Row(ref y, 30 + t.Skills.Length * 62);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.94f));
+            Ui.Card(r);
             Ui.Text(new Rect(r.x + 14, r.y + 6, 100, 24), "Skills", 15, Palette.Text, FontStyle.Bold);
             for (int i = 0; i < t.Skills.Length; i++)
             {
@@ -409,20 +412,21 @@ namespace Sigilbound.Client
         // ---------- titan ----------
         void DrawTitan(Rect area)
         {
-            float content = 560;
+            float content = 600;
             _scroll = Scroller.Begin(area, _scroll, content);
             float y = 8;
             var el = TitanElement(System.DateTime.Now);
-            Ui.Text(new Rect(Pad, y, Ui.W - 32, 30), Titan.Name, 21, Palette.Text, FontStyle.Bold); y += 34;
+            if (Ui.Button(new Rect(Pad, y, 80, 30), "‹ Trials", Ui.Kind.Secondary, 13)) Go(ScreenId.Trials); y += 38;
+            Ui.Heading(new Rect(Pad, y, Ui.W - 32, 30), Titan.Name, 20); y += 34;
             var r = Row(ref y, 168);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.94f), Palette.Element(el));
+            Ui.Card(r);
             var strong = Elements.Where(x => Strong(x) == el).ToList();
             Ui.Text(new Rect(r.x + 14, r.y + 10, r.width - 28, 22), $"Today's element: {Ui.ColorTag(el.ToString(), Palette.Element(el))}", 15, Palette.Text, FontStyle.Bold);
             Ui.Text(new Rect(r.x + 14, r.y + 34, r.width - 28, 60), $"Bring {string.Join(" or ", strong)} heroes. The Titan can't be killed: deal as much damage as you can in {TitanTurns} of its turns. It's immune to stun and turn meter drain.", 12, Palette.Dim, FontStyle.Normal, TextAnchor.UpperLeft, true);
             Ui.Text(new Rect(r.x + 14, r.y + 94, r.width - 28, 22), $"Tries left today: {Ui.ColorTag($"{G.S.daily.titanTries}/3", Palette.Gold)} · Best today: {Ui.Fmt(G.S.daily.titanBest)}", 13, Palette.Text);
             if (Ui.Button(new Rect(r.x + 14, r.y + 120, r.width - 28, 40), "Prepare Team", Ui.Kind.Primary, 15, G.S.daily.titanTries > 0)) OpenPrep(-1, true, ScreenId.Titan);
             r = Row(ref y, 40 + TitanTiers.Length * 30);
-            Ui.Panel(r, new Color(0.12f, 0.1f, 0.17f, 0.94f));
+            Ui.Card(r);
             Ui.Text(new Rect(r.x + 14, r.y + 8, r.width - 28, 22), "Damage rewards (per try)", 15, Palette.Text, FontStyle.Bold);
             for (int i = 0; i < TitanTiers.Length; i++)
             {

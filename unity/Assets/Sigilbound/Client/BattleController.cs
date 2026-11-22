@@ -1,5 +1,6 @@
-// Runs a battle: spawns 3D units, drives the turn loop, animates events,
-// takes player input (skill + target), and shows results.
+// Runs a battle (campaign stage, Titan, dungeon floor or arena rival): spawns 3D units on the
+// rune circle's rim, drives the turn loop, animates events, takes player input (skill + target),
+// and shows results.
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,24 +10,57 @@ using static Sigilbound.Core.GameData;
 
 namespace Sigilbound.Client
 {
+    public enum BattleMode { Stage, Titan, Dungeon, Arena }
+
+    public sealed class BattleSpec
+    {
+        public BattleMode Mode; public int Stage; public DungeonKey Dungeon; public int Floor; public Rival Rival;
+        public static BattleSpec ForStage(int idx) => new BattleSpec { Mode = BattleMode.Stage, Stage = idx };
+        public static BattleSpec Titan() => new BattleSpec { Mode = BattleMode.Titan };
+        public static BattleSpec ForDungeon(DungeonKey k, int floor) => new BattleSpec { Mode = BattleMode.Dungeon, Dungeon = k, Floor = floor };
+        public static BattleSpec ForArena(Rival rv) => new BattleSpec { Mode = BattleMode.Arena, Rival = rv };
+    }
+
     public sealed class BattleController : MonoBehaviour
     {
         public App App;
-        Battle _b; int _stage; bool _titan;
+        Battle _b; BattleSpec _spec;
         readonly Dictionary<Unit, CharacterView> _views = new Dictionary<Unit, CharacterView>();
         Unit _actor; int _sel; bool _awaiting; string _banner = ""; bool _finished;
         Coroutine _loop;
 
         Game G => App.G;
         bool Auto => G.S.settings.auto;
+        bool IsTitan => _spec.Mode == BattleMode.Titan;
+        public BattleMode Mode => _spec?.Mode ?? BattleMode.Stage;
 
-        public void Begin(int stage)
+        public void Begin(int stage) => Begin(stage < 0 ? BattleSpec.Titan() : BattleSpec.ForStage(stage));
+
+        public void Begin(BattleSpec spec)
         {
             if (G.Team.Count == 0) { App.Toast("Choose at least one hero."); return; }
-            _titan = stage < 0; _stage = stage;
+            if (spec.Mode == BattleMode.Dungeon && !G.CanEnterFloor(spec.Dungeon, spec.Floor)) { App.Toast("No runs left today for this dungeon."); return; }
+            if (spec.Mode == BattleMode.Arena && G.S.daily.arenaTries <= 0) { App.Toast("No arena fights left today."); return; }
+            if (spec.Mode == BattleMode.Titan && G.S.daily.titanTries <= 0) { App.Toast("No Titan tries left today."); return; }
+            _spec = spec;
             App.ClearLineup();
-            _b = _titan ? Battle.ForTitan(G) : Battle.ForStage(G, stage);
-            App.Arena.Build(_titan ? 9 : Game.ChapterOf(stage), _titan);
+            _b = spec.Mode switch
+            {
+                BattleMode.Titan => Core.Battle.ForTitan(G),
+                BattleMode.Dungeon => Core.Battle.ForDungeon(G, spec.Dungeon, spec.Floor),
+                BattleMode.Arena => Core.Battle.ForArena(G, spec.Rival),
+                _ => Core.Battle.ForStage(G, spec.Stage),
+            };
+            // Scenery: as battleScene() in modes.js.
+            int chapter = spec.Mode switch
+            {
+                BattleMode.Titan => 9,
+                BattleMode.Dungeon => Trials.Dungeon(spec.Dungeon).Chapter,
+                BattleMode.Arena => 4 + spec.Rival.Ids.Count % 5,
+                _ => Game.ChapterOf(spec.Stage),
+            };
+            App.Arena.Build(Mathf.Min(chapter, Chapters.Length - 1), IsTitan);
+            App.Arena.FrameBattle(G.S.settings.cam, IsTitan);
             Clear();
             Spawn(_b.Allies, true); Spawn(_b.Enemies, false);
             _finished = false; _awaiting = false; _banner = ""; _actor = null;
@@ -41,8 +75,8 @@ namespace Sigilbound.Client
             {
                 var u = units[i];
                 float scale = u.Titan ? 1.3f : u.Boss ? 1.35f : 1f;
-                var pos = u.Titan ? new Vector3(0, 0, 3.6f) : Arena.Slot(ally, i, units.Count);
-                _views[u] = CharacterView.Create(u, pos, ally, scale);
+                var pos = u.Titan ? Arena.Slot(false, 0, 1) : Arena.Slot(ally, i, units.Count);
+                _views[u] = CharacterView.Create(u, pos, Arena.FacingYaw(pos), scale);
             }
         }
         void Clear()
@@ -58,7 +92,32 @@ namespace Sigilbound.Client
             Clear();
             App.CloseModal();
             App.Arena.Build(Mathf.Min(Chapters.Length - 1, G.S.cleared / StagesPerChapter), false);
+            App.Arena.FrameMenu();
             App.Go(to);
+        }
+
+        // Where "Back"/"Continue" leaves a battle for (resultBack in the web game).
+        ScreenId BackScreen => _spec.Mode switch
+        {
+            BattleMode.Titan => ScreenId.Titan, BattleMode.Dungeon => ScreenId.Dungeon, BattleMode.Arena => ScreenId.ArenaPvp, _ => ScreenId.Campaign,
+        };
+
+        // Android Back: asks to retreat mid-battle; on a result popup it leaves the battle (0.19.2).
+        public void BackPressed()
+        {
+            if (_finished) { G.S.settings.autoReplay = false; App.Save(); End(BackScreen); }
+            else if (App.ModalOpen) App.CloseModal();
+            else AskRetreat();
+        }
+
+        public void CycleCamera()
+        {
+            var cams = BattleLayout.Cameras;
+            int i = System.Array.FindIndex(cams, c => c.Key == BattleLayout.Camera(G.S.settings.cam).Key);
+            var next = cams[(i + 1) % cams.Length];
+            G.S.settings.cam = next.Key; App.Save();
+            App.Arena.FrameBattle(next.Key, IsTitan);
+            App.Toast($"Camera: {next.Name} ({(i + 1) % cams.Length + 1}/{cams.Length})");
         }
 
         // ---------- turn loop ----------
@@ -86,7 +145,7 @@ namespace Sigilbound.Client
                     yield return DoAct(u, skill, target);
                 }
                 else yield return new WaitForSeconds(0.35f);
-                var res = _b.EndTurn(u, out bool newWave);
+                _b.EndTurn(u, out bool newWave);
                 if (newWave)
                 {
                     foreach (var dead in _views.Where(kv => !kv.Key.Ally).Select(kv => kv.Value).ToList()) if (dead) Destroy(dead.gameObject, 1.5f);
@@ -112,10 +171,11 @@ namespace Sigilbound.Client
             var color = Palette.Element(u.El);
             var view = _views.TryGetValue(u, out var v) ? v : null;
             var hit = events.Where(e => e.Type == EvType.Damage && e.Unit != u).Select(e => e.Unit).Distinct().ToList();
-            bool melee = sk.Mult > 0 && !Palette.IsCaster(u.Template.Id) && sk.Target == Target.Enemy;
+            bool melee = sk.Mult > 0 && !u.Titan && !Looks.IsCaster(u.Template.Id) && sk.Target == Target.Enemy;
             if (view != null)
             {
                 Vector3 aim = hit.Count > 0 && _views.ContainsKey(hit[0]) ? _views[hit[0]].transform.position : view.transform.position + view.transform.forward * 2;
+                view.Face(aim); // turn toward the target only while acting (0.17.1)
                 yield return view.Attack(aim, melee);
                 if (sk.Mult == 0) Vfx.I.Cast(view.transform.position + Vector3.up * 0.1f, color);
                 if (!melee && hit.Count > 0)
@@ -127,7 +187,7 @@ namespace Sigilbound.Client
                 if (melee) foreach (var h in hit) if (_views.ContainsKey(h)) Vfx.I.Slash(_views[h].Center, color);
             }
             yield return ShowEvents(events, color);
-            if (view != null) yield return view.Recover();
+            if (view != null) { yield return view.Recover(); view.FaceHome(); }
             yield return new WaitForSeconds(0.25f);
         }
 
@@ -141,6 +201,7 @@ namespace Sigilbound.Client
                 {
                     case EvType.Damage:
                         if (e.Dot) { Vfx.I.Number(c, Ui.Fmt(e.Amount), new Color(0.5f, 1f, 0.45f)); break; }
+                        if (e.Amount <= 0) break; // fully absorbed by a shield: the "Shield" number says it (no "CRIT 0")
                         Vfx.I.Burst(c, color, e.Crit);
                         v.Hit();
                         Vfx.I.Number(c + Vector3.up * 0.3f, (e.Crit ? "CRIT " : "") + Ui.Fmt(e.Amount),
@@ -164,33 +225,27 @@ namespace Sigilbound.Client
             if (_finished) return;
             _finished = true;
             Time.timeScale = 1;
-            if (_titan)
+            switch (_spec.Mode)
             {
-                long dmg = _b.TitanDamage;
-                var reward = G.CompleteTitan(dmg); App.Save();
-                App.Modal("Titan Battle", 300, r =>
-                {
-                    Ui.Text(new Rect(r.x, r.y, r.width, 40), $"{Ui.Fmt(dmg)} damage", 26, Palette.Text, FontStyle.Bold, TextAnchor.MiddleCenter);
-                    Ui.Text(new Rect(r.x, r.y + 44, r.width, 40), reward.ToString(), 14, Palette.Gold, FontStyle.Normal, TextAnchor.MiddleCenter, true);
-                    Ui.Text(new Rect(r.x, r.y + 90, r.width, 70), string.Join("\n", _b.Allies.Select(a => $"{a.Template.ShortName}: {Ui.Fmt(a.DmgDealt)}")), 12, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
-                    if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width, 44), "Continue")) End(ScreenId.Titan);
-                });
-                return;
+                case BattleMode.Titan: FinishTitan(); return;
+                case BattleMode.Dungeon: FinishDungeon(); return;
+                case BattleMode.Arena: FinishArena(); return;
             }
             if (_b.Result == BattleResult.Victory)
             {
-                var res = G.CompleteStage(_stage); App.Save();
+                int stage = _spec.Stage;
+                var res = G.CompleteStage(stage); App.Save();
                 App.Online.PushProfile();
                 string ups = string.Join("\n", res.LevelUps.Select(l => $"{Hero(l.hero.id).ShortName} → Lv {l.hero.level}"));
                 string gear = res.Gear == null ? "" : $"\nFound: {GearRarityNames[res.Gear.rarity]} {res.Gear.Set} {res.Gear.Slot}";
-                bool canNext = _stage + 1 < TotalStages && G.S.cleared > _stage;
+                bool canNext = stage + 1 < TotalStages && G.S.cleared > stage;
                 App.Modal("VICTORY", 330, r =>
                 {
                     Ui.Text(new Rect(r.x, r.y, r.width, 60), res.Reward + $"\n+{Ui.Fmt(res.Reward.Xp)} XP each" + (res.FirstClear ? " · First clear bonus!" : ""), 14, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
                     Ui.Text(new Rect(r.x, r.y + 64, r.width, 90), ups + gear, 13, Palette.Good, FontStyle.Normal, TextAnchor.UpperCenter, true);
                     float y = r.yMax - 100;
                     if (canNext && Ui.Button(new Rect(r.x, y, r.width, 44), "Next Stage ▶")) { App.CloseModal(); Begin(Mathf.Min(G.S.cleared, TotalStages - 1)); }
-                    if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Replay", Ui.Kind.Secondary)) { App.CloseModal(); Begin(_stage); }
+                    if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Replay", Ui.Kind.Secondary)) { App.CloseModal(); Begin(stage); }
                     if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Map", Ui.Kind.Secondary)) End(ScreenId.Campaign);
                 });
                 if (G.S.settings.autoReplay) StartCoroutine(AutoReplay());
@@ -201,29 +256,87 @@ namespace Sigilbound.Client
                 App.Modal("DEFEAT", 250, r =>
                 {
                     Ui.Text(new Rect(r.x, r.y, r.width, 80), "Level heroes with training, equip and upgrade gear, bring elements that beat the enemy, and summon new heroes.", 13, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
-                    if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Retry", Ui.Kind.Secondary)) { App.CloseModal(); Begin(_stage); }
+                    if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Retry", Ui.Kind.Secondary)) { App.CloseModal(); Begin(_spec.Stage); }
                     if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Heroes")) End(ScreenId.Heroes);
                 });
             }
         }
+
+        void FinishTitan()
+        {
+            long dmg = _b.TitanDamage;
+            var reward = G.CompleteTitan(dmg); App.Save();
+            App.Modal("Titan Battle", 300, r =>
+            {
+                Ui.Text(new Rect(r.x, r.y, r.width, 40), $"{Ui.Fmt(dmg)} damage", 26, Palette.Text, FontStyle.Bold, TextAnchor.MiddleCenter);
+                Ui.Text(new Rect(r.x, r.y + 44, r.width, 40), reward.ToString(), 14, Palette.Gold, FontStyle.Normal, TextAnchor.MiddleCenter, true);
+                Ui.Text(new Rect(r.x, r.y + 90, r.width, 70), string.Join("\n", _b.Allies.Select(a => $"{a.Template.ShortName}: {Ui.Fmt(a.DmgDealt)}")), 12, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width, 44), "Continue")) End(ScreenId.Titan);
+            });
+        }
+
+        void FinishDungeon()
+        {
+            var key = _spec.Dungeon; int floor = _spec.Floor; var D = Trials.Dungeon(key);
+            if (_b.Result != BattleResult.Victory)
+            {
+                App.Modal("DEFEAT", 220, r =>
+                {
+                    Ui.Text(new Rect(r.x, r.y, r.width, 50), "No run used. Strengthen your team and try again.", 13, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                    if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Retry", Ui.Kind.Secondary)) { App.CloseModal(); Begin(BattleSpec.ForDungeon(key, floor)); }
+                    if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Back")) End(ScreenId.Dungeon);
+                });
+                return;
+            }
+            var res = G.CompleteDungeon(key, floor); App.Save();
+            string ups = string.Join("\n", res.LevelUps.Select(l => $"{Hero(l.hero.id).ShortName} → Lv {l.hero.level}"));
+            string drops = string.Join("\n", res.Drops.Select(g => $"Found: {GearRarityNames[g.rarity]} {g.Set} {g.Slot}"));
+            bool next = res.RunsLeft > 0 && floor + 1 < Trials.DungeonFloors;
+            App.Modal($"FLOOR {floor + 1} CLEARED", 360, r =>
+            {
+                Ui.Text(new Rect(r.x, r.y, r.width, 60), res.Reward + (res.Reward.Xp > 0 ? $"\n+{Ui.Fmt(res.Reward.Xp)} XP each" : "") + (res.First ? "\nFirst clear bonus!" : ""), 14, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                Ui.Text(new Rect(r.x, r.y + 64, r.width, 80), (ups + "\n" + drops).Trim(), 13, Palette.Good, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                Ui.Text(new Rect(r.x, r.yMax - 128, r.width, 22), $"{D.Name}: {res.RunsLeft} run{(res.RunsLeft == 1 ? "" : "s")} left today", 12, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter);
+                if (next && Ui.Button(new Rect(r.x, r.yMax - 100, r.width, 44), $"Floor {floor + 2} ▶")) { App.CloseModal(); Begin(BattleSpec.ForDungeon(key, floor + 1)); }
+                if (res.RunsLeft > 0 && Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Again", Ui.Kind.Secondary)) { App.CloseModal(); Begin(BattleSpec.ForDungeon(key, floor)); }
+                if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Back", Ui.Kind.Secondary)) End(ScreenId.Dungeon);
+            });
+        }
+
+        void FinishArena()
+        {
+            var rv = _spec.Rival;
+            var res = G.CompleteArena(rv, _b.Result == BattleResult.Victory); App.Save();
+            App.Modal(res.Win ? "VICTORY" : "DEFEAT", 290, r =>
+            {
+                Ui.Text(new Rect(r.x, r.y, r.width, 50), $"vs {rv.Name}\n{Ui.ColorTag((res.Delta > 0 ? "+" : "") + res.Delta, res.Win ? Palette.Good : Palette.Bad)} points → {res.Points}", 15, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                float y = r.y + 56;
+                if (res.After.Name != res.Before.Name) { Ui.Text(new Rect(r.x, y, r.width, 26), $"{res.After.Name} rank{(res.Win ? " reached!" : "")}", 17, Palette.Gold, FontStyle.Bold, TextAnchor.MiddleCenter); y += 28; }
+                if (res.Win) { Ui.Text(new Rect(r.x, y, r.width, 22), res.Reward.ToString(), 13, Palette.Gold, FontStyle.Normal, TextAnchor.MiddleCenter); y += 24; }
+                Ui.Text(new Rect(r.x, y, r.width, 22), $"Fights left today: {G.S.daily.arenaTries}", 12, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter);
+                if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width, 44), "Continue")) End(ScreenId.ArenaPvp);
+            });
+        }
+
         IEnumerator AutoReplay()
         {
-            yield return new WaitForSecondsRealtime(1.6f);
-            if (G.S.settings.autoReplay && App.Screen == ScreenId.Battle && _finished) { App.CloseModal(); Begin(_stage); }
+            yield return new WaitForSecondsRealtime(3f); // fixed 3-second pause, not sped up by 2x/3x (0.9.0)
+            if (G.S.settings.autoReplay && App.Screen == ScreenId.Battle && _finished) { App.CloseModal(); Begin(_spec.Stage); }
         }
 
         public void AskRetreat()
         {
             if (_finished) return;
+            string why = IsTitan ? "Damage so far still counts and uses this try." : _spec.Mode == BattleMode.Arena ? "Retreating counts as a loss." : "You get no rewards for this battle.";
             App.Modal("Retreat?", 200, r =>
             {
-                Ui.Text(new Rect(r.x, r.y, r.width, 50), _titan ? "Damage so far still counts and uses this try." : "You get no rewards for this battle.", 14, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                Ui.Text(new Rect(r.x, r.y, r.width, 50), why, 14, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
                 if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Stay", Ui.Kind.Secondary)) App.CloseModal();
                 if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Retreat", Ui.Kind.Red))
                 {
                     App.CloseModal();
-                    if (_titan) { if (_loop != null) StopCoroutine(_loop); _b.Retreat(); Finish(); }
-                    else { G.S.settings.autoReplay = false; End(ScreenId.Campaign); }
+                    if (IsTitan || _spec.Mode == BattleMode.Arena) { if (_loop != null) StopCoroutine(_loop); _b.Retreat(); Finish(); }
+                    else { G.S.settings.autoReplay = false; End(BackScreen); }
                 }
             });
         }
@@ -235,13 +348,21 @@ namespace Sigilbound.Client
             var safe = Ui.Safe; var cam = App.Arena.Cam;
             float top = safe.y;
             // header
+            GUI.DrawTexture(new Rect(0, 0, Ui.W, top + 50), Ui.Solid(new Color(0.06f, 0.05f, 0.08f, 0.55f)));
             if (Ui.Button(new Rect(10, top + 8, 40, 34), "X", Ui.Kind.Secondary, 14)) AskRetreat();
-            string info = _titan ? $"Titan · Turn {Mathf.Min(_b.BossTurns + 1, TitanTurns)}/{TitanTurns} · {Ui.Fmt(_b.TitanDamage)} dmg" : $"Stage {Game.StageLabel(_stage)} · Wave {_b.Wave + 1}/{_b.Waves.Count}";
-            Ui.Text(new Rect(58, top + 8, 160, 34), info, 13, Palette.Text, FontStyle.Bold);
+            string info = _spec.Mode switch
+            {
+                BattleMode.Titan => $"Titan · Turn {Mathf.Min(_b.BossTurns + 1, TitanTurns)}/{TitanTurns} · {Ui.Fmt(_b.TitanDamage)} dmg",
+                BattleMode.Dungeon => $"{Trials.Dungeon(_spec.Dungeon).Name} · F{_spec.Floor + 1} · W{_b.Wave + 1}/{_b.Waves.Count}",
+                BattleMode.Arena => $"Arena · vs {_spec.Rival.Name}",
+                _ => $"Stage {Game.StageLabel(_spec.Stage)} · Wave {_b.Wave + 1}/{_b.Waves.Count}",
+            };
             float bx = Ui.W - 10;
-            bx -= 52; if (Ui.Button(new Rect(bx, top + 8, 48, 34), $"{G.S.settings.speed}x", Ui.Kind.Secondary, 13)) { G.S.settings.speed = G.S.settings.speed >= 3 ? 1 : G.S.settings.speed + 1; Time.timeScale = _finished ? 1 : G.S.settings.speed; App.Save(); }
-            bx -= 62; if (Ui.Button(new Rect(bx, top + 8, 58, 34), "Auto", Auto ? Ui.Kind.Primary : Ui.Kind.Secondary, 13)) { G.S.settings.auto = !G.S.settings.auto; App.Save(); }
-            if (!_titan) { bx -= 62; if (Ui.Button(new Rect(bx, top + 8, 58, 34), "Loop", G.S.settings.autoReplay ? Ui.Kind.Primary : Ui.Kind.Secondary, 12)) { G.S.settings.autoReplay = !G.S.settings.autoReplay; App.Save(); } }
+            bx -= 46; if (Ui.Button(new Rect(bx, top + 8, 42, 34), $"{G.S.settings.speed}x", Ui.Kind.Secondary, 13)) { G.S.settings.speed = G.S.settings.speed >= 3 ? 1 : G.S.settings.speed + 1; Time.timeScale = _finished ? 1 : G.S.settings.speed; App.Save(); }
+            bx -= 54; if (Ui.Button(new Rect(bx, top + 8, 50, 34), "Auto", Auto ? Ui.Kind.Primary : Ui.Kind.Secondary, 12)) { G.S.settings.auto = !G.S.settings.auto; App.Save(); }
+            if (_spec.Mode == BattleMode.Stage) { bx -= 54; if (Ui.Button(new Rect(bx, top + 8, 50, 34), "Loop", G.S.settings.autoReplay ? Ui.Kind.Primary : Ui.Kind.Secondary, 12)) { G.S.settings.autoReplay = !G.S.settings.autoReplay; App.Save(); } }
+            bx -= 46; if (Ui.Button(new Rect(bx, top + 8, 42, 34), "Cam", Ui.Kind.Secondary, 11)) CycleCamera();
+            Ui.Text(new Rect(56, top + 8, bx - 60, 34), info, 12, Palette.Text, FontStyle.Bold, TextAnchor.MiddleLeft, false, true);
 
             // unit bars + tap targets
             bool manual = _awaiting && _actor != null && _actor.Ally && !Auto;
@@ -254,12 +375,12 @@ namespace Sigilbound.Client
                 if (!u.Alive) continue;
                 Vector3 sp = cam.WorldToScreenPoint(v.HeadTop ? v.HeadTop.position + Vector3.up * 0.25f : v.transform.position + Vector3.up * 2.2f);
                 if (sp.z < 0) continue;
-                float x = sp.x / Ui.Scale, y = (Screen.height - sp.y) / Ui.Scale;
+                float x = Mathf.Clamp(sp.x / Ui.Scale, 46, Ui.W - 46), y = Mathf.Max(safe.y + 84, (Screen.height - sp.y) / Ui.Scale); // tags stay on screen
                 float w = u.Titan ? 140 : 76;
                 Ui.Text(new Rect(x - w / 2 - 10, y - 30, w + 20, 16), $"{Ui.ColorTag("●", Palette.Element(u.El))} {(u.Ally ? u.Template.ShortName : u.Name)}", 11, Palette.Text, FontStyle.Bold, TextAnchor.MiddleCenter);
                 Ui.Bar(new Rect(x - w / 2, y - 13, w, 7), u.Titan ? 1 : u.Hp / (float)u.MaxHp, u.Ally ? Palette.Good : Palette.Bad);
                 var sh = u.Shield; if (sh != null) GUI.DrawTexture(new Rect(x - w / 2, y - 13, w * Mathf.Clamp01(sh.Val / (float)u.MaxHp), 3), Ui.Solid(new Color(0.7f, 0.85f, 1f)));
-                Ui.Bar(new Rect(x - w / 2, y - 4, w, 3), (float)(u.Tm / Battle.TmFull), Palette.Blue);
+                Ui.Bar(new Rect(x - w / 2, y - 4, w, 3), (float)(u.Tm / Core.Battle.TmFull), Palette.Blue);
                 if (u.Effects.Count > 0) Ui.Text(new Rect(x - 60, y + 1, 120, 14), string.Join(" ", u.Effects.Select(e => Ui.ColorTag(SkillText.EffectShort(e.Type), FxDef.IsBuff(e.Type) ? Palette.Gold : Palette.Hex("#c07aff")))), 9, Palette.Text, FontStyle.Bold, TextAnchor.MiddleCenter);
                 if (manual && targets.Contains(u))
                 {
@@ -278,9 +399,10 @@ namespace Sigilbound.Client
             // banner + skill bar
             float barTop = safe.yMax - 92;
             string banner = !string.IsNullOrEmpty(_banner) ? _banner : manual ? $"{_actor.Template.ShortName}'s turn" : "";
-            Ui.Text(new Rect(0, barTop - 64, Ui.W, 30), banner, 19, Palette.Gold, FontStyle.Bold, TextAnchor.MiddleCenter);
+            Ui.Text(new Rect(0, barTop - 64, Ui.W, 30), banner, 19, Palette.Gold, FontStyle.Bold, TextAnchor.MiddleCenter, false, true);
             if (manual) Ui.Text(new Rect(16, barTop - 36, Ui.W - 32, 32), SkillText.Describe(_actor.Template.Skills[_sel]), 11, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
             GUI.DrawTexture(new Rect(0, barTop, Ui.W, Ui.H - barTop), Ui.Solid(new Color(0, 0, 0, 0.6f)));
+            Ui.GoldRule(new Rect(0, barTop, Ui.W, 1));
             if (manual)
             {
                 var sks = _actor.Template.Skills;
