@@ -20,3 +20,5 @@
 # .NET test build output
 /Tests~/bin/
 /Tests~/obj/
+/Tests~/CompileCheck/bin/
+/Tests~/CompileCheck/obj/

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Compile check for the Unity runtime code (Core + Client) without a Unity editor or license.
+       References Unity's engine module reference assemblies from nuget.org (UnityEngine.Modules) and
+       small hand-written stubs for the packages we use (URP, glTFast), whose signatures were copied
+       from the packages' source. Run from the repo root:
+         dotnet build unity/Tests~/CompileCheck/Editor.csproj
+       (building the editor project also builds this one). Unity ignores folders ending in ~. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Sigilbound.Client</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Unity-style code: fields assigned by the engine, obsolete-but-working APIs. -->
+    <NoWarn>CS0649;CS0414;CS0618;CS0169;CS1998;CS0436</NoWarn>
+    <!-- Same symbols the asmdef versionDefines set when the packages are installed. -->
+    <DefineConstants>$(DefineConstants);UNITY_ANDROID;SB_URP;SB_GLTFAST;SB_COMPILE_CHECK</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/Sigilbound/Core/**/*.cs" />
+    <Compile Include="../../Assets/Sigilbound/Client/**/*.cs" />
+    <Compile Include="Stubs/Packages/**/*.cs" />
+  </ItemGroup>
+</Project>
