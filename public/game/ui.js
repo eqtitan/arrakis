@@ -142,6 +142,16 @@ function render() {
   if (!G.started) { $app.innerHTML = introScreen(); return; }
   const fn = SCREENS[UI.screen] || SCREENS.home;
   $app.innerHTML = topbar() + `<main class="pad col" style="gap:12px">${fn()}</main>` + nav();
+  syncShowcase();
+}
+
+// Hero detail page: swap the drawn figure for the live 3D hero when 3D is available.
+function syncShowcase() {
+  if (!window.W3D || !W3D.showcase) return;
+  const host = document.querySelector(".show-sprite[data-hero]");
+  if (!host) { W3D.showcaseStop(); return; }
+  if (!W3D.showcase(host, host.dataset.hero, host.dataset.el) && W3D.supported() && !W3D.modelsReady)
+    W3D.whenReady().then(() => { if (host.isConnected) W3D.showcase(host, host.dataset.hero, host.dataset.el); });
 }
 
 // ---------- screens ----------
@@ -252,7 +262,7 @@ const SCREENS = {
         <div class="row"><button class="btn sec sm" data-act="toggleLock">${h.locked ? "🔒 Locked" : "🔓 Lock"}</button>
         <button class="btn sec sm" data-act="askRelease">Release</button></div></div>
       <div class="card row showcase" style="gap:14px;background-image:linear-gradient(90deg,#120e1a33,#120e1aee 55%),${sceneUrl(ELEMENT_KEYS.indexOf(t.el))}">
-        <div class="show-sprite">${heroSprite(t.id, t.el)}</div>
+        <div class="show-sprite" data-hero="${t.id}" data-el="${t.el}">${heroSprite(t.id, t.el)}</div>
         <div class="grow"><h2 style="font-size:18px">${t.name}</h2>
           <div class="stars" style="font-size:15px">${starStr(h.stars)}<span class="dim">${"☆".repeat(MAX_STARS - h.stars)}</span></div>
           <div class="small" style="color:${RARITY[t.rarity].color}">${RARITY[t.rarity].name}</div>
@@ -592,6 +602,7 @@ document.addEventListener("click", (e) => {
 
 // ---------- battle presentation ----------
 function startBattle(cfg) {
+  if (window.W3D && W3D.showcaseStop) W3D.showcaseStop(); // free the hero viewer before the battle scene
   const team = G.team.map(heroByUid).filter(Boolean);
   if (!team.length) return toast("Choose at least one hero.");
   // First 3D battle: give the hero models a moment to finish loading.

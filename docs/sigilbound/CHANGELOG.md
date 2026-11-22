@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.13.0 (2026-11-22)
+- Hero detail page shows the live 3D hero: idle animation, drag to spin, tap to see an attack.
+
+
 ## 0.12.0 (2026-11-22)
 - Hero cards now show faces photographed from each hero's 3D model (drawn portraits stay as the fallback).
 

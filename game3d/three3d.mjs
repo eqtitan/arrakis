@@ -1139,10 +1139,108 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
   const onFaces = (cb) => faceListeners.push(cb);
 
+  // ---------- hero detail showcase: one live, animated hero you can spin ----------
+  // The UI re-renders with innerHTML, so the canvas is kept and re-attached to whatever
+  // host element the latest render produced. Drag sideways to turn the hero, tap to see
+  // an attack.
+  const SC = { renderer: null, scene: null, camera: null, built: null, key: "", raf: 0, last: 0, yaw: -0.35, spin: 0, host: null };
+  function scLoop(now) {
+    SC.raf = 0;
+    if (!SC.renderer || !SC.renderer.domElement.isConnected) return; // page changed: pause until re-attached
+    const dt = Math.min(0.05, (now - SC.last) / 1000); SC.last = now;
+    if (SC.built) {
+      if (SC.built.mixer) SC.built.mixer.update(dt);
+      for (const f of SC.built.fx || []) f(now / 1000);
+      if (!SC.drag) { SC.yaw += SC.spin * dt; SC.spin *= Math.pow(0.04, dt); }
+      SC.built.model.rotation.y = SC.yaw;
+    }
+    SC.renderer.render(SC.scene, SC.camera);
+    SC.raf = requestAnimationFrame(scLoop);
+  }
+  function scResize() {
+    if (!SC.renderer || !SC.host) return;
+    const w = SC.host.clientWidth || 110, h = SC.host.clientHeight || 165;
+    SC.renderer.setSize(w, h, false);
+    SC.camera.aspect = w / h; SC.camera.updateProjectionMatrix();
+  }
+  function scSetup() {
+    const r = new T.WebGLRenderer({ antialias: true, alpha: true });
+    r.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    r.outputEncoding = T.sRGBEncoding;
+    r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = GFX.exposure;
+    r.setClearColor(0x000000, 0);
+    r.domElement.className = "show3d";
+    SC.renderer = r;
+    SC.scene = new T.Scene();
+    SC.scene.add(new T.HemisphereLight(0xfff4e6, 0x3a3040, 1.3));
+    const key = new T.DirectionalLight(0xfff1dd, 2.2); key.position.set(-2, 3, 4); SC.scene.add(key);
+    const fill = new T.DirectionalLight(0xffffff, 0.6); fill.position.set(3, 1, 3); SC.scene.add(fill);
+    SC.rim = new T.DirectionalLight(0x99aaff, 1.4); SC.rim.position.set(2, 3, -4); SC.scene.add(SC.rim);
+    SC.camera = new T.PerspectiveCamera(30, 110 / 165, 0.1, 50);
+    const c = r.domElement;
+    let x0 = 0, moved = 0, lastX = 0, lastT = 0;
+    c.addEventListener("pointerdown", (e) => { SC.drag = true; x0 = lastX = e.clientX; lastT = performance.now(); moved = 0; SC.spin = 0; c.setPointerCapture && c.setPointerCapture(e.pointerId); });
+    c.addEventListener("pointermove", (e) => {
+      if (!SC.drag) return;
+      const dx = e.clientX - lastX, t = performance.now();
+      SC.yaw += dx * 0.012; moved += Math.abs(dx);
+      SC.spin = dx * 0.012 / Math.max(0.008, (t - lastT) / 1000);
+      lastX = e.clientX; lastT = t;
+    });
+    const up = () => {
+      if (!SC.drag) return;
+      SC.drag = false;
+      if (performance.now() - lastT > 80) SC.spin = 0;
+      SC.spin = Math.max(-8, Math.min(8, SC.spin));
+      if (moved < 6 && SC.built && SC.built.actions) {   // a tap: show off an attack
+        const a = SC.built.actions.melee || SC.built.actions.cast;
+        if (a) { a.reset().fadeIn(0.1).play(); if (SC.built.actions.idle) SC.built.actions.idle.fadeOut(0.1); }
+      }
+    };
+    c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up);
+    window.addEventListener("resize", scResize);
+  }
+  // Show hero `id` live inside `host`. Returns false if 3D isn't available yet.
+  function showcase(host, id, el) {
+    if (!host || !supported() || !modelsSettled) return false;
+    if (!SC.renderer) scSetup();
+    const key = `${id}|${el}`;
+    if (SC.key !== key) {
+      if (SC.built) SC.scene.remove(SC.built.model);
+      const built = buildRigged(id, BASE[id] || "adventurer", false, el);
+      if (!built) return false;
+      SC.built = built; SC.key = key; SC.yaw = -0.35; SC.spin = 0;
+      SC.scene.add(built.model);
+      SC.rim.color.set(ELEMENTS[el] ? ELEMENTS[el].color : "#99aaff");
+      // Frame the whole figure, props and headgear included.
+      SC.camera.position.set(0, 1.35, 5.5);
+      SC.camera.lookAt(0, 1.17, 0);
+      const ec = ELEMENTS[el] ? ELEMENTS[el].color : "#ffffff";
+      if (!SC.aura) {
+        SC.aura = new T.Mesh(new T.CircleGeometry(0.6, 40), glow(ec, 0.3));
+        SC.aura.rotation.x = -Math.PI / 2; SC.aura.position.y = 0.01; SC.scene.add(SC.aura);
+      } else SC.aura.material = glow(ec, 0.3);
+    }
+    SC.host = host;
+    if (SC.renderer.domElement.parentNode !== host) host.prepend(SC.renderer.domElement);
+    host.classList.add("has3d");
+    scResize();
+    if (!SC.raf) { SC.last = performance.now(); SC.raf = requestAnimationFrame(scLoop); }
+    return true;
+  }
+  function showcaseStop() {
+    if (!SC.renderer) return;
+    cancelAnimationFrame(SC.raf); SC.raf = 0;
+    window.removeEventListener("resize", scResize);
+    SC.renderer.domElement.remove();
+    SC.renderer.dispose(); SC.renderer.forceContextLoss();
+    Object.assign(SC, { renderer: null, scene: null, camera: null, built: null, key: "", host: null, aura: null });
+  }
+
   preload();
   return {
     supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, setHighlight,
-    burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces,
+    burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop,
     has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };
 })();

@@ -111,6 +111,10 @@ offscreen renderer, then caches the images on the device. `W3D.face()` lives in
 re-shoots the faces after the next update. Order of preference: `ART_FILES` illustration,
 then the 3D face, then the drawn SVG portrait (used before the faces are ready or without WebGL).
 
+**Hero detail page (0.13.0):** a live 3D viewer (`W3D.showcase()`) plays the hero's idle animation;
+the player drags to spin and taps to see an attack. It replaces the drawn full-body sprite when WebGL
+is available, and frees its renderer when the player leaves the page or starts a battle.
+
 Hero cards and summon reveals can use real illustrations. Generate them with an image tool,
 or commission them, then drop them in `public/game/art/` and list them in `ART_FILES` in
 `public/game/art.js` (for example `ysolde: "art/ysolde.webp"`).
