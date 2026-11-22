@@ -350,8 +350,8 @@ const W3D = (() => {
     camera.fov = camFov = camera.aspect < 0.75 ? 62 : 50;
     const C = CAMS[camKey()], pitch = C.pitch * D2R, yaw = C.yaw * D2R, pts = [];
     for (const sx of [-1, 1]) {
-      for (const y of [0, 2.75]) { pts.push([sx * 2.45, y, 2.6]); pts.push([sx * 2.45, y, 2.0]); }
-      for (const y of [0, 3.2]) pts.push([sx * 2.85, y, -3.6]);
+      for (const y of [0, 2.75]) { pts.push([sx * 3.75, y, 2.6]); pts.push([sx * 3.75, y, 2.0]); }
+      for (const y of [0, 3.2]) pts.push([sx * 3.75, y, -3.6]);
     }
     pts.push([0, 3.75, -3.95]);                         // HUD tags above the back row
     if (mountTitan) { pts.push([0, 5.6, -4.0]); pts.push([-2.3, 3.4, -4.0]); pts.push([2.3, 3.4, -4.0]); }
@@ -1756,7 +1756,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   // Rows spread with the team size; with 4+ units every other one steps back, so the HUD tags
   // and the figures overlap less.
   function slot(ally, i, n) {
-    const spread = n <= 1 ? 0 : Math.min(ally ? 4.0 : 4.8, (ally ? 1.0 : 2.2) * (n - 1));
+    const spread = n <= 1 ? 0 : Math.min(6.6, 2.2 * (n - 1)); // same 2.2 m gaps for both sides
     const x = n <= 1 ? 0 : -spread / 2 + i * (spread / (n - 1));
     const step = n >= 4 && i % 2 ? (ally ? 0.5 : 0.35) : 0;
     return ally ? new T.Vector3(x, 0, 2.0 + step) : new T.Vector3(x, 0, -3.6 - step);
