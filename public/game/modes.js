@@ -100,7 +100,7 @@ function rivalsFor(seed) {
   const avgLv = team.length ? Math.round(team.reduce((s, h) => s + h.level, 0) / team.length) : 5;
   const avgSt = team.length ? Math.round(team.reduce((s, h) => s + h.stars, 0) / team.length) : 2;
   const P = Math.max(2000, teamPower());
-  return [["Easy", 0.88, 14], ["Even", 1.0, 20], ["Hard", 1.13, 28]].map(([label, mul, gain]) => {
+  return [["Easy", 0.8, 14], ["Even", 0.95, 20], ["Hard", 1.08, 28]].map(([label, mul, gain]) => {
     const ids = [];
     while (ids.length < n) { const t = HEROES[Math.floor(rng() * HEROES.length)]; if (!ids.includes(t.id)) ids.push(t.id); }
     const name = `${RIVAL_ADJ[Math.floor(rng() * RIVAL_ADJ.length)]} ${RIVAL_NOUN[Math.floor(rng() * RIVAL_NOUN.length)]}`;

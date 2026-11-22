@@ -814,6 +814,7 @@ async function showEvents(events, color = "#7dff7a") {
     const c = el && FX.center(el);
     if (e.type === "dmg") {
       text = (e.crit ? "CRIT " : "") + fmt(e.amount); cls = e.crit ? "crit" : e.em > 1 ? "strong" : e.em < 1 ? "weak" : "";
+      if (!e.amount && !e.dot) text = null; // fully soaked by a shield: the 🔰 absorb number already shows
       if (e.dot) { cls = "text"; text = "☠️ " + fmt(e.amount); }
     } else if (e.type === "heal") { text = "+" + fmt(e.amount); cls = "heal"; }
     else if (e.type === "absorb") { text = "🔰 " + fmt(e.amount); cls = "text"; }
