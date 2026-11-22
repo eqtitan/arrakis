@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.19.2 (2026-11-22)
+- Fixed: pressing the phone's Back button on a Victory/Defeat popup now leaves the battle (to the map, Titan, dungeon or arena screen) instead of dropping you into the ended battle.
+
+
 ## 0.19.1 (2026-11-22)
 - Runs much cooler: battles capped at 60 fps (no more 120 fps on high-refresh phones), Low at 30 fps without shadows, shadows refresh at 30 Hz, hero viewer at 30 fps, no live blur over the 3D view, lower resolution on Medium/Low. New Frame rate setting: 30 (cooler) or 60 (smoother).
 

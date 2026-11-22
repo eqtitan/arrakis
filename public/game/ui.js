@@ -1055,9 +1055,19 @@ function finishBattle() {
 
 // Android hardware back button: close dialogs, leave battles, step back, then exit.
 const BACK_TO = { hero: "heroes", equip: "hero", friend: "friends", chat: "friend", titan: "trials", dungeon: "trials", arena: "trials" };
+// Leave a battle that has already ended (from its result popup), to the screen it was started from.
+function leaveFinishedBattle() {
+  clearTimeout(B.replayTimer); clearInterval(B.replayTick);
+  if (G.settings.autoReplay) { G.settings.autoReplay = false; save(); }
+  AUTO = null;
+  const to = { titan: "titan", dungeon: "dungeon", arena: "arena" }[B.mode] || "campaign";
+  ACTIONS.resultBack({ to });
+}
 NATIVE.onBack(() => {
+  // On a battle's Victory/Defeat popup, Back leaves the battle (not just the popup).
+  if (B && B.finished) { leaveFinishedBattle(); return; }
   if (!$modal.classList.contains("hidden")) { closeModal(); return; }
-  if (B) { if (!B.finished) ACTIONS.bFlee(); return; }
+  if (B) { ACTIONS.bFlee(); return; }
   if (UI.screen === "chat" && typeof stopChat === "function") stopChat();
   if (UI.screen === "prep") UI.screen = (UI.prep && UI.prep.back) || "home";
   else if (BACK_TO[UI.screen]) UI.screen = BACK_TO[UI.screen];

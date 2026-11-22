@@ -41,6 +41,7 @@ const NATIVE = (() => {
   }
 
   function onBack(handler) {
+    onBack.handler = handler; // kept for testing in a browser
     if (isNative && P.App) P.App.addListener("backButton", handler);
   }
   function exit() { if (isNative && P.App) P.App.exitApp(); }
