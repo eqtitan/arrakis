@@ -350,8 +350,11 @@ const W3D = (() => {
     camera.fov = camFov = camera.aspect < 0.75 ? 62 : 50;
     const C = CAMS[camKey()], pitch = C.pitch * D2R, yaw = C.yaw * D2R, pts = [];
     for (const sx of [-1, 1]) {
-      for (const y of [0, 2.75]) { pts.push([sx * 3.75, y, 2.6]); pts.push([sx * 3.75, y, 2.0]); }
-      for (const y of [0, 3.2]) pts.push([sx * 3.75, y, -3.6]);
+      // the whole rim of the circle, with head-height and HUD-tag points above it
+      for (let k = 0; k <= 6; k++) {
+        const ang = (k / 6) * Math.PI, x = sx * Math.sin(ang) * (4.2 + 0.4), z = -0.6 + Math.cos(ang) * (3.95 + 0.4);
+        pts.push([x, 0, z]); pts.push([x, z > 0 ? 2.75 : 3.3, z]);
+      }
     }
     pts.push([0, 3.75, -3.95]);                         // HUD tags above the back row
     if (mountTitan) { pts.push([0, 5.6, -4.0]); pts.push([-2.3, 3.4, -4.0]); pts.push([2.3, 3.4, -4.0]); }
@@ -1750,17 +1753,22 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   const ALLY_FACING = Math.PI - 0.95;
   // Yaw 0 faces the camera (+Z) and PI faces the enemies: about 60-72° off the camera, toward
   // the centre of the line.
-  const ARENA_CENTRE = new T.Vector3(0, 0, (2.0 + -3.6) / 2);
+  const ARENA_CENTRE = new T.Vector3(0, 0, -0.6); // centre of the rune circle
   const faceCentre = (p) => Math.atan2(ARENA_CENTRE.x - p.x, ARENA_CENTRE.z - p.z); // models face +Z at yaw 0
   const allyFacing = (x) => (x <= 0.05 ? 1 : -1) * (1.05 + 0.2 * Math.min(1, Math.abs(x) / 1.8));
   // Rows spread with the team size; with 4+ units every other one steps back, so the HUD tags
   // and the figures overlap less.
+  // Units stand on the rim of the arena's rune circle (an ellipse, centre z -0.6), allies along
+  // the near arc and enemies along the far arc, ~2.2 m apart, all facing the centre.
+  const RIM = { cx: 0, cz: -0.6, rx: 4.2, rz: 3.95 };
   function slot(ally, i, n) {
-    const spread = n <= 1 ? 0 : Math.min(6.6, 2.2 * (n - 1)); // same 2.2 m gaps for both sides
-    const x = n <= 1 ? 0 : -spread / 2 + i * (spread / (n - 1));
-    const step = n >= 4 && i % 2 ? (ally ? 0.5 : 0.35) : 0;
-    return ally ? new T.Vector3(x, 0, 2.0 + step) : new T.Vector3(x, 0, -3.6 - step);
+    const step = 2.2 / ((RIM.rx + RIM.rz) / 2);                       // radians per 2.2 m of arc
+    const half = n <= 1 ? 0 : Math.min(70 * D2R, step * (n - 1) / 2);
+    const t = n <= 1 ? 0 : -half + i * (2 * half / (n - 1));
+    const a = ally ? t : Math.PI - t;                                  // 0 = near side (camera), PI = far side
+    return new T.Vector3(RIM.cx + Math.sin(a) * RIM.rx, 0, RIM.cz + Math.cos(a) * RIM.rz);
   }
+
 
   // Gear shown on a battle unit: allies use their equipped items (u.gear, or looked up from
   // u.heroUid); Hollow enemies get plain gear that gets finer with their level.
