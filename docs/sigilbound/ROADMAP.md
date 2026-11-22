@@ -10,7 +10,7 @@ _Last updated: 2026-11-22._
 | Area | Status | Notes |
 |---|---|---|
 | Web game (`public/game/`) | ✅ Playable | 24 heroes, campaign, Titan, gear, summoning, daily quests. Fully free, with no shop. |
-| 3D battles | ✅ Playable | Rigged CC0 models recolored per hero; 2D fallback toggle on Home. |
+| 3D battles | ✅ Playable | Rigged CC0 models with per-hero builds, code-built kit and visible gear; 2D fallback toggle on Home. |
 | Android app (`mobile/`) | ✅ Tested on a real phone | Debug APK built on every push: [download](https://github.com/eqtitan/arrakis/releases/download/android-latest/Sigilbound.apk). |
 | iOS app (`mobile/`) | 🟡 Compiles in CI | Needs an Apple Developer account for TestFlight. |
 | Friends & chat | 🟡 Built, not live | Needs the D1 database and a merge to `master`. |
@@ -31,11 +31,10 @@ _Last updated: 2026-11-22._
 2. **3D hero polish (follow-ups from the 0.10.0 art pass).**
    - ~~**Color pipeline**~~ fixed in 0.11.0.
    - ~~**Light heroes**~~ given distinct palettes in 0.11.1.
-   - **Hask, Brannoc and Odo** are similar beige tones.
-   - **Ysolde's whip** reads like a bow.
-   - **Velka's staff head** clips the HUD.
-   - **Capes** are rigid.
-   - **Titan mouth** shape still reads as a grin.
+   - ~~**Hask, Brannoc and Odo** beige~~, ~~**Ysolde's whip**~~, ~~**Velka's staff**~~, ~~**rigid capes**~~ and ~~**the Titan's grin**~~: fixed in the hero art pass. All 24 heroes now have their own build, with borrowed parts, proportions and hair, plus their own kit and palette (table in `ART_DIRECTION.md`).
+   - ~~**Equipped gear changes the 3D model**~~: helm, chest, boots and weapon show by rarity and set, in battle and in the hero viewer.
+   - ~~**Draw calls**~~: kit and body merged into a few skinned meshes, about 14.5 calls per unit in battle (was about 85).
+   - Next: robes that follow the legs, per-hero idle and attack poses, and higher-poly faces if a CC0 head set fits the rig.
 
    *Owner: art-director.*
 3. **Friends & chat live.** Unblocked by blockers 1 and 2. *Owner: engineering.*

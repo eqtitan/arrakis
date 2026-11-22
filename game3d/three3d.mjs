@@ -124,7 +124,7 @@ const W3D = (() => {
   function geos() {
     if (geo.box) return geo;
     geo.box = new T.BoxGeometry(1, 1, 1);
-    geo.sphere = new T.SphereGeometry(0.5, 20, 14);
+    geo.sphere = new T.SphereGeometry(0.5, 14, 10);
     geo.capsule = new T.CapsuleGeometry(0.5, 1.0, 6, 14);
     geo.cyl = new T.CylinderGeometry(0.5, 0.5, 2, 20);
     // Unit-height shapes for code-built props (low segment counts: they are small on a phone).
@@ -612,7 +612,8 @@ const W3D = (() => {
     const skel = new T.Skeleton(bones, bones.map(() => inv.clone()));
     for (const { mat, geo: g } of groups) {
       const sm = new T.SkinnedMesh(g, mat);
-      sm.frustumCulled = false; sm.castShadow = !mat.isMeshBasicMaterial; sm.userData.kitMerged = 1;
+      // Only cloth (robes, capes) casts kit shadows: small props add triangles, not readability.
+      sm.frustumCulled = false; sm.castShadow = mat.name === "dm-cloth"; sm.userData.kitMerged = 1;
       holder.add(sm);
       sm.updateMatrixWorld(true);
       sm.bind(skel, sm.matrixWorld.clone());
@@ -1300,7 +1301,7 @@ const W3D = (() => {
     if (pStyle) for (const [side, bn] of [[1, "UpperArmL"], [-1, "UpperArmR"]]) {
       if (!bones[bn]) continue;
       attach("P" + side, socketM(bones[bn], model, [side * 0.02, 0.01, 0]), (g, live) => {
-        const size = (K.pauldronSize || 1) * (gc ? 0.82 + gc.r * 0.06 : 1);
+        const size = (K.pauldronSize || 1) * (gc ? 0.72 + gc.r * 0.05 : 1);
         const base0 = gc ? M(gmetal(gc.r, 0.75), gc.r === 1 ? 0 : 0.55) : M(K.pauldronColor || mix(L.armor, "#c8ccd4", 0.25), 0.4);
         const trim = gc ? gtrim(gc.r) : C.acc;
         const tiltZ = side * -50;
@@ -2020,7 +2021,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   return {
     supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, setHighlight,
     burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop,
-    _sc: () => SC, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
+    has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };
 })();
 

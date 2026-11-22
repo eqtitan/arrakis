@@ -35,48 +35,107 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
 - **Models:** rigged, animated CC0 characters by Quaternius in `public/game/models/`, with
   sources in `CREDITS.md`. Only use models whose original page states CC0 or public domain,
   and record the page URL in `CREDITS.md`.
-- **Base per hero:** set in `BASE` in `game3d/three3d.mjs`.
-  - `monarch`: plate armor and a beard, with an optional crown.
-  - `hooded`: hooded cloak, shoulder pads, optional sword.
-  - `adventurer`: shirt and trousers, beard.
-- **Recolor:** an optional `cloth` color in `LOOKS` sets sleeves and trousers separately from the armor. Use it, and a `kit.capeColor`, to tell same-element heroes apart.
-  `ROLES` maps each model material to a role (armor, cloth, pants, accent,
-  trim, blade, hair, skin, crown, eye). The colors come from each hero's `LOOKS` entry in
-  `public/game/art.js` (armor, accent, hair, skin, glow).
-- **Signature kit (props and headgear):** because several heroes share a base, each hero's
-  silhouette comes from code-built props attached to bones (`buildKit` in
-  `game3d/three3d.mjs`). No extra assets are downloaded. The kit is driven by `LOOKS`:
-  - `prop` → right-hand weapon or focus: spear, staff (shaft plus a glowing head, `kit.staff`
-    = `orb` / `ice` crystal / `sun`), hammer, club, trident, katana, sword, axe, daggers (one
-    per hand), flaming whip, hook, bow (plus a quiver on the back), lantern on a crook pole,
-    candle, hand mirror, hand bell, orb with orbiting rings. `shield` puts a shield on the
-    left forearm (`kit.shield` = `round` / `kite` / `tower`) and `kit.side` in the right hand.
-    On the hooded base, `sword` uses the model's own sword mesh.
-  - `gear` → headgear on the Head bone: helm (`kit.helm` = `winged` / `horned`), horns,
-    halo, circlet with a gem, bandana with trailing tails, crown (`kit.crown` = `spike` /
-    `coral` / `jagged`), mask, veil. Hooded heroes with a `glow` (and all Hollow) get
-    glowing eyes.
-  - `kit.cape` (epics and legendaries) adds a flared cloak on the Chest bone and hides the
-    adventurer's backpack (or use `kit.pack: false`). `kit.aura` (legendaries) adds glowing
-    pauldrons. `kit.big` makes the hammer or shield heavier, and `kit.flame` adds fire to the
-    sword and crown.
-  - Colors: main = `armor`, accent = `accent`, and glowing parts use `glow` (or the accent).
-    Hollow copies are tinted dark, and their glows shift toward red.
-  - **Grip:** a held item is built along +Y, with the fist at the origin. The fist's axis is
-    the wrist bone's X axis, and the per-item `TILT` swings the tip from "forward like a
-    sword" (0°) toward vertical. Tall foci use about 30°, which stands up in idle without
-    leaning far back in the Gun_Shoot cast pose. Check new props in both poses.
-  - **Phone budget:** each bone's parts are merged into one mesh per material and cached per
-    hero, which adds about 2–8 draw calls per unit. Only animated bits (flames, orb rings,
-    glow halos) stay separate. Bone children follow the existing scale rule (divide by the
-    bone's world scale, multiply by the model's scale), so all sizes are in the model's own
-    metres (a hero is about 1.75 m).
+- **Base per hero:** set in `BASE` in `game3d/three3d.mjs`. All three bases share one
+  skeleton (same bone names; monarch and adventurer have an identical rest pose, the hooded one
+  is within 2 cm at the head), so parts can be mixed.
+  - `monarch`: plate armor, long hair and beard, optional crown.
+  - `hooded`: hood over long hair, cloak with shoulder pads, optional sword.
+  - `adventurer`: shirt and trousers, short hair and beard, backpack.
+- **Per-hero build (`BODY` in `three3d.mjs`)**, applied right after cloning, so no two heroes
+  on a base are recolours of each other:
+  - `parts: { head|body|legs|feet: base | "none" }` borrows a skinned part from another base
+    (for example Lumen wears the monarch breastplate on the adventurer body, Kettle has the
+    monarch head on the hooded cloak). A `kit.robe: "long"` removes the legs automatically.
+  - `hide: ["hood" | "hair" | "crown"]` hides material roles. The hooded head without its hood
+    is a long-haired head, which is how most of the women get visible hair.
+  - `shave` drops the beard, and `bald` keeps only the beard. The monarch and adventurer heads
+    model hair and beard as one mesh, which `trimHair` splits by height in head space.
+  - Proportions: `h` (height), `head` (head size), `bulk` ([chest width, height, depth]),
+    `arms` and `legs` (limb thickness), `sh` (shoulders moved outward, in metres). Bones are
+    scaled once (the animations only key rotations, plus translations on Body and the feet);
+    child bones get the inverse scale so only that segment grows. Leg *length* is never
+    scaled, because the feet are IK bones under Root.
+- **Recolor:** colours come from each hero's `LOOKS` entry in `public/game/art.js`: armor,
+  accent, hair, skin and glow, plus optional `cloth`, `pants`, `boot`, `trim` and `hood`.
+  `ROLES` maps each model material to a role, and `"head:Mat"` keys can override a role for one
+  part only. Body materials use just two finishes, matte (roughness 0.8) and metal
+  (roughness 0.5, metalness 0.3, env 0.8), so the merged body costs two draw calls.
+- **Signature kit (`buildKit`, driven by `LOOKS.kit`):** code-built parts on bones. No extra
+  assets are downloaded.
+  - `prop`: right-hand weapon or focus (spear with `kit.pennant`, staff `kit.staff` =
+    `orb`/`ice`/`sun`/`drift` with `kit.staffLen`, hammer (`kit.big` is Gorrum's upright maul),
+    club, trident, katana, sword, axe, daggers, whip, hook, bow plus quiver, lantern, candle,
+    mirror, bell, orb). The whip's lash hangs from the fist and trails on the ground, with a
+    coil at the hip (`kit.coil`). Shields: `kit.shield` = `round`/`kite`/`tower`, plus
+    `kit.shieldFace`, `kit.studs` and `kit.side` (the right-hand weapon).
+  - `gear` (headgear): helm (`kit.helm` = `winged`/`horned`/`great`), horns, halo, circlet,
+    bandana with fluttering tails, crown (`kit.crown` = `spike`/`coral`/`jagged`), cloth face
+    mask, veil.
+  - Hair and hats: `kit.hair` = `ponytail`/`braid`/`bun`/`flame`/`long`, `kit.beardBraid`,
+    `kit.hat: "straw"`.
+  - Body: `kit.robe` (`long`/`short`, with `robeColor` and `robeW` width, and `bells`),
+    `kit.coat`, `kit.tabard` with `emblem`, `kit.apron`, `kit.belt`, `kit.scabbard`.
+  - Shoulders and neck: `kit.pauldrons` = `plate`/`shell`/`spike`/`ice` (with
+    `pauldronColor`), `kit.mantle` = `fur`/`moss`/`ember`, `kit.collar: "spike"`,
+    `kit.scarf`, and `kit.aura` (glowing orbs on the shoulders, for legendaries).
+  - Back: `kit.cape` (two curved, tapered panels; the lower one hinges at the waist and sways
+    more), `kit.back` = `shovel`/`wings`/`sunburst`, and `kit.shards` (mirror shards that
+    circle the hero).
+  - `kit.seams` gives glowing molten cracks over the armor (the Titan's shader, on Gorrum).
+  - Colours: main = `armor`, accent = `accent`, and glowing parts use `glow`. Hollow copies are
+    tinted dark, and their glows shift toward red.
+  - **Grip:** a held item is built along +Y with the fist at the origin. `TILT` swings the tip
+    from "forward like a sword" (0°) toward vertical. Check new props in both the idle and the
+    Gun_Shoot cast pose. Limb, hip and back parts use `socketM`, a socket aligned with the
+    model's own axes in the rest pose, because the bone axes vary (the shins are rolled).
+- **Materials:** `game3d/materials.mjs` makes small procedural textures (brushed metal,
+  hammered gold, leather, cloth weave, wood, stone and scale; 128 px each, shared and cached)
+  and `detailMaterial(role, colour)`. Each renderer gets a small generated PMREM environment
+  (`envMap`, 64 px) for highlights on metal. Kit boxes are bevelled (`bevelBox`), the
+  breastplate is a curved `roundedPlate`, and capes are curved cloth sheets.
+- **Phone budget (measured):** after the kit is built, `mergeKit` gives every kit mesh a helper
+  bone and merges all kit geometry, static and animated, into one vertex-coloured skinned mesh
+  per finish. The animated parts move their helper bones. `mergeBody` merges the model's
+  primitives per finish the same way, remapping each part's joints and bind space. Merged
+  geometry is cached per hero and gear, so units share it. Result: 9–12 draw calls per hero
+  in the viewer. In a 5v3 battle with Mythic gear: 132 calls and 188k triangles per frame,
+  about 14.5 calls and 23k triangles per unit including the shadow pass (before this pass it
+  was 697 calls). Only cloth kit casts shadows.
 - **Titan:** `yeti.glb` recolored as dark basalt. A small shader patch (`crackMaterial`)
   draws glowing, slowly pulsing seams in the day's element color. The eye whites become dark
   sockets, the pupils and mouth interior glow, the tongue is hidden, and the teeth are dark
   stone. Code-built stone horns, a skull crest, angry brow ridges, back shards and shoulder
-  shards attach to its bones. Its idle plays at 0.7× speed for weight, and it is about 10%
-  larger than before.
+  shards attach to its bones. Cheek slabs press down over the corners of the model's upturned
+  mouth, and lower tusks jut up, so the glowing mouth reads as a snarl rather than a grin.
+  Its idle plays at 0.7× speed for weight.
+- **Equipped gear on the model.** The game passes a compact descriptor,
+  `{ weapon|helm|chest|boots: { r: rarity 1-5, s: set } }`, from `heroGearLook(h)` in
+  `art.js`. Battle units look it up from `u.heroUid`, and the hero viewer receives it as
+  `W3D.showcase(host, id, el, gear)`; its cache key includes the gear, so equipping or
+  unequipping on the hero page rebuilds the model. Rarity reads as finish and size, the set as
+  gem colour, and gear always takes the hero's palette:
+  - Metal leans toward the hero's armour colour (`gmetal`). Trim uses the UI's rarity colours,
+    polished at Heroic and above. Set gems: Fury red, Vigor green, Bulwark stone grey,
+    Haste teal, Keen gold.
+  - **Helm** never covers the face or replaces the hero's own headgear. On a hero who already
+    wears a helm (Hask, Aurelia, Ulfgar, Gorrum), it upgrades that helm: a trim band, brow
+    plate, set gem and low crest fin. On everyone else it adds a brow band, then temple guards
+    (Superior), small wings (Heroic) and a gem at the back (Mythic). Hats get a band and a
+    feather.
+  - **Chest:** pauldrons in the hero's own style (or plate/leather), which grow with rarity
+    and gain a second plate, trim ring and set gem. A gorget and a single curved breastplate
+    (Fine and up) add a ridge, a set gem, and trim bars at Heroic and Mythic.
+  - **Boots:** a wrap-around shin greave with a trim cuff, plus knee cops, fins and a Mythic
+    gem, and toe caps on the feet. Under a long robe only the toe caps show.
+  - **Weapon:** the signature weapon scales up with rarity (to +18% at Mythic). It gets
+    rarity-coloured grip wraps and a set gem in the pommel, plus a small glowing gem at Mythic.
+    A shield's rim takes the rarity colour from Superior up.
+  - Hollow enemies wear plain gear that gets finer with their level (helm and chest from level
+    8, everything from level 20 or on bosses).
+  - **Card faces ignore gear** on purpose. Faces are cached per hero and shown wherever that
+    hero appears, including summons and other players' heroes, so the card stays the hero's
+    identity. Per-loadout faces would also multiply the localStorage cache and the re-shoot
+    time on phones. Gear shows in battle and in the live hero viewer.
 - **Color pipeline (since 0.11.0):** color management is on (`ColorManagement.legacyMode = false`),
   so the hex colors in `LOOKS` and the palettes render as they look in a color picker.
   Lighting uses ACES tone mapping at exposure 1.3. All lighting values sit in the `GFX`
@@ -101,6 +160,49 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
 - [ ] Animations play: idle, attack or cast, hit, death. Nobody T-poses.
 - [ ] The 2D fallback (Home → *Battles: 2D*) still works.
 - [ ] Any new asset's license is CC0 or owned, and recorded in `CREDITS.md`.
+- [ ] Gear at Worn, Superior and Mythic still leaves the hero recognisable: their palette and
+      silhouette stay intact, and nothing covers the face.
+- [ ] Back view in the hero viewer (drag to turn): capes, hair and back items attached, with no
+      floating parts.
+- [ ] Draw calls stay at about 15 or fewer per unit in battle (run `node tools/qa/perf.cjs`).
+
+### Hero builds at a glance (hero art pass, 2026-11-22)
+
+| Hero | Base and borrowed parts | Build | Silhouette |
+|---|---|---|---|
+| Brannoc | adventurer | lean | bandana with tails, spear with pennant, backpack, leaf-green jerkin |
+| Mira | hooded, no hood, adventurer legs | small | teal ponytail, studded round shield and sword, trousers |
+| Pell | adventurer, shaved | short, big head (young) | apprentice tunic skirt, candle |
+| Odo | monarch, bald with beard, adventurer body and legs | huge and broad | moss mantle, root club, dark mud and moss palette |
+| Wren | hooded | small | hooded habit, narrow long robe, rope belt, lantern crook |
+| Kettle | adventurer, monarch head shaved, hooded body | brawny arms | ash-grey coat tails, hook |
+| Ysolde | hooded, no hood | slim | long crimson hair, circlet, whip trailing on the ground, hip coil |
+| Corvan | monarch, adventurer body | slightly short | white hair and beard, knee tunic, cyan stole, driftwood staff |
+| Hask | monarch | broad | visored great helm, green tabard, kite shield, gunmetal plate |
+| Lumen | adventurer shaved, monarch body | tall, heroic head | breastplate, gold pauldrons, glowing sword |
+| Nyx | hooded | slim | hood, cloth face-wrap, violet scarf tails, twin daggers |
+| Tamsin | hooded, no hood, adventurer body | — | straw hat, braid, bow and quiver |
+| Gorrum | monarch, bald with beard | huge | bone horns, spiked pauldrons, molten armour seams, upright maul |
+| Velka | hooded, no hood | tall and slim | white hair, circlet, ice pauldrons, long robe, short frost staff |
+| Aurelia | monarch, hooded head without hood | — | winged helm, white tabard, blue cape, tower shield |
+| Sable | hooded, no hood | — | veil and hat, midnight-blue robe, silver trim, circling mirror shards |
+| Kaito | adventurer shaved, hooded body | athletic | bandana tails, mint scarf, jade pauldrons, scabbard, katana |
+| Maelis | monarch, hooded head without hood, hooded legs | tall | coral crown, shell pauldrons, cape, trident |
+| Thrain | monarch, adventurer body | short and stocky (dwarf) | red braided beard, smith apron, cape, glowing hammer |
+| Oriel | adventurer shaved | tall | halo, orange robe, sunburst on the back, sun staff |
+| Vaelith | adventurer, bald, monarch body, legs and feet | tall | living-flame hair, crown, aura, burning sword, cape |
+| Morwenna | hooded, no hood | tall | jagged crown, spiked collar, black robe, cape, star orb |
+| Seraphine | hooded, no hood | — | halo, wide robe with bells, feathered wings, big bell |
+| Ulfgar | monarch | tall and broad | horned helm, fur mantle, braided beard, big round shield and axe |
+
+### Review notes (hero art pass, 2026-11-22)
+- Fixed: Hask, Brannoc and Odo now have three different palettes and builds. Ysolde's whip
+  hangs and trails instead of reading as a bow. Velka's staff is 28% shorter. Capes are
+  tapered two-panel cloth that sways. The Titan's mouth reads as a snarl.
+- Still rough: robes are rigid cones (legs don't move under them, which shows in the attack
+  lunge). The hooded body under borrowed monarch parts stretches slightly at the shoulders.
+  Bandana tails are flat strips. At phone size, Superior pauldrons are the largest gear
+  shape, so watch that they don't hide shoulder kit.
 
 ## 3. Hero card art (2D illustrations)
 
