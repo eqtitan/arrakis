@@ -515,6 +515,8 @@ Object.assign(ACTIONS, {
         <input type="range" id="sfxVol" class="slider" min="0" max="100" step="5" value="${s}"></div>
       <div class="setting row spread"><div><b>Battle graphics</b><div class="small dim">2D is lighter on older phones</div></div>
         <button class="btn sec sm" data-act="toggleGfx">${G.settings.flat ? "2D" : "3D"}</button></div>
+      ${G.settings.flat || !window.W3D || !W3D.setCamera ? "" : `<div class="setting"><div><b>Camera angle</b><div class="small dim">Also switchable during battle with 🎥.</div></div>
+        <div class="row wrap" style="gap:6px">${Object.entries(W3D.cameras).map(([k, c]) => `<button class="chip ${W3D.camera === k ? "on" : ""}" data-act="setCam" data-k="${k}">${c.name}</button>`).join("")}</div></div>`}
       ${G.settings.flat || !window.W3D || !W3D.setQuality ? "" : (() => {
         const q = gfxQuality();
         const opt = (k, label) => `<button class="chip ${q.choice === k ? "on" : ""}" data-act="setGfxQuality" data-q="${k}">${label}</button>`;
@@ -586,6 +588,12 @@ Object.assign(ACTIONS, {
     toast(G.settings.autoReplay ? "Auto-replay on: this stage repeats after each win" : "Auto-replay off after this battle");
     renderBattle();
   },
+  bCam() {
+    const keys = Object.keys(W3D.cameras), next = keys[(keys.indexOf(W3D.camera) + 1) % keys.length];
+    W3D.setCamera(next);
+    toast(`🎥 ${W3D.cameras[next].name} (${keys.indexOf(next) + 1}/${keys.length})`);
+  },
+  setCam(d) { W3D.setCamera(d.k); toast(`🎥 ${W3D.cameras[d.k].name}`); ACTIONS.openSettings(); },
   bFlee() {
     modal(`<h3>Retreat?</h3><p class="small dim">${B && B.mode === "titan" ? "Damage dealt so far still counts and uses up this try." : B && B.mode === "arena" ? "Retreating counts as a loss." : "You'll get no rewards for this battle."}</p>
       <div class="row"><button class="btn sec grow" data-act="closeModal">Stay</button><button class="btn red grow" data-act="bFleeYes">Retreat</button></div>`);
@@ -758,6 +766,7 @@ function renderBattle() {
     : `Stage ${stageLabel(B.idx)} · Wave ${b.wave + 1}/${b.waves.length}`;
   root.querySelector(".bhead").innerHTML = `<button class="btn sec sm" data-act="bFlee">✕</button><div class="info">${info}</div>
       <button class="btn sec sm" data-act="openSettings" aria-label="Settings">⚙️</button>
+      ${B.use3d && W3D.setCamera ? `<button class="btn sec sm" data-act="bCam" aria-label="Camera angle">🎥</button>` : ""}
       ${B.mode === "stage" ? `<button class="btn sec sm tgl ${G.settings.autoReplay ? "on" : ""}" data-act="bReplayToggle">🔁</button>` : ""}
       <button class="btn sec sm tgl ${G.settings.auto ? "on" : ""}" data-act="bAuto">🤖 Auto</button>
       <button class="btn sec sm" data-act="bSpeed">⏩${G.settings.speed}x</button>`;

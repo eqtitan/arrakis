@@ -323,6 +323,17 @@ const W3D = (() => {
   // row all project inside the screen. Allies stand nearer the camera, so they set the width.
   const camTarget = new T.Vector3(0, 1.0, -0.5);
   let mountTitan = false, camFov = 50;
+  // Camera presets: yaw orbits around the arena centre (0 = behind your team, 180 = behind the
+  // enemies looking at your heroes' faces), pitch tilts down. Chosen in Settings or with 🎥 in battle.
+  const CAMS = {
+    classic: { name: "Classic", yaw: 0, pitch: 34 },
+    high: { name: "Overhead", yaw: 0, pitch: 60 },
+    low: { name: "Cinematic", yaw: 0, pitch: 16 },
+    angle: { name: "Three-quarter", yaw: 38, pitch: 30 },
+    front: { name: "Hero view", yaw: 180, pitch: 30 },
+  };
+  const camKey = () => { const k = typeof G !== "undefined" && G.settings && G.settings.cam; return CAMS[k] ? k : "classic"; };
+  function setCamera(k) { if (CAMS[k] && typeof G !== "undefined") { G.settings.cam = k; if (typeof save === "function") save(); } if (renderer) resize(); }
   // Shared quality manager (one per session; remembers the tier in localStorage).
   let pipe = null, qm = null;
   function quality(r) {
@@ -337,7 +348,7 @@ const W3D = (() => {
     camera.aspect = w / h;
     // Portrait screens get a wider lens so a full row fits without pulling far back.
     camera.fov = camFov = camera.aspect < 0.75 ? 62 : 50;
-    const pitch = 34 * D2R, pts = [];
+    const C = CAMS[camKey()], pitch = C.pitch * D2R, yaw = C.yaw * D2R, pts = [];
     for (const sx of [-1, 1]) {
       for (const y of [0, 2.75]) { pts.push([sx * 2.45, y, 2.6]); pts.push([sx * 2.45, y, 2.0]); }
       for (const y of [0, 3.2]) pts.push([sx * 2.85, y, -3.6]);
@@ -346,7 +357,8 @@ const W3D = (() => {
     if (mountTitan) { pts.push([0, 5.6, -4.0]); pts.push([-2.3, 3.4, -4.0]); pts.push([2.3, 3.4, -4.0]); }
     const v = new T.Vector3();
     const fits = (dist) => {
-      camera.position.set(camTarget.x, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(pitch) * dist);
+      const h = Math.cos(pitch) * dist;
+      camera.position.set(camTarget.x + Math.sin(yaw) * h, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(yaw) * h);
       camera.lookAt(camTarget); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
       return pts.every((p) => { v.set(p[0], p[1], p[2]).project(camera); return Math.abs(v.x) <= 0.95 && v.y <= 0.84 && v.y >= -0.84; });
     };
@@ -2324,7 +2336,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   return {
     supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, victory, setHighlight, setQuality,
     get quality() { return qm ? qm.current : null; }, get qualityAuto() { return qm ? qm.auto : true; },
-    burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop,
+    burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop, setCamera, cameras: CAMS, get camera() { return camKey(); },
     debugStep, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };
 })();

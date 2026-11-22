@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.18.0 (2026-11-22)
+- Camera angles: Classic, Overhead, Cinematic, Three-quarter and Hero view. Switch live in battle with the 🎥 button, or pick one in Settings.
+
+
 ## 0.17.1 (2026-11-22)
 - Heroes and enemies now idle facing the centre of the battle circle, turning toward their target only while acting.
 
