@@ -1,12 +1,14 @@
 // Sigilbound — native app glue (Capacitor). Does nothing in a normal browser.
-// Loaded first. Plugins are reached through window.Capacitor.Plugins, which the
-// native shell injects, so no bundler is needed.
+// Loaded first. In the app build (mobile/), capacitor.js loads before this file and
+// provides window.Capacitor; plugins are looked up by name, so no bundler is needed.
 
 const NATIVE = (() => {
   const cap = window.Capacitor;
   const isNative = !!(cap && cap.isNativePlatform && cap.isNativePlatform());
-  const P = (isNative && cap.Plugins) || {};
   const platform = isNative ? cap.getPlatform() : "web";
+  // The app build loads Capacitor's runtime (capacitor.js) first; plugins are reached by name.
+  const plugin = (name) => (cap.registerPlugin ? cap.registerPlugin(name) : cap.Plugins && cap.Plugins[name]);
+  const P = isNative ? { Preferences: plugin("Preferences"), Haptics: plugin("Haptics"), App: plugin("App"), StatusBar: plugin("StatusBar"), SplashScreen: plugin("SplashScreen") } : {};
   // Keys mirrored into native storage, which the OS won't purge like WebView storage.
   const MIRRORED = ["sigilbound.save.v1", "sigilbound.online.v1"];
 

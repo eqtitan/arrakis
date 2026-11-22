@@ -1,0 +1,78 @@
+name: Sigilbound Mobile
+
+# Builds the native apps from the web game (public/game) with Capacitor (mobile/).
+# Android: every push produces an installable APK, attached to the "android-latest"
+# pre-release so it can be downloaded straight to a phone.
+# iOS: compiles the app for the simulator to prove the project builds; signed
+# TestFlight builds need an Apple Developer account (see mobile/README.md).
+
+on:
+  push:
+    paths: ["public/game/**", "mobile/**", ".github/workflows/sigilbound-mobile.yml"]
+  pull_request:
+    paths: ["public/game/**", "mobile/**", ".github/workflows/sigilbound-mobile.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Copy the game into the Android project
+        working-directory: mobile
+        run: |
+          npm ci
+          npm run sync:android
+      - name: Build debug APK
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+      - name: Rename APK
+        run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk Sigilbound.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sigilbound-android
+          path: Sigilbound.apk
+      - name: Publish to the android-latest release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest Sigilbound.apk --prerelease \
+            --target "${{ github.sha }}" --title "Sigilbound for Android (latest build)" \
+            --notes "Built from ${{ github.ref_name }} at ${GITHUB_SHA::7}. On an Android phone: download Sigilbound.apk, open it, and allow installs from your browser if asked. Installing a newer build over an older one keeps your progress."
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Copy the game into the iOS project
+        working-directory: mobile
+        run: |
+          npm ci
+          npm run sync:ios
+      - name: Build for the iOS simulator (unsigned)
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -40
+          test ${PIPESTATUS[0]} -eq 0

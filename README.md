@@ -140,3 +140,9 @@ It's a separate side project from the optimizer and shares no code with it.
 A Unity 6 port of the game with a 3D battlefield and placeholder 3D heroes. It builds native
 Android and iOS apps. The game rules live in plain C# and are tested with
 `dotnet run --project unity/Tests~`. See `unity/README.md` for setup and builds.
+
+## Sigilbound phone apps, `mobile/`
+
+Capacitor wraps the web game into native Android and iOS apps. GitHub Actions builds an
+installable Android APK on every push and posts it to the `android-latest` release. iOS is
+compiled on GitHub's Macs. See `mobile/README.md`.
