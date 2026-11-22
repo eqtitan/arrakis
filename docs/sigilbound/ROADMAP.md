@@ -28,7 +28,16 @@ _Last updated: 2026-11-22._
 ## Next up (priority order)
 
 1. **Hero card art.** Generate the 24 portraits with the prompts in `ART_DIRECTION.md`, then wire them into `ART_FILES`. *Owner: you (images) + art-director.*
-2. **More distinct 3D heroes.** Expand beyond the 3 base models: more CC0 bodies, per-hero props (bows, staves, hammers), and helmets and hair variants. *Owner: art-director.*
+2. **3D hero polish (follow-ups from the 0.10.0 art pass).**
+   - **Color pipeline:** colors render paler than intended (legacy color mode), so heroes look washed out. Fix it, or darken the palette.
+   - **Light heroes:** Seraphine, Oriel, Aurelia and Lumen are too alike.
+   - **Hask, Brannoc and Odo** are similar beige tones.
+   - **Ysolde's whip** reads like a bow.
+   - **Velka's staff head** clips the HUD.
+   - **Capes** are rigid.
+   - **Titan mouth** shape still reads as a grin.
+
+   *Owner: art-director.*
 3. **Friends & chat live.** Unblocked by blockers 1 and 2. *Owner: engineering.*
 4. **Sound & music.** CC0 battle music and hit sounds; the asset library used for models also has audio. *Owner: art-director (selection) + engineering.*
 5. **Play Store release build.** A release signing key in GitHub secrets, an AAB build, and the store listing. *Owner: pmo (checklist) + engineering.*

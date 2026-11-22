@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.10.0 (2026-11-22)
+- Distinct 3D heroes: every hero has their own weapon or focus, headgear and silhouette (capes for epics, glowing shoulders for legendaries, quivers, shields, halos, crowns). The Titan is now a dark cracked-stone brute with glowing seams, horns and spikes.
+
+
 ## 0.9.0 (2026-11-22)
 - Auto-replay: a 3-second countdown between battles (not sped up by 2x/3x) with running totals, and a summary of the whole run (battles, wins, losses, gold, XP, shards, gear, level ups) when you stop, switch it off, retreat or lose.
 

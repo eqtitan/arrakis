@@ -42,8 +42,43 @@ Rarity frame colors: Common `#9aa3ad`, Rare `#4aa3ff`, Epic `#b46cff`, Legendary
 - **Recolor:** `ROLES` maps each model material to a role (armor, cloth, pants, accent,
   trim, blade, hair, skin, crown, eye). The colors come from each hero's `LOOKS` entry in
   `public/game/art.js` (armor, accent, hair, skin, glow).
-- **Props:** casters get a glowing focus on the right wrist and tanks get a shield on the
-  left. Crowns show only for heroes with `gear: "crown"`.
+- **Signature kit (props and headgear):** because several heroes share a base, each hero's
+  silhouette comes from code-built props attached to bones (`buildKit` in
+  `game3d/three3d.mjs`). No extra assets are downloaded. The kit is driven by `LOOKS`:
+  - `prop` → right-hand weapon or focus: spear, staff (shaft plus a glowing head, `kit.staff`
+    = `orb` / `ice` crystal / `sun`), hammer, club, trident, katana, sword, axe, daggers (one
+    per hand), flaming whip, hook, bow (plus a quiver on the back), lantern on a crook pole,
+    candle, hand mirror, hand bell, orb with orbiting rings. `shield` puts a shield on the
+    left forearm (`kit.shield` = `round` / `kite` / `tower`) and `kit.side` in the right hand.
+    On the hooded base, `sword` uses the model's own sword mesh.
+  - `gear` → headgear on the Head bone: helm (`kit.helm` = `winged` / `horned`), horns,
+    halo, circlet with a gem, bandana with trailing tails, crown (`kit.crown` = `spike` /
+    `coral` / `jagged`), mask, veil. Hooded heroes with a `glow` (and all Hollow) get
+    glowing eyes.
+  - `kit.cape` (epics and legendaries) adds a flared cloak on the Chest bone and hides the
+    adventurer's backpack (or use `kit.pack: false`). `kit.aura` (legendaries) adds glowing
+    pauldrons. `kit.big` makes the hammer or shield heavier, and `kit.flame` adds fire to the
+    sword and crown.
+  - Colors: main = `armor`, accent = `accent`, and glowing parts use `glow` (or the accent).
+    Hollow copies are tinted dark, and their glows shift toward red.
+  - **Grip:** a held item is built along +Y, with the fist at the origin. The fist's axis is
+    the wrist bone's X axis, and the per-item `TILT` swings the tip from "forward like a
+    sword" (0°) toward vertical. Tall foci use about 30°, which stands up in idle without
+    leaning far back in the Gun_Shoot cast pose. Check new props in both poses.
+  - **Phone budget:** each bone's parts are merged into one mesh per material and cached per
+    hero, which adds about 2–8 draw calls per unit. Only animated bits (flames, orb rings,
+    glow halos) stay separate. Bone children follow the existing scale rule (divide by the
+    bone's world scale, multiply by the model's scale), so all sizes are in the model's own
+    metres (a hero is about 1.75 m).
+- **Titan:** `yeti.glb` recolored as dark basalt. A small shader patch (`crackMaterial`)
+  draws glowing, slowly pulsing seams in the day's element color. The eye whites become dark
+  sockets, the pupils and mouth interior glow, the tongue is hidden, and the teeth are dark
+  stone. Code-built stone horns, a skull crest, angry brow ridges, back shards and shoulder
+  shards attach to its bones. Its idle plays at 0.7× speed for weight, and it is about 10%
+  larger than before.
+- **Colour pipeline note:** three r149 runs in legacy color mode, so hex colors act as
+  linear values and render paler than they look in a color picker. Pick darker values than
+  you would for 2D (for example, Titan stone is `#16130f`).
 - **Animations used:** Idle (Idle_Sword), Sword_Slash (melee), Gun_Shoot (casting), HitRecieve, Death.
 - **Rebuild after changes:** `npm run build:game3d`. Check by screenshotting a battle at
   390×844 (see "Review checklist").
