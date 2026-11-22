@@ -223,6 +223,13 @@ const CHAPTERS = [
 ];
 const STAGES_PER_CHAPTER = 6;
 const TOTAL_STAGES = CHAPTERS.length * STAGES_PER_CHAPTER;
+// Enemy stat multiplier from first to last stage (tuned with a progression sim).
+// `chapter` nudges smooth out the rank-up gates (heroes cap at 10 levels per star),
+// which otherwise make the chapters just after a gate trivial and the next one a wall.
+const ENEMY_CURVE = {
+  start: 1.0, end: 1.75, shape: 1.3, spdPerStage: 0.3, bossStat: 1.1, bossHp: 2.2,
+  chapter: [1, 1.14, 0.97, 1, 1.08, 0.94, 1, 0.98, 0.95, 1.04],
+};
 
 // ---------- Progression ----------
 const xpToNext = (level) => 50 + level * level * 12;

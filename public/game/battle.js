@@ -14,12 +14,13 @@ function unitFromHero(h) {
   return makeUnit("A", HERO[h.id], heroStats(h), { heroUid: h.uid, level: h.level, stars: h.stars });
 }
 function unitFromEnemy(e) {
-  const s = baseStats(e.template, e.level, e.stars, e.el);
-  const mul = e.gearMul * (e.boss ? 1.25 : 1);
+  // Stats use a fixed baseline rarity; e.mul (the stage curve) sets the strength.
+  const s = baseStats({ ...e.template, rarity: "common" }, e.level, e.stars, e.el);
+  const mul = e.mul * (e.boss ? ENEMY_CURVE.bossStat : 1);
   return makeUnit("B", e.template, {
-    el: s.el, hp: Math.round(s.hp * mul * (e.boss ? 2.6 : 1)), atk: Math.round(s.atk * mul),
-    def: Math.round(s.def * mul), spd: s.spd + (e.boss ? 4 : 0), crit: s.crit, cdmg: s.cdmg,
-  }, { level: e.level, stars: e.stars, boss: !!e.boss, name: (e.boss ? "Warlord " : "Hollow ") + e.template.name.split(/[ ,]/)[0] });
+    el: s.el, hp: Math.round(s.hp * mul * (e.boss ? ENEMY_CURVE.bossHp : 1)), atk: Math.round(s.atk * mul),
+    def: Math.round(s.def * mul), spd: s.spd + e.spd + (e.boss ? 4 : 0), crit: s.crit, cdmg: s.cdmg,
+  }, { level: e.shownLevel, stars: e.stars, boss: !!e.boss, name: (e.boss ? "Warlord " : "Hollow ") + e.template.name.split(/[ ,]/)[0] });
 }
 function titanUnit(teamPower) {
   const el = titanElement();

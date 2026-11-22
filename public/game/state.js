@@ -261,16 +261,22 @@ function seeded(seed) {
   let s = seed * 9301 + 49297;
   return () => ((s = (s * 9301 + 49297) % 233280) / 233280);
 }
-function enemyTemplate(rng, maxTier) {
-  const pool = HEROES.filter((h) => RARITY_KEYS.indexOf(h.rarity) <= maxTier);
-  return pool[Math.floor(rng() * pool.length)];
+// Enemy strength comes from one smooth curve per stage, not from the random
+// template's rarity, so neighbouring stages feel consistent. Enemy stars and
+// levels are capped at 5★ Lv 50 (what a dedicated player reaches by the end);
+// late-game difficulty comes from the curve multiplier instead.
+function enemyGrade(idx) {
+  const level = Math.min(50, stageLevel(idx));
+  // Fractional stars keep growth continuous (no +14% jump at each 10-level gate).
+  const stars = Math.min(5, 1 + (level - 1) / 10);
+  const t = idx / (TOTAL_STAGES - 1);
+  const chAdj = ENEMY_CURVE.chapter[Math.floor(idx / STAGES_PER_CHAPTER)] || 1;
+  const mul = chAdj * (ENEMY_CURVE.start + (ENEMY_CURVE.end - ENEMY_CURVE.start) * Math.pow(t, ENEMY_CURVE.shape));
+  return { level, stars, mul, spd: Math.round(idx * ENEMY_CURVE.spdPerStage) };
 }
 function stageWaves(idx) {
   const rng = seeded(idx + 7);
-  const level = stageLevel(idx);
-  const stars = Math.min(MAX_STARS, Math.max(1, Math.ceil(level / 10)));
-  const maxTier = Math.min(3, Math.floor(idx / 12));
-  const gearMul = 1 + level * 0.012;
+  const g = enemyGrade(idx);
   const chapterEl = ELEMENT_KEYS[Math.floor(idx / STAGES_PER_CHAPTER) % ELEMENT_KEYS.length];
   const waves = [];
   const waveCount = isBossStage(idx) ? 3 : 2;
@@ -278,12 +284,12 @@ function stageWaves(idx) {
     const wave = [];
     const n = idx < 2 ? 2 : 3;
     for (let i = 0; i < n; i++) {
-      const t = enemyTemplate(rng, maxTier);
-      wave.push({ template: t, level, stars, gearMul, el: rng() < 0.5 ? chapterEl : t.el });
+      const t = HEROES[Math.floor(rng() * HEROES.length)];
+      wave.push({ template: t, ...g, shownLevel: stageLevel(idx), el: rng() < 0.5 ? chapterEl : t.el });
     }
     if (isBossStage(idx) && w === waveCount - 1) {
-      const t = enemyTemplate(rng, Math.min(3, maxTier + 1));
-      wave[1] = { template: t, level: level + 2, stars, gearMul: gearMul * 1.1, el: chapterEl, boss: true };
+      const t = HEROES[Math.floor(rng() * HEROES.length)];
+      wave[1] = { template: t, ...g, shownLevel: stageLevel(idx) + 2, el: chapterEl, boss: true };
     }
     waves.push(wave);
   }
