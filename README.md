@@ -131,3 +131,9 @@ It's a separate side project from the optimizer and shares no code with it.
   Test locally: `npm run build && npx wrangler pages dev dist --d1 SIGIL_DB=local`.
 - Files: `data.js` (content), `state.js` (save/progression), `battle.js`
   (DOM-free engine), `ui.js` (screens), `online.js` (friends & chat), `style.css`.
+
+## Sigilbound (Unity 3D version), `unity/`
+
+A Unity 6 port of the game with a 3D battlefield and placeholder 3D heroes. It builds native
+Android and iOS apps. The game rules live in plain C# and are tested with
+`dotnet run --project unity/Tests~`. See `unity/README.md` for setup and builds.

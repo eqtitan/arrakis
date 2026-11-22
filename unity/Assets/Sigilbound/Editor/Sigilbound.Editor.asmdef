@@ -1,0 +1,10 @@
+{
+  "name": "Sigilbound.Editor",
+  "rootNamespace": "Sigilbound.EditorTools",
+  "references": ["Sigilbound.Core", "Sigilbound.Client"],
+  "includePlatforms": ["Editor"],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": false,
+  "noEngineReferences": false
+}
