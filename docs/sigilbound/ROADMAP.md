@@ -7,6 +7,8 @@ _Last updated: 2026-11-22._
 
 ## Where things stand
 
+> **Real-device check (2026-11-22):** v0.15.0 on the owner's Galaxy S26+ runs very smoothly, even at 3x speed, with Graphics quality on Auto.
+
 | Area | Status | Notes |
 |---|---|---|
 | Web game (`public/game/`) | ✅ Playable | 24 heroes, campaign, Titan, gear, summoning, daily quests. Fully free, with no shop. |
