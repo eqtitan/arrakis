@@ -10,6 +10,8 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { detailMaterial, envMap, disposeEnv, bevelBox, roundedPlate } from "./materials.mjs";
+import { createPipeline, createQualityManager, deviceHint } from "./post.mjs";
+import { buildArena } from "./scenery.mjs";
 
 // Proper colour management: hex colours (LOOKS, palettes) are sRGB and get converted to
 // linear for lighting, then back to sRGB on output. Legacy mode skipped that conversion,
@@ -18,7 +20,7 @@ T.ColorManagement.legacyMode = false;
 
 // Lighting/tone settings, tuned for colour-managed rendering. window.SB_GFX can override
 // them for side-by-side comparisons.
-const GFX = Object.assign({ tone: "aces", exposure: 1.3, hemi: 1.25, sun: 2.0, rim: 0.8, front: 0.6, groundLift: 0.3 }, window.SB_GFX || {});
+const GFX = Object.assign({ tone: "aces", exposure: 1.3, hemi: 1.25, sun: 2.0, rim: 0.8, front: 0.6, groundLift: 0.3, shadow: 2048, pixelRatio: 2 }, window.SB_GFX || {});
 
 const W3D = (() => {
   let renderer = null, scene = null, camera = null, host = null, raf = 0, last = 0;
@@ -124,24 +126,24 @@ const W3D = (() => {
   function geos() {
     if (geo.box) return geo;
     geo.box = new T.BoxGeometry(1, 1, 1);
-    geo.sphere = new T.SphereGeometry(0.5, 14, 10);
+    geo.sphere = new T.SphereGeometry(0.5, 20, 14);
     geo.capsule = new T.CapsuleGeometry(0.5, 1.0, 6, 14);
     geo.cyl = new T.CylinderGeometry(0.5, 0.5, 2, 20);
     // Unit-height shapes for code-built props (low segment counts: they are small on a phone).
-    geo.rod = new T.CylinderGeometry(0.5, 0.5, 1, 14);
-    geo.disc = new T.CylinderGeometry(0.5, 0.5, 1, 24);
-    geo.cone = new T.ConeGeometry(0.5, 1, 14);
-    geo.taper = new T.CylinderGeometry(0.5, 0.32, 1, 20, 2);
+    geo.rod = new T.CylinderGeometry(0.5, 0.5, 1, 18);
+    geo.disc = new T.CylinderGeometry(0.5, 0.5, 1, 36);
+    geo.cone = new T.ConeGeometry(0.5, 1, 18);
+    geo.taper = new T.CylinderGeometry(0.5, 0.32, 1, 36, 4);
     geo.bell = new T.CylinderGeometry(0.22, 0.5, 1, 16);
-    geo.ring = new T.TorusGeometry(0.5, 0.07, 6, 28);
+    geo.ring = new T.TorusGeometry(0.5, 0.07, 8, 40);
     geo.hook = new T.TorusGeometry(0.5, 0.18, 6, 14, Math.PI * 1.25);
     geo.crook = new T.TorusGeometry(0.5, 0.2, 6, 12, Math.PI);
     geo.octa = new T.OctahedronGeometry(0.5);
     geo.half = new T.CylinderGeometry(0.5, 0.5, 1, 12, 1, false, 0, Math.PI);
-    geo.dome = new T.SphereGeometry(0.5, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+    geo.dome = new T.SphereGeometry(0.5, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2);
     // Kit parts: boxes with rounded edges (unit size; non-uniform scale keeps them chamfered).
-    geo.bbox = bevelBox(1, 1, 1, 0.14, 1);
-    geo.breast = roundedPlate(0.3, 0.27, 0.03, 0.07, { curve: 0.17, curveY: 0.45, cornerSeg: 2, seg: 3 });
+    geo.bbox = bevelBox(1, 1, 1, 0.14, 2);
+    geo.breast = roundedPlate(0.3, 0.27, 0.03, 0.07, { curve: 0.17, curveY: 0.45, cornerSeg: 4, seg: 6 });
     return geo;
   }
   function lit(color, metal = 0) {
@@ -151,7 +153,8 @@ const W3D = (() => {
   }
   function glow(color, opacity = 1) {
     const key = `g${color}${opacity}`;
-    if (!matCache.has(key)) matCache.set(key, new T.MeshBasicMaterial({ color: new T.Color(color), transparent: opacity < 1, opacity, depthWrite: opacity >= 1 }));
+    // Not tone-mapped: glows show at full colour, so the bloom pass (post.mjs) picks them up.
+    if (!matCache.has(key)) matCache.set(key, new T.MeshBasicMaterial({ color: new T.Color(color), transparent: opacity < 1, opacity, depthWrite: opacity >= 1, toneMapped: false }));
     return matCache.get(key);
   }
   function part(kind, parent, pos, scale, mat, rot) {
@@ -166,7 +169,7 @@ const W3D = (() => {
   // A curved cloth sheet hanging down from y = 0: width w0 at the top flaring to w1 at the
   // bottom, bowed back (-Z) by `curve`. Cached; drawn double-sided.
   const sheets = new Map();
-  function sheet(w0, w1, h, curve, sx = 10, sy = 4) {
+  function sheet(w0, w1, h, curve, sx = 16, sy = 8) {
     const key = [w0, w1, h, curve].join("|");
     if (sheets.has(key)) return sheets.get(key);
     const pos = [], uv = [], idx = [];
@@ -238,9 +241,9 @@ const W3D = (() => {
 
   function mount(el, opts) {
     unmount();
-    host = el;
+    host = el; mountTitan = !!opts.titan;
     renderer = new T.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(Math.min(GFX.pixelRatio, window.devicePixelRatio || 1)); // the quality tier (post.mjs) overrides this
     renderer.outputEncoding = T.sRGBEncoding;
     renderer.toneMapping = GFX.tone === "aces" ? T.ACESFilmicToneMapping : GFX.tone === "linear" ? T.LinearToneMapping : T.NoToneMapping;
     renderer.toneMappingExposure = GFX.exposure;
@@ -253,15 +256,40 @@ const W3D = (() => {
     scene.background = gradientTexture(sc[0], sc[1]);
     scene.fog = new T.Fog(new T.Color(sc[1]), 18, 48);
     scene.environment = envMap(renderer); // small generated PMREM: highlights on metal kit
-    scene.add(new T.HemisphereLight(new T.Color(mix(sc[1], "#ffffff", 0.35)), new T.Color(sc[2]), GFX.hemi));
+    const hemi = new T.HemisphereLight(new T.Color(mix(sc[1], "#ffffff", 0.35)), new T.Color(sc[2]), GFX.hemi);
+    scene.add(hemi);
     const sun = new T.DirectionalLight(0xfff1dd, GFX.sun);
     sun.position.set(-5, 10, 6); sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.mapSize.set(GFX.shadow, GFX.shadow); sun.shadow.radius = 3; sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
     Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7, near: 1, far: 30 });
     scene.add(sun);
     const rim = new T.DirectionalLight(0x99aaff, GFX.rim); rim.position.set(4, 5, -8); scene.add(rim);
     const front = new T.DirectionalLight(0xffffff, GFX.front); front.position.set(0, 4, 10); scene.add(front);
 
+    // The arena (scenery.mjs): textured ground with a worn fighting circle and paths, scatter,
+    // framing props, sky and silhouettes, light fog and motes. Falls back to the plain field.
+    const Q = quality(renderer);
+    try {
+      arena = buildArena(scene, { chapter: opts.titan ? 9 : (opts.chapter || 0), titan: !!opts.titan, quality: Q.current.toLowerCase(), renderer });
+    } catch (e) { console.warn("Sigilbound: arena failed, using the plain field", e); arena = null; }
+    if (!arena) plainField(sc, opts);
+    else if (arena.colors && arena.colors.hemiSky) { hemi.color.copy(arena.colors.hemiSky); if (arena.colors.hemiGround) hemi.groundColor.copy(arena.colors.hemiGround); }
+    sun.shadow.camera.left = sun.shadow.camera.bottom = -9; sun.shadow.camera.right = sun.shadow.camera.top = 9;
+
+    camera = new T.PerspectiveCamera(50, 1, 0.1, 150);
+    // Post-processing and adaptive quality (post.mjs): the tier sets pixel ratio, MSAA, shadow
+    // map size and bloom, and steps down on sustained low fps.
+    try { pipe = createPipeline(renderer, scene, camera, { quality: Q.current }); pipe.params.exposure = GFX.exposure; }
+    catch (e) { console.warn("Sigilbound: post-processing unavailable", e); pipe = null; }
+    renderer.domElement.addEventListener("webglcontextrestored", () => { if (pipe && qm) pipe.setQuality(qm.current); });
+    resize();
+    window.addEventListener("resize", resize);
+    last = performance.now();
+    raf = requestAnimationFrame(loop);
+  }
+  let arena = null;
+  // The pre-0.15 field: flat textured ground, a faint ring and simple scenery.
+  function plainField(sc, opts) {
     // Lift the ground toward a neutral warm grey: colour-managed dark tones read much darker,
     // and lifting toward the (often saturated) horizon colour made it glare.
     const groundMat = new T.MeshStandardMaterial({ color: new T.Color(mix(sc[2], "#8c8680", GFX.groundLift)), roughness: 1, map: groundTexture() });
@@ -271,12 +299,6 @@ const W3D = (() => {
     const ring = new T.Mesh(new T.RingGeometry(3.4, 3.6, 64), glow("#ffffff", 0.08));
     ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.01, -0.6); ring.scale.set(1.25, 1, 1); scene.add(ring);
     buildScenery(opts.titan ? 2 : (opts.chapter || 0) % 5, sc, opts.chapter || 0);
-
-    camera = new T.PerspectiveCamera(50, 1, 0.1, 150);
-    resize();
-    window.addEventListener("resize", resize);
-    last = performance.now();
-    raf = requestAnimationFrame(loop);
   }
 
   function buildScenery(kind, sc, seed) {
@@ -296,26 +318,51 @@ const W3D = (() => {
     }
   }
 
+  // Fit the battle camera to the portrait frame: the closest distance (at a fixed, fairly low
+  // pitch) at which every ally and enemy slot, the tallest kit and the HUD tags above the enemy
+  // row all project inside the screen. Allies stand nearer the camera, so they set the width.
+  const camTarget = new T.Vector3(0, 1.0, -0.5);
+  let mountTitan = false, camFov = 50;
+  // Shared quality manager (one per session; remembers the tier in localStorage).
+  let pipe = null, qm = null;
+  function quality(r) {
+    if (!qm) qm = createQualityManager({ initial: deviceHint(r), onChange: (n) => { if (pipe) pipe.setQuality(n); } });
+    return qm;
+  }
+  function setQuality(name) { quality(renderer).force(name || "auto"); }
   function resize() {
     if (!renderer || !host) return;
     const w = host.clientWidth || 1, h = host.clientHeight || 1;
-    renderer.setSize(w, h, false);
+    if (pipe) pipe.setSize(w, h); else renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    // Frame the battlefield so 4 allies fit across even a narrow portrait screen.
-    const halfW = 3.25, halfH = 3.7;
-    const tanV = Math.tan(camera.fov * Math.PI / 360);
-    const dist = Math.max(halfW / (tanV * camera.aspect), halfH / tanV);
-    const target = new T.Vector3(0, 0.9, -0.5), pitch = 36 * Math.PI / 180;
-    camBase.set(target.x, target.y + Math.sin(pitch) * dist, target.z + Math.cos(pitch) * dist);
-    camera.position.copy(camBase);
-    camera.lookAt(target);
-    camera.updateProjectionMatrix();
+    // Portrait screens get a wider lens so a full row fits without pulling far back.
+    camera.fov = camFov = camera.aspect < 0.75 ? 62 : 50;
+    const pitch = 34 * D2R, pts = [];
+    for (const sx of [-1, 1]) {
+      for (const y of [0, 2.75]) { pts.push([sx * 2.35, y, 2.6]); pts.push([sx * 2.35, y, 2.0]); }
+      for (const y of [0, 3.2]) pts.push([sx * 2.45, y, -3.2]);
+    }
+    pts.push([0, 3.75, -3.7]);                          // HUD tags above the back row
+    if (mountTitan) { pts.push([0, 5.6, -3.8]); pts.push([-2.3, 3.4, -3.8]); pts.push([2.3, 3.4, -3.8]); }
+    const v = new T.Vector3();
+    const fits = (dist) => {
+      camera.position.set(camTarget.x, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(pitch) * dist);
+      camera.lookAt(camTarget); camera.updateMatrixWorld(); camera.updateProjectionMatrix();
+      return pts.every((p) => { v.set(p[0], p[1], p[2]).project(camera); return Math.abs(v.x) <= 0.95 && v.y <= 0.84 && v.y >= -0.84; });
+    };
+    let lo = 5, hi = 40;
+    for (let i = 0; i < 22; i++) { const mid = (lo + hi) / 2; if (fits(mid)) hi = mid; else lo = mid; }
+    fits(hi);
+    camBase.copy(camera.position);
   }
 
   function unmount() {
+    focusK = 0; hitStop = 0; punchT = 0; focusId++;
     cancelAnimationFrame(raf); raf = 0;
     window.removeEventListener("resize", resize);
     if (renderer) {
+      if (pipe) { pipe.dispose(); pipe = null; }
+      if (arena) { try { arena.dispose(); } catch (_) {} arena = null; }
       renderer.domElement.remove();
       disposeEnv(renderer);
       renderer.dispose();
@@ -453,8 +500,8 @@ const W3D = (() => {
         const role = roleOf(srcBase, kind, m.name);
         const c = m.clone();
         if ((role === "crown" && !showCrown) || role === "tongue" || hide.has(role) || hide.has(`${kind}:${role}`)) { c.visible = false; return c; }
-        if (role === "maw") { c.color.set(mul(ec, 0.3)); c.emissive = new T.Color(ec); c.emissiveIntensity = 0.75; c.metalness = 0; return c; }
-        if (role === "eye" && (hollow || (L && L.glow))) { c.color.set(colors.eye); c.emissive = new T.Color(colors.eye); c.emissiveIntensity = 1.5; return c; }
+        if (role === "maw") { c.color.set(mul(ec, 0.3)); c.emissive = new T.Color(ec); c.emissiveIntensity = 1.8; c.metalness = 0; return c; }
+        if (role === "eye" && (hollow || (L && L.glow))) { c.color.set(colors.eye); c.emissive = new T.Color(colors.eye); c.emissiveIntensity = 3; return c; }
         if (role && role !== "keep" && colors[role]) c.color.set(colors[role]);
         else if (hollow) c.color.lerp(new T.Color("#2e1f33"), 0.5);
         if (role === "armor" && srcBase === "monarch") { c.metalness = 0.2; c.roughness = 0.55; }
@@ -481,12 +528,7 @@ const W3D = (() => {
     const clip = (kind) => { for (const n of ANIMS[kind]) if (lib.clips[n]) return lib.clips[n]; return null; };
     const actions = {};
     for (const k of Object.keys(ANIMS)) { const c = clip(k); if (c) actions[k] = mixer.clipAction(c); }
-    if (actions.idle) actions.idle.play();
-    for (const k of ["melee", "cast", "hit", "die"]) if (actions[k]) { actions[k].setLoop(T.LoopOnce, 1); actions[k].clampWhenFinished = k === "die"; }
-    mixer.addEventListener("finished", (e) => {
-      if (e.action === actions.die) return;
-      if (actions.idle) { actions.idle.reset().fadeIn(0.15).play(); e.action.fadeOut(0.15); }
-    });
+    const anim = makeAnim(mixer, lib, base === "titan" ? TITAN_STYLE : styleOf(id, L), actions);
     if (L) {
       buildKit(id, L, base, model, hollow, fx, B, gear);
       mergeKit(model, `${id}|${hollow ? 1 : 0}|${base}|${gearKey(gear)}`);
@@ -494,8 +536,63 @@ const W3D = (() => {
       shapeBody(model, B);
     }
     else buildTitanKit(model, el, fx);
-    if (base === "titan" && actions.idle) actions.idle.setEffectiveTimeScale(0.7); // slower, heavier breathing
-    return { model: root, mixer, actions, fx, height: base === "titan" ? 4.7 : 2.3 * h };
+    return { model: root, mixer, actions, anim, fx, height: base === "titan" ? 4.7 : 2.3 * h };
+  }
+
+  // ---------- animation: per-hero clip choice + crossfading controller ----------
+  // The base models ship Idle, Idle_Sword, Idle_Neutral, Idle_Gun, Sword_Slash, Punch_Left/Right,
+  // Kick_Left/Right, Gun_Shoot, Interact, Roll, Run, Run_Back, Wave, HitRecieve(_2), Death.
+  const BRAWLERS = { odo: 1, kettle: 1, gorrum: 1, thrain: 1 };
+  const SMALL_FOCUS = { candle: 1, mirror: 1, bell: 1, orb: 1, lantern: 1 };
+  function styleOf(id, L) {
+    const p = L.prop;
+    return {
+      idle: SMALL_FOCUS[p] ? "Idle_Neutral" : p === "bow" ? "Idle_Gun" : "Idle_Sword",
+      // Strikes cycle through the list; brawlers punch and kick, blades slash and kick.
+      strike: BRAWLERS[id] ? ["Punch_Right", "Punch_Left", "Kick_Right"] : p === "daggers" ? ["Sword_Slash", "Punch_Left", "Kick_Left"]
+        : p === "spear" || p === "trident" ? ["Sword_Slash", "Kick_Right"] : ["Sword_Slash", "Sword_Slash", "Kick_Right"],
+      cast: p === "bow" ? "Gun_Shoot" : "Gun_Shoot", support: "Interact",
+      fidget: ["Idle", "Idle_Neutral", "Interact"], win: "Wave",
+    };
+  }
+  const TITAN_STYLE = { idle: "Idle", strike: ["Punch", "Weapon", "Punch"], cast: "Punch", support: "Yes", fidget: ["No"], win: "Yes", titan: true };
+  function makeAnim(mixer, lib, S, actions) {
+    const cache = {};
+    const act = (name) => {
+      if (!lib.clips[name]) return null;
+      return cache[name] || (cache[name] = mixer.clipAction(lib.clips[name]));
+    };
+    const idleName = lib.clips[S.idle] ? S.idle : Object.keys(lib.clips).find((n) => /^Idle/.test(n));
+    const A = {
+      S, cur: null, strikeN: 0, hold: false,
+      has: (name) => !!lib.clips[name],
+      // Crossfade to `name`. Loops when opt.loop; otherwise plays once and returns to idle.
+      play(name, opt = {}) {
+        const a = act(name);
+        if (!a) return null;
+        const prev = A.cur;
+        a.reset();
+        a.setLoop(opt.loop ? T.LoopRepeat : T.LoopOnce, opt.loop ? Infinity : 1);
+        a.clampWhenFinished = !!opt.clamp;
+        a.setEffectiveTimeScale(opt.speed || (S.titan && name === idleName ? 0.7 : 1));
+        a.setEffectiveWeight(1);
+        a.play();
+        if (prev && prev !== a) prev.crossFadeTo(a, opt.fade == null ? 0.18 : opt.fade, false);
+        A.cur = a; A.hold = !!opt.hold;
+        return a;
+      },
+      idle(fade = 0.25) { return A.play(idleName, { loop: true, fade }); },
+      strike() { const s = S.strike.filter((n) => lib.clips[n]); return A.play(s[A.strikeN++ % s.length] || "Sword_Slash", { fade: 0.1 }); },
+      duration: (name) => lib.clips[name] ? lib.clips[name].duration : 0,
+    };
+    // Keep the old `actions` map working (hero viewer tap) and start idling.
+    if (idleName) actions.idle = act(idleName);
+    A.idle(0);
+    mixer.addEventListener("finished", (e) => {
+      if (e.action !== A.cur || e.action.clampWhenFinished || A.hold) return;
+      A.idle(0.22);
+    });
+    return A;
   }
 
   // ---------- signature kit: code-built props & headgear attached to bones ----------
@@ -612,8 +709,7 @@ const W3D = (() => {
     const skel = new T.Skeleton(bones, bones.map(() => inv.clone()));
     for (const { mat, geo: g } of groups) {
       const sm = new T.SkinnedMesh(g, mat);
-      // Only cloth (robes, capes) casts kit shadows: small props add triangles, not readability.
-      sm.frustumCulled = false; sm.castShadow = mat.name === "dm-cloth"; sm.userData.kitMerged = 1;
+      sm.frustumCulled = false; sm.castShadow = !mat.isMeshBasicMaterial; sm.userData.kitMerged = 1;
       holder.add(sm);
       sm.updateMatrixWorld(true);
       sm.bind(skel, sm.matrixWorld.clone());
@@ -749,6 +845,29 @@ const W3D = (() => {
   const HELM_GEAR = { helm: 1, horns: 1 };
   const ADORN_GEAR = { crown: 1, halo: 1, circlet: 1, veil: 1, mask: 1 };
 
+  // Secondary motion: wraps a live part's animation so the part also swings against its
+  // anchor's movement, as a damped spring in the anchor's own axes (+Z forward). Moving
+  // forward pushes it back (+X rotation); sideways motion tilts it (Z). Cheap: one world
+  // position read per part per frame.
+  const _sp = new T.Vector3(), _sq = new T.Quaternion();
+  function springy(fn, gain) {
+    return (o, t) => {
+      fn(o, t);
+      const s = o.userData.sp || (o.userData.sp = { p: new T.Vector3(), t, ax: 0, az: 0, vx: 0, vz: 0, on: false });
+      const dt = Math.min(0.05, Math.max(0.001, t - s.t)); s.t = t;
+      if (!o.parent) return;
+      o.parent.getWorldPosition(_sp);
+      if (!s.on) { s.p.copy(_sp); s.on = true; }
+      const vel = _sp.clone().sub(s.p).divideScalar(dt); s.p.copy(_sp);
+      o.parent.getWorldQuaternion(_sq); vel.applyQuaternion(_sq.invert());
+      const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+      const tx = clamp((vel.z * 0.11 - vel.y * 0.05) * gain, -0.5, 1.0), tz = clamp(-vel.x * 0.11 * gain, -0.7, 0.7);
+      s.vx += ((tx - s.ax) * 70 - s.vx * 9) * dt; s.ax += s.vx * dt;
+      s.vz += ((tz - s.az) * 70 - s.vz * 9) * dt; s.az += s.vz * dt;
+      o.rotation.x += s.ax; o.rotation.z += s.az;
+    };
+  }
+
   function buildKit(id, L, base, model, hollow, fx, B = {}, gear = null) {
     const K = L.kit || {};
     const headSrc = (B.parts && B.parts.head) || base;
@@ -761,10 +880,11 @@ const W3D = (() => {
     const tint = (c) => hollow ? mix(c, "#2e1f33", 0.5) : c;
     // Kit materials use the shared procedural finishes (materials.mjs): `metal` ≥ 0.5 brushed
     // metal, otherwise leather grain; Mc/Mw/Mg/Mh pick cloth, wood, gold or hair explicitly.
-    const M = (c, metal = 0) => metal >= 0.5 ? detailMaterial("metal", tint(c), { metalness: 0.75 }) : metal > 0 ? detailMaterial("leather", tint(c), { roughness: 0.55, metalness: 0.35 }) : detailMaterial("leather", tint(c));
-    const Mc = (c) => detailMaterial("cloth", tint(c), { side: T.DoubleSide, repeat: 4, bump: 0.6 });
-    const Mw = (c) => detailMaterial("wood", tint(c));
-    const Mg = (c) => detailMaterial("gold", tint(c));
+    const TX = qm ? qm.preset.textureSize : 256; // kit texture size follows the quality tier (512/256/128)
+    const M = (c, metal = 0) => metal >= 0.5 ? detailMaterial("metal", tint(c), { metalness: 0.75, size: TX }) : metal > 0 ? detailMaterial("leather", tint(c), { roughness: 0.55, metalness: 0.35, size: TX }) : detailMaterial("leather", tint(c), { size: TX });
+    const Mc = (c) => detailMaterial("cloth", tint(c), { side: T.DoubleSide, repeat: 4, bump: 0.6, size: TX });
+    const Mw = (c) => detailMaterial("wood", tint(c), { size: TX });
+    const Mg = (c) => detailMaterial("gold", tint(c), { size: TX });
     const Gl = (c, op = 1) => glow(hollow ? mix(c, "#ff3355", 0.45) : c, op);
     const gw = gear && gear.weapon;
     const C = {
@@ -772,11 +892,13 @@ const W3D = (() => {
       acc: M(L.accent, 0.35), accG: Gl(L.accent), accH: Gl(L.accent, 0.28), armor: M(L.armor),
       armorD: M(mul(L.armor, 0.6)), gold: Mg(mix(L.accent, "#e8c070", 0.5)),
       glowC: Gl(L.glow || L.accent), glowH: Gl(L.glow || L.accent, 0.3),
-      cloth: Mc(L.cloth || mul(L.armor, 0.62)), hair: detailMaterial("hair", tint(L.hair)),
+      cloth: Mc(L.cloth || mul(L.armor, 0.62)), hair: detailMaterial("hair", tint(L.hair), { size: TX }),
     };
     // Gear metal leans towards the hero's armour colour so Mythic gear doesn't make everyone gold.
     const gmetal = (r, k = 0.7) => r === 1 ? "#5a4232" : mix(GEAR_METAL[r], L.armor, k);
-    const gtrim = (r) => r >= 4 ? Mg(GEAR_TRIM[r]) : M(GEAR_TRIM[r], 0.4); // Heroic+ trim is polished
+    // Heroic+ trim is polished. Hollow gear gets dark, desaturated trim: bright thin rarity lines
+    // on dark enemies read as a rendering glitch at phone size.
+    const gtrim = (r) => hollow ? M(mix(GEAR_TRIM[r], "#3a3340", 0.75), 0.5) : r >= 4 ? Mg(GEAR_TRIM[r]) : M(GEAR_TRIM[r], 0.4);
     // Build (or reuse) a merged prop and hang it on a socket. `live` parts stay separate so
     // they can animate (flames, spinning rings, swaying capes). `sig` keys gear variants.
     const attach = (slot, sock, build, sig = "") => {
@@ -808,8 +930,9 @@ const W3D = (() => {
       m.userData.base = sc.slice(); m.castShadow = false;
       live.push({ obj: m, fn }); return m;
     };
-    // A live group (several meshes moving together), added straight to `g`.
-    const liveGroup = (g, live, pos, fn) => { const p = pivot(g, pos); live.push({ obj: p, fn }); return p; };
+    // A live group (several meshes moving together), added straight to `g`. With `spring`,
+    // the group also lags behind its anchor's motion (runs, lunges, hits) on a damped spring.
+    const liveGroup = (g, live, pos, fn, spring = 0) => { const p = pivot(g, pos); live.push({ obj: p, fn: spring ? springy(fn, spring) : fn }); return p; };
 
     // ---- weapons, built along +Y from the fist at the origin ----
     const W = {
@@ -1032,7 +1155,7 @@ const W3D = (() => {
     // whip that pointed up read as a bow); a second coil hangs at the hip.
     if (L.prop === "whip" && bones.WristR) {
       attach("Wl", socketM(bones.WristR, model, [0, 0, 0]), (g, live) => {
-        const lash = liveGroup(g, live, [0, 0, 0], (o, t) => { o.rotation.y = Math.sin(t * 1.7) * 0.35; o.rotation.x = Math.sin(t * 2.3) * 0.06; });
+        const lash = liveGroup(g, live, [0, 0, 0], (o, t) => { o.rotation.y = Math.sin(t * 1.7) * 0.35; o.rotation.x = Math.sin(t * 2.3) * 0.06; }, 0.6);
         const pts = [];
         for (let i = 0; i <= 12; i++) {
           const k = i / 12;
@@ -1048,7 +1171,7 @@ const W3D = (() => {
         }
         const tip = pts[12];
         P(lash, "sphere", [tip.x, tip.y + 0.03, tip.z], [0.09, 0.07, 0.09], C.glowC);
-        liveMesh(g, live, "cone", [tip.x, tip.y + 0.12, tip.z], [0.08, 0.2, 0.08], C.glowC, flicker);
+        P(lash, "cone", [tip.x, tip.y + 0.12, tip.z], [0.08, 0.2, 0.08], C.glowC); // the flame rides on the lash
       });
     }
     // ---- left hand: shield or second dagger ----
@@ -1123,7 +1246,7 @@ const W3D = (() => {
           }
         } else if (gearHead === "horns") {
           P(g, "dome", [0, top - 0.12, -0.01], [r * 2.3, r * 1.7, r * 2.45], M("#26201e", 0.5));
-          const bone = detailMaterial("bone", tint("#e8dcc0"));
+          const bone = detailMaterial("bone", tint("#e8dcc0"), { size: TX });
           for (const s of [-1, 1]) {
             P(g, "rod", [s * (r + 0.03), top - 0.08, 0.01], [0.085, 0.12, 0.085], bone, [0, 0, s * 75]);
             P(g, "rod", [s * (r + 0.1), top - 0.03, 0.02], [0.07, 0.12, 0.07], bone, [-10, 0, s * 35]);
@@ -1147,7 +1270,7 @@ const W3D = (() => {
           const by = H.eye + 0.08;
           P(g, "ring", [0, by, 0], [r * 2.25, r * 2.4, 0.35], cloth, [80, 0, 0]);
           // Long tails that flutter in the wind.
-          const tails = liveGroup(g, live, [0, by, -r - 0.03], (o, t) => { o.rotation.x = 0.5 + Math.sin(t * 3.1 + o.id) * 0.18; o.rotation.z = Math.sin(t * 2.3) * 0.15; });
+          const tails = liveGroup(g, live, [0, by, -r - 0.03], (o, t) => { o.rotation.x = 0.5 + Math.sin(t * 3.1 + o.id) * 0.18; o.rotation.z = Math.sin(t * 2.3) * 0.15; }, 1.6);
           P(tails, "box", [0.03, -0.12, -0.02], [0.05, 0.26, 0.012], cloth, [0, 0, 10]);
           P(tails, "box", [-0.03, -0.15, -0.01], [0.05, 0.32, 0.012], cloth, [0, 0, -8]);
           if (L.glow) P(g, "sphere", [0, by, r * 1.1], [0.04, 0.04, 0.02], C.glowC);
@@ -1178,7 +1301,7 @@ const W3D = (() => {
         const hair = C.hair;
         if (K.hair === "ponytail") {
           P(g, "sphere", [0, top - 0.05, -r * 0.95], [0.07, 0.07, 0.07], C.acc);
-          const pt = liveGroup(g, live, [0, top - 0.05, -r - 0.02], (o, t) => { o.rotation.x = Math.sin(t * 2.2 + 1) * 0.12; o.rotation.z = Math.sin(t * 1.6) * 0.1; });
+          const pt = liveGroup(g, live, [0, top - 0.05, -r - 0.02], (o, t) => { o.rotation.x = Math.sin(t * 2.2 + 1) * 0.08; o.rotation.z = Math.sin(t * 1.6) * 0.06; }, 1.3);
           P(pt, "capsule", [0, -0.1, -0.06], [0.11, 0.1, 0.09], hair, [-30, 0, 0]);
           P(pt, "capsule", [0, -0.24, -0.1], [0.08, 0.1, 0.07], hair, [-12, 0, 0]);
           P(pt, "cone", [0, -0.37, -0.11], [0.07, 0.12, 0.06], hair, [180, 0, 0]);
@@ -1249,6 +1372,12 @@ const W3D = (() => {
           const top = 0.12, len = K.robe === "long" ? hipY + top - 0.07 : 0.45;
           const w = K.robeW || 1;
           P(g, "taper", [0, top - len / 2, 0.0], [0.5 * w, len, 0.42 * w], robeC, [180, 0, 0]);
+          // Layered cloth: a shorter, slightly wider overskirt with its own hem.
+          if (K.robe === "long") {
+            const ol = len * 0.42, over = Mc(mix(K.robeColor || L.cloth || L.armor, "#000000", 0.18));
+            P(g, "taper", [0, top - ol / 2 + 0.01, 0.0], [0.53 * w, ol, 0.45 * w], over, [180, 0, 0]);
+            P(g, "taper", [0, top - ol + 0.02, 0.0], [0.555 * w, 0.03, 0.47 * w], trimC, [180, 0, 0]);
+          }
           P(g, "taper", [0, top - len + 0.03, 0.0], [0.53 * w, 0.06, 0.45 * w], trimC, [180, 0, 0]);
           if (K.robe === "long" && K.stole !== false) P(g, "box", [0, top - len / 2, 0.205 * w], [0.12, len * 0.96, 0.02], trimC, [-9, 0, 0]);
           if (K.bells) for (let i = 0; i < 6; i++) {
@@ -1320,6 +1449,9 @@ const W3D = (() => {
         } else { // plate
           P(pg, "dome", [side * 0.02, -0.01, 0], [0.26, 0.17, 0.25], base0, [0, 0, tiltZ]);
           P(pg, "ring", [side * 0.0, -0.035, 0], [0.13, 0.13, 0.4], trim, [90, 0, tiltZ]);
+          // Lames: two narrower plates stepping down the upper arm, with rivets on the cap.
+          for (let i = 1; i <= 2; i++) P(pg, "dome", [side * (0.03 + i * 0.012), -0.035 - i * 0.03, 0], [0.24 - i * 0.025, 0.1, 0.23 - i * 0.025], base0, [0, 0, tiltZ - side * 8 * i]);
+          for (let i = -1; i <= 1; i++) P(pg, "sphere", [side * 0.075, 0.035, i * 0.06], [0.018, 0.018, 0.018], trim);
           if (gc && gc.r >= 3) P(pg, "dome", [side * 0.05, -0.07, 0], [0.22, 0.12, 0.22], base0, [0, 0, side * -65]);
           if (gc && gc.r >= 4) P(pg, "ring", [side * 0.035, -0.075, 0], [0.12, 0.12, 0.35], trim, [90, 0, side * -65]);
         }
@@ -1375,7 +1507,7 @@ const W3D = (() => {
       if (K.scarf) {
         const sc = Mc(K.scarf);
         P(g, "rod", [0, 0.16, 0.0], [0.22, 0.07, 0.2], sc);
-        const tails = liveGroup(g, live, [0.06, 0.15, -0.1], (o, t) => { o.rotation.x = 0.6 + Math.sin(t * 3.4 + o.id) * 0.2; o.rotation.y = Math.sin(t * 1.9) * 0.25; });
+        const tails = liveGroup(g, live, [0.06, 0.15, -0.1], (o, t) => { o.rotation.x = 0.6 + Math.sin(t * 3.4 + o.id) * 0.2; o.rotation.y = Math.sin(t * 1.9) * 0.25; }, 1.6);
         P(tails, "box", [0.0, -0.18, 0], [0.07, 0.36, 0.012], sc, [0, 0, 6]);
         P(tails, "box", [-0.06, -0.14, 0], [0.06, 0.28, 0.012], sc, [0, 0, -8]);
       }
@@ -1394,11 +1526,12 @@ const W3D = (() => {
           // more, so the cloak moves like cloth instead of a board.
           const upper = liveGroup(g, live, [0, 0.14, z], (o, t) => {
             o.rotation.x = 0.1 + Math.sin(t * 1.3 + o.id) * 0.035;
-            const lo = o.children[o.children.length - 1];
-            lo.rotation.x = 0.06 + Math.sin(t * 1.9 + 0.8 + o.id) * 0.1;
-            lo.rotation.z = Math.sin(t * 1.1 + o.id) * 0.05;
-          });
+            const lo = o.children[o.children.length - 1], sp = o.userData.sp;
+            lo.rotation.x = 0.06 + Math.sin(t * 1.9 + 0.8 + o.id) * 0.1 + (sp ? sp.ax * 0.7 : 0);
+            lo.rotation.z = Math.sin(t * 1.1 + o.id) * 0.05 + (sp ? sp.az * 0.5 : 0);
+          }, 1);
           P(upper, sheet(0.24, 0.42, 0.52, 0.09), [0, 0, -0.01], [1, 1, 1], cloth);
+          P(upper, sheet(0.22, 0.39, 0.5, 0.085), [0, -0.01, -0.002], [1, 1, 1], Mc(mix(L.accent, "#000000", 0.35))); // lining
           const lower = pivot(upper, [0, -0.47, -0.01]);
           P(lower, sheet(0.4, 0.56, 0.06 + 0.5 * capeLen, 0.11), [0, 0.06, 0], [1, 1, 1], cloth);
           P(lower, sheet(0.56, 0.57, 0.045, 0.11, 10, 1), [0, -0.5 * capeLen + 0.02, 0.003], [1.01, 1, 1.01], trim);
@@ -1593,10 +1726,16 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
 
   const ALLY_FACING = Math.PI - 0.95;
+  // Yaw 0 faces the camera (+Z) and PI faces the enemies: about 60-72° off the camera, toward
+  // the centre of the line.
+  const allyFacing = (x) => (x <= 0.05 ? 1 : -1) * (1.05 + 0.2 * Math.min(1, Math.abs(x) / 1.8));
+  // Rows spread with the team size; with 4+ units every other one steps back, so the HUD tags
+  // and the figures overlap less.
   function slot(ally, i, n) {
-    const spread = ally ? 4.0 : 3.6;
+    const spread = n <= 1 ? 0 : Math.min(ally ? 3.7 : 4.0, (ally ? 0.95 : 1.0) * (n - 1));
     const x = n <= 1 ? 0 : -spread / 2 + i * (spread / (n - 1));
-    return ally ? new T.Vector3(x, 0, 1.6) : new T.Vector3(x, 0, -2.6);
+    const step = n >= 4 && i % 2 ? 0.5 : 0;
+    return ally ? new T.Vector3(x, 0, 2.0 + step) : new T.Vector3(x, 0, -3.2 - step);
   }
 
   // Gear shown on a battle unit: allies use their equipped items (u.gear, or looked up from
@@ -1614,6 +1753,30 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
   const gearKey = (g) => g ? ["weapon", "helm", "chest", "boots"].map((s) => g[s] ? `${g[s].r}${g[s].s || ""}` : "0").join(".") : "";
 
+  // Top of a built hero's head and headgear (not long weapons), from the kit's source nodes,
+  // so HUD tags sit just above each model rather than at one fixed height.
+  function measureTop(built) {
+    if (!built.mixer) return built.height;
+    built.mixer.update(0.01);
+    built.model.updateMatrixWorld(true);
+    let head = null;
+    built.model.traverse((o) => { if (!head && o.isBone && o.name === "Head") head = o; });
+    if (!head) return built.height;
+    const p = new T.Vector3(); head.getWorldPosition(p);
+    let top = p.y + 0.35;
+    const box = new T.Box3(), hp = new T.Vector3();
+    built.model.traverse((o) => {
+      if (!o.isMesh || !o.userData.kit || !o.geometry) return;
+      for (let q = o; q; q = q.parent) if (q === head) {
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        box.copy(o.geometry.boundingBox).applyMatrix4(o.matrixWorld);
+        top = Math.max(top, Math.min(box.max.y, p.y + 0.9));
+        break;
+      }
+    });
+    return top;
+  }
+
   function addUnit(u, i, n) {
     const ally = u.side === "A";
     const scale = u.titan ? 1.0 : u.boss ? 1.3 : 1;
@@ -1622,18 +1785,23 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     const root = new T.Group();
     root.add(built.model);
     built.model.scale.multiplyScalar(scale);
-    const pos = u.titan ? new T.Vector3(0, 0, -3.2) : slot(ally, i, n);
+    const pos = u.titan ? new T.Vector3(0, 0, -3.8) : slot(ally, i, n);
     root.position.copy(pos);
-    root.rotation.y = ally ? ALLY_FACING : 0; // allies face the enemies side-on, so their faces show
+    // Allies idle in a three-quarter turn toward the camera (angled in toward the middle of the
+    // line) so the player sees faces, chests and gear; they turn to the target only to attack.
+    const idleRot = ally ? allyFacing(pos.x) : 0;
+    root.rotation.y = idleRot;
     const aura = new T.Mesh(new T.CircleGeometry(0.62 * (u.titan ? 2 : scale), 32), glow(ELEMENTS[u.el].color, 0.35));
     aura.rotation.x = -Math.PI / 2; aura.position.y = 0.02; root.add(aura);
     const ring = new T.Mesh(new T.RingGeometry(0.72 * (u.titan ? 2 : scale), 0.86 * (u.titan ? 2 : scale), 40),
       new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
     ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03; root.add(ring);
     scene.add(root);
+    const top = u.titan ? built.height : measureTop(built) * scale;
     views.set(u.key, {
-      u, root, model: built.model, armL: built.armL, armR: built.armR, mixer: built.mixer, actions: built.actions, fx: built.fx || [],
-      aura, ring, home: pos.clone(), height: built.height * scale, phase: Math.random() * 10, busy: false, dead: false,
+      u, root, model: built.model, armL: built.armL, armR: built.armR, mixer: built.mixer, actions: built.actions, anim: built.anim, fx: built.fx || [],
+      aura, ring, home: pos.clone(), idleRot, height: built.height * scale, top, phase: Math.random() * 10, busy: false, dead: false,
+      fidgetAt: 6 + Math.random() * 10,
     });
   }
 
@@ -1642,9 +1810,15 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
 
   // ---------- per-frame ----------
+  // Camera: base framing, plus a focus move toward a caster (A3 / AoE skills), a short punch
+  // toward the target on crits, and shake. Hit-stop briefly slows the whole fight on crits.
+  let hitStop = 0, punchT = 0, focusK = 0, focusId = 0;
+  const focusAt = new T.Vector3(), _cam = new T.Vector3(), _look = new T.Vector3();
   function loop(now) {
     if (!renderer) return;
-    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const rawDt = Math.min(0.05, (now - last) / 1000); last = now;
+    const dt = hitStop > 0 ? rawDt * 0.06 : rawDt;
+    hitStop = Math.max(0, hitStop - rawDt);
     const t = now / 1000;
     for (const v of views.values()) {
       if (v.mixer) v.mixer.update(dt * spd());
@@ -1656,27 +1830,52 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
           v.armR.rotation.x = (Math.sin(t * 2.4 + v.phase) * 5 - 8) * Math.PI / 180;
           v.armL.rotation.x = (-Math.sin(t * 2.4 + v.phase) * 4 - 4) * Math.PI / 180;
         }
+      } else if (v.anim && !v.busy && !v.won) {
+        // Idle variety: now and then a short fidget, then back to the hero's own idle.
+        v.fidgetAt -= rawDt;
+        if (v.fidgetAt <= 0) {
+          v.fidgetAt = 8 + Math.random() * 12;
+          const F = v.anim.S.fidget.filter(v.anim.has);
+          if (F.length && v.anim.cur && v.anim.cur.loop === T.LoopRepeat) {
+            const a = v.anim.play(F[Math.floor(Math.random() * F.length)], { fade: 0.35 });
+            if (a && a.getClip().duration > 3) setTimeout(() => { if (v.anim.cur === a && !v.busy) v.anim.idle(0.4); }, 2200);
+          }
+        }
       }
       const s = 1 + Math.sin(t * 3 + v.phase) * 0.05; v.aura.scale.set(s, s, s);
     }
     tweens = tweens.filter((tw) => { tw.k = Math.min(1, tw.k + dt * spd() / tw.dur); tw.fn(tw.k); if (tw.k >= 1) { tw.done(); return false; } return true; });
     parts = parts.filter((p) => p.update(dt * spd()));
+    // Camera pose.
+    _cam.copy(camBase); _look.copy(camTarget);
+    if (focusK > 0) {
+      const k = ease(focusK);
+      _look.lerp(focusAt, k * 0.22);
+    }
+    const fov = camFov * (1 - 0.12 * ease(focusK));
+    if (Math.abs(camera.fov - fov) > 1e-3) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    if (punchT > 0) { punchT = Math.max(0, punchT - rawDt); _cam.lerp(_look, 0.06 * Math.sin((punchT / 0.25) * Math.PI)); }
     if (shakeT > 0) {
-      shakeT -= dt;
+      shakeT -= rawDt;
       const a = shakeAmp * Math.max(0, shakeT / 0.22);
-      camera.position.set(camBase.x + (Math.random() - 0.5) * a, camBase.y + (Math.random() - 0.5) * a, camBase.z);
-    } else camera.position.copy(camBase);
-    renderer.render(scene, camera);
+      _cam.x += (Math.random() - 0.5) * a; _cam.y += (Math.random() - 0.5) * a;
+    }
+    camera.position.copy(_cam); camera.lookAt(_look);
+    if (qm) qm.tick(now);
+    if (arena) arena.update(t);
+    if (pipe) pipe.render(rawDt); else renderer.render(scene, camera);
     for (const cb of frameCbs) cb();
     raf = requestAnimationFrame(loop);
   }
   function tween(dur, fn) { return new Promise((done) => tweens.push({ dur, fn, done, k: 0 })); }
   const ease = (k) => 1 - Math.pow(1 - k, 3);
+  const easeIO = (k) => k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+  // Fallback for units without the animation controller.
   function play(v, kind) {
     const a = v.actions && v.actions[kind];
     if (!a) return false;
-    for (const other of Object.values(v.actions)) if (other !== a && other.isRunning()) other.fadeOut(0.12);
-    a.reset().setEffectiveTimeScale(1).fadeIn(0.08).play();
+    for (const other of Object.values(v.actions)) if (other !== a && other.isRunning()) other.fadeOut(0.15);
+    a.reset().setEffectiveTimeScale(1).fadeIn(0.12).play();
     return true;
   }
 
@@ -1685,35 +1884,76 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   function screen(key, where = "head") {
     const v = views.get(key);
     if (!v || !camera || !host) return null;
-    const y = where === "feet" ? 0 : where === "center" ? v.height * 0.55 : v.height + 0.15;
+    const y = where === "feet" ? 0 : where === "center" ? v.height * 0.55 : (v.top || v.height) + 0.12;
     _v.set(v.root.position.x, v.root.position.y + y, v.root.position.z).project(camera);
     return { x: (_v.x + 1) / 2 * host.clientWidth, y: (1 - _v.y) / 2 * host.clientHeight };
   }
   const worldCenter = (key) => { const v = views.get(key); return v ? new T.Vector3(v.root.position.x, v.height * 0.55, v.root.position.z) : null; };
 
   // ---------- animation & effects ----------
-  async function attack(key, targetKey, melee) {
+  // A glowing spell circle on the ground under a caster, turning and fading out.
+  function spellCircle(v, color) {
+    if (!scene) return;
+    const g = new T.Group();
+    const mat = new T.MeshBasicMaterial({ color: new T.Color(color), transparent: true, opacity: 0.9, depthWrite: false, blending: T.AdditiveBlending, side: T.DoubleSide });
+    const r1 = new T.Mesh(new T.RingGeometry(0.75, 0.82, 48), mat), r2 = new T.Mesh(new T.RingGeometry(0.5, 0.54, 6), mat);
+    g.add(r1, r2);
+    for (let i = 0; i < 6; i++) { const m = new T.Mesh(new T.PlaneGeometry(0.06, 0.28), mat); m.position.set(Math.cos(i * Math.PI / 3) * 0.64, Math.sin(i * Math.PI / 3) * 0.64, 0); m.rotation.z = i * Math.PI / 3; g.add(m); }
+    g.rotation.x = -Math.PI / 2; g.position.copy(v.root.position).setY(0.05);
+    scene.add(g);
+    tween(0.75, (k) => { g.rotation.z = k * 2.2; g.scale.setScalar(0.6 + ease(Math.min(1, k * 2.5)) * 0.6); mat.opacity = 0.9 * (k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4); })
+      .then(() => { if (scene) scene.remove(g); g.traverse((o) => o.geometry && o.geometry.dispose()); mat.dispose(); });
+  }
+  // opts: { ult } for A3 / all-enemy skills (camera moves toward the caster), { support } for
+  // skills that only buff or heal.
+  async function attack(key, targetKey, melee, opts = {}) {
     const v = views.get(key); if (!v) return;
     v.busy = true;
     const tgt = views.get(targetKey);
     const dir = tgt ? tgt.root.position.clone().sub(v.home).setY(0) : new T.Vector3(0, 0, v.u.side === "A" ? -1 : 1);
-    const to = melee ? v.home.clone().add(dir.clone().multiplyScalar(0.55)) : v.home.clone().add(dir.clone().normalize().multiplyScalar(0.25));
     const turnTo = Math.atan2(dir.x, dir.z), turnFrom = v.root.rotation.y;
-    const rigged = !!v.mixer;
-    if (rigged && melee) {
-      // Run in, then swing.
-      await tween(0.24, (k) => { v.root.position.lerpVectors(v.home, to, ease(k)); v.root.rotation.y = turnFrom + (shortAngle(turnFrom, turnTo)) * ease(k); });
-      play(v, "melee");
+    const A = v.anim;
+    if (opts.ult && !reduce) {
+      // A short push toward the caster, easing back on its own.
+      const id = ++focusId;
+      focusAt.copy(v.root.position).setY(1.2);
+      const f0 = focusK;
+      tween(0.25, (k) => { if (focusId === id) focusK = f0 + (1 - f0) * k; })
+        .then(() => sleepScaled(0.55))
+        .then(() => { if (focusId === id) return tween(0.35, (k) => { if (focusId === id) focusK = 1 - k; }); });
+    }
+    if (A && v.u.titan) {
+      // The Titan slams (jump and land) or swings, in place.
+      const slam = A.has("Jump") && A.has("Jump_Land") && (opts.ult || Math.random() < 0.4);
+      if (slam) {
+        A.play("Jump", { fade: 0.12, speed: 1.6, hold: true });
+        await sleepScaled(0.3);
+        A.play("Jump_Land", { fade: 0.08, speed: 1.4 });
+        await sleepScaled(0.12);
+        shake(0.35);
+        await sleepScaled(0.2);
+      } else { A.strike(); await sleepScaled(0.5); }
+      return;
+    }
+    if (A && melee) {
+      // Run in (Run clip), stop short of the target and strike.
+      const to = v.home.clone().add(dir.clone().multiplyScalar(Math.max(0.35, 1 - 1.15 / Math.max(1.2, dir.length()))));
+      A.play("Run", { loop: true, fade: 0.12, speed: 1.4 });
+      await tween(0.26, (k) => { v.root.position.lerpVectors(v.home, to, easeIO(k)); v.root.rotation.y = turnFrom + shortAngle(turnFrom, turnTo) * ease(Math.min(1, k * 1.6)); });
+      A.strike();
       await sleepScaled(0.35);
       return;
     }
-    if (rigged) {
+    if (A) {
       v.root.rotation.y = turnFrom + shortAngle(turnFrom, turnTo);
-      play(v, "cast");
+      A.play(opts.support && A.has(A.S.support) ? A.S.support : A.S.cast, { fade: 0.12 });
+      spellCircle(v, ELEMENTS[v.u.el] ? ELEMENTS[v.u.el].color : "#ffffff");
+      const to = v.home.clone().add(dir.clone().normalize().multiplyScalar(0.2));
       await tween(0.2, (k) => { v.root.position.lerpVectors(v.home, to, ease(k)); });
       await sleepScaled(0.15);
       return;
     }
+    const to = melee ? v.home.clone().add(dir.clone().multiplyScalar(0.55)) : v.home.clone().add(dir.clone().normalize().multiplyScalar(0.25));
     await tween(melee ? 0.22 : 0.2, (k) => {
       v.root.position.lerpVectors(v.home, to, ease(k));
       if (v.armR) {
@@ -1729,31 +1969,63 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   async function recover(key) {
     const v = views.get(key); if (!v || v.dead) return;
     const from = v.root.position.clone(), rotFrom = v.root.rotation.y;
-    const rotHome = v.u.side === "A" ? ALLY_FACING : 0;
+    const rotHome = v.idleRot != null ? v.idleRot : v.u.side === "A" ? ALLY_FACING : 0;
     const r0 = v.armR ? v.armR.rotation.x : 0, l0 = v.armL ? v.armL.rotation.x : 0;
+    const far = from.distanceTo(v.home) > 0.6;
+    if (v.anim && v.u.titan && Math.random() < 0.5) {
+      // A roar after the swing.
+      const R = ["Yes", "No", "Wave"].filter(v.anim.has);
+      if (R.length) v.anim.play(R[Math.floor(Math.random() * R.length)], { fade: 0.2, speed: 1.3 });
+    } else if (v.anim && far) v.anim.play(v.anim.has("Run_Back") ? "Run_Back" : "Run", { loop: true, fade: 0.15, speed: 1.5 });
     await tween(0.25, (k) => {
-      v.root.position.lerpVectors(from, v.home, ease(k));
+      v.root.position.lerpVectors(from, v.home, easeIO(k));
       v.root.rotation.y = rotFrom + shortAngle(rotFrom, rotHome) * ease(k);
       if (v.armR && !v.mixer) { v.armR.rotation.x = r0 * (1 - k); v.armL.rotation.x = l0 * (1 - k); }
     });
+    if (v.anim && far && !v.u.titan) v.anim.idle(0.2);
     v.busy = false;
   }
-  function hit(key) {
+  // e: the damage event (amount, crit, em) when known.
+  function hit(key, e) {
     const v = views.get(key); if (!v || v.dead) return;
-    play(v, "hit");
-    const back = new T.Vector3(0, 0, v.u.side === "A" ? 0.22 : -0.22);
+    const frac = e && v.u.maxHp ? e.amount / v.u.maxHp : 0;
+    const crit = !!(e && e.crit), big = crit || frac > 0.14;
+    const A = v.anim;
+    if (crit) { hitStop = Math.max(hitStop, reduce ? 0 : 0.09); punchT = 0.25; }
+    if (A && !v.busy) {
+      if (v.u.titan) A.play(A.has("HitReact") ? "HitReact" : "Idle", { fade: 0.1 });
+      // A light glancing blow is sometimes dodged with a roll.
+      else if (!big && e && (e.em < 1 || frac < 0.04) && Math.random() < 0.35 && A.has("Roll")) A.play("Roll", { fade: 0.1, speed: 1.5 });
+      else A.play(big && A.has("HitRecieve_2") ? "HitRecieve_2" : "HitRecieve", { fade: 0.08 });
+    } else if (!A) play(v, "hit");
+    if (v.u.titan) return;
+    const back = new T.Vector3(0, 0, (v.u.side === "A" ? 1 : -1) * (big ? 0.34 : 0.2));
     const base = v.root.position.clone();
-    tween(0.18, (k) => { v.root.position.copy(base).addScaledVector(back, Math.sin(k * Math.PI)); });
+    tween(big ? 0.24 : 0.18, (k) => { v.root.position.copy(base).addScaledVector(back, Math.sin(k * Math.PI)); });
   }
   function die(key) {
     const v = views.get(key); if (!v || v.dead) return;
     v.dead = true;
     const y0 = v.root.position.y;
-    const fall = play(v, "die") ? Promise.resolve() : tween(0.45, (k) => { v.root.rotation.x = -1.4 * ease(k) * (v.u.side === "A" ? -1 : 1); });
+    const fall = v.anim && v.anim.has("Death") ? (v.anim.play("Death", { fade: 0.12, clamp: true }), Promise.resolve())
+      : play(v, "die") ? Promise.resolve() : tween(0.45, (k) => { v.root.rotation.x = -1.4 * ease(k) * (v.u.side === "A" ? -1 : 1); });
     fall.then(() => sleepScaled(1.1))
       .then(() => tween(0.8, (k) => { v.root.position.y = y0 - 0.9 * k; }))
       .then(() => { v.aura.visible = false; v.ring.visible = false; });
     burstAt(worldCenter(key), "#8a8a96", 26, 1.6, 0.6, -0.3);
+  }
+  // Winners turn to the camera and celebrate (staggered so they don't move in lockstep).
+  function victory(side = "A") {
+    let i = 0;
+    for (const v of views.values()) {
+      if (v.u.side !== side || v.dead || !v.anim) continue;
+      v.won = true; v.busy = true;
+      const r0 = v.root.rotation.y, delay = 0.1 + (i++) * 0.12;
+      sleepScaled(delay).then(() => {
+        tween(0.35, (k) => { v.root.rotation.y = r0 + shortAngle(r0, -0.25 + v.home.x * 0.08) * ease(k); });
+        v.anim.play(v.anim.S.win, { loop: true, fade: 0.25 });
+      });
+    }
   }
   function setHighlight(key, color) {
     const v = views.get(key); if (!v) return;
@@ -1963,10 +2235,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
       SC.drag = false;
       if (performance.now() - lastT > 80) SC.spin = 0;
       SC.spin = Math.max(-8, Math.min(8, SC.spin));
-      if (moved < 6 && SC.built && SC.built.actions) {   // a tap: show off an attack
-        const a = SC.built.actions.melee || SC.built.actions.cast;
-        if (a) { a.reset().fadeIn(0.1).play(); if (SC.built.actions.idle) SC.built.actions.idle.fadeOut(0.1); }
-      }
+      if (moved < 6 && SC.built && SC.built.anim) SC.built.anim.strike(); // a tap: show off an attack
     };
     c.addEventListener("pointerup", up); c.addEventListener("pointercancel", up);
     window.addEventListener("resize", scResize);
@@ -2008,8 +2277,11 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     if (!SC.raf) { SC.last = performance.now(); SC.raf = requestAnimationFrame(scLoop); }
     return true;
   }
-  function showcaseStop() {
+  // `onlyIn`: a selector; stop only when the viewer lives in such a host (the hero page passes
+  // ".show-sprite" so other pages, and tools that host the viewer elsewhere, keep theirs).
+  function showcaseStop(onlyIn) {
     if (!SC.renderer) return;
+    if (onlyIn && !(SC.host && SC.host.matches && SC.host.matches(onlyIn))) return;
     cancelAnimationFrame(SC.raf); SC.raf = 0;
     window.removeEventListener("resize", scResize);
     SC.renderer.domElement.remove();
@@ -2019,7 +2291,8 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
 
   preload();
   return {
-    supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, setHighlight,
+    supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, victory, setHighlight, setQuality,
+    get quality() { return qm ? qm.current : null; }, get qualityAuto() { return qm ? qm.auto : true; },
     burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop,
     has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },
   };

@@ -34,7 +34,8 @@ _Last updated: 2026-11-22._
    - ~~**Hask, Brannoc and Odo** beige~~, ~~**Ysolde's whip**~~, ~~**Velka's staff**~~, ~~**rigid capes**~~ and ~~**the Titan's grin**~~: fixed in the hero art pass. All 24 heroes now have their own build, with borrowed parts, proportions and hair, plus their own kit and palette (table in `ART_DIRECTION.md`).
    - ~~**Equipped gear changes the 3D model**~~: helm, chest, boots and weapon show by rarity and set, in battle and in the hero viewer.
    - ~~**Draw calls**~~: kit and body merged into a few skinned meshes, about 14.5 calls per unit in battle (was about 85).
-   - Next: robes that follow the legs, per-hero idle and attack poses, and higher-poly faces if a CC0 head set fits the rig.
+   - ~~**Note20 pass**~~: arenas with real ground and props, a portrait camera fit, allies turned toward the camera, choreographed attacks (run-in, strike combos, casts with spell circles, rolls, hit-stop, A3 zoom, victory wave, Titan slam), spring physics on cloth and hair, bloom and adaptive quality tiers.
+   - Next: robes that follow the legs, a Graphics setting row in Settings (`W3D.setQuality`), per-hero unique attack poses, and real-device fps checks on a Note20.
 
    *Owner: art-director.*
 3. **Friends & chat live.** Unblocked by blockers 1 and 2. *Owner: engineering.*
