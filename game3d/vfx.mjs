@@ -315,7 +315,7 @@ function releaseTextures() {
 // ---------------------------------------------------------------------------------------------
 // Shaders
 // ---------------------------------------------------------------------------------------------
-const PREMUL = { transparent: true, depthWrite: false, depthTest: true, blending: T.CustomBlending, blendEquation: T.AddEquation, blendSrc: T.OneFactor, blendDst: T.OneMinusSrcAlphaFactor, blendSrcAlpha: T.OneFactor, blendDstAlpha: T.OneMinusSrcAlphaFactor, toneMapped: false, fog: false };
+const PREMUL = { transparent: true, depthWrite: false, depthTest: true, blending: T.CustomBlending, blendEquation: T.AddEquation, blendSrc: T.OneFactor, blendDst: T.OneMinusSrcAlphaFactor, blendSrcAlpha: T.OneFactor, blendDstAlpha: T.OneMinusSrcAlphaFactor, toneMapped: false, fog: false, forceSinglePass: true };
 const OUT = /* glsl */`
   vec4 premul(vec3 c, float a, float add) { vec4 e = linearToOutputTexel(vec4(max(c, 0.0), 1.0)); return vec4(e.rgb * a, a * (1.0 - add)); }`;
 const ROWV = /* glsl */`
@@ -443,11 +443,11 @@ const FLASH_FS = /* glsl */`
   ${OUT}
   void main() {
     vec2 p = vec2(vP.x * uAspect, vP.y);
-    float r = length(p), ang = atan(p.y, p.x) * 24.0 / 3.14159;
+    float r = length(p), ang = atan(p.y, p.x) * 44.0 / 3.14159;
     float id = floor(ang + uSeed);
     float h = fract(sin(id * 91.7 + uSeed) * 43758.5);
-    float line = step(0.55, h) * smoothstep(0.5, 0.0, abs(fract(ang + uSeed) - 0.5) - 0.18) * smoothstep(0.35 + h * 0.3, 1.3, r);
-    float a = uA * (0.07 * smoothstep(1.4, 0.0, r) + 0.75 * line + 0.18 * smoothstep(0.8, 1.6, r));
+    float line = step(0.5, h) * smoothstep(0.12, 0.0, abs(fract(ang + uSeed) - 0.5) - 0.3 * h) * smoothstep(0.55 + h * 0.35, 1.5, r);
+    float a = uA * (0.07 * smoothstep(1.4, 0.0, r) + 0.6 * line + 0.14 * smoothstep(0.9, 1.7, r));
     gl_FragColor = premul(uColor, clamp(a, 0.0, 1.0), 1.0);
   }`;
 

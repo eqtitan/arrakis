@@ -2042,6 +2042,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   async function attack(key, targetKey, melee, opts = {}) {
     const v = views.get(key); if (!v) return;
     v.busy = true;
+    lastAtk = v; lastAtkOpts = opts;
     const tgt = views.get(targetKey);
     const dir = tgt ? tgt.root.position.clone().sub(v.home).setY(0) : new T.Vector3(0, 0, v.u.side === "A" ? -1 : 1);
     const turnTo = Math.atan2(dir.x, dir.z), turnFrom = v.root.rotation.y;
@@ -2081,7 +2082,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     if (A) {
       v.root.rotation.y = turnFrom + shortAngle(turnFrom, turnTo);
       A.play(opts.support && A.has(A.S.support) ? A.S.support : A.S.cast, { fade: 0.12 });
-      if (vfx) { vfx.castCircle(v.root.position, v.u.el); vfx.charge(v.root, v.u.el, 0.5); if (opts.ult && tgt && !opts.support) vfx.aoe(tgt.root.position.clone().setX(tgt.root.position.x * 0.3), 1.9, v.u.el); }
+      if (vfx) { vfx.castCircle(v.root.position, v.u.el); vfx.charge(v.root, v.u.el, 0.5); if (opts.ult && tgt && !opts.support && !opts.single) { const c = tgt.root.position.clone().setX(tgt.root.position.x * 0.3); vfx.aoe(c, 1.9, v.u.el); sleepScaled(0.45).then(() => vfx && vfx.shockwave(c, v.u.el, 2.6)); } }
       else spellCircle(v, ELEMENTS[v.u.el] ? ELEMENTS[v.u.el].color : "#ffffff");
       const to = v.home.clone().add(dir.clone().normalize().multiplyScalar(0.2));
       await tween(0.2, (k) => { v.root.position.lerpVectors(v.home, to, ease(k)); });
@@ -2190,7 +2191,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     } });
   }
   // Callers pass element colours; vfx.mjs wants element keys.
-  let vfx = null, lastEl = "physical";
+  let vfx = null, lastEl = "physical", lastAtk = null, lastAtkOpts = {};
   const elOf = (color) => { for (const k in ELEMENTS) if (ELEMENTS[k].color === color) return (lastEl = k); return "physical"; };
   function burst(key, color, big) {
     const p = worldCenter(key);
@@ -2199,12 +2200,15 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
     burstAt(p, "#ffffff", big ? 10 : 5, 1.4, big ? 1.1 : 0.7, 0);
   }
   function heal(key) { const v = views.get(key); if (v && vfx) return vfx.heal(v.root.position); if (v) burstAt(v.root.position.clone().setY(0.3), "#7dff8a", 18, 1.0, 0.3, -0.6); }
-  function buff(key, good) { const v = views.get(key); if (v && vfx) return vfx.buff(v.root.position, !!good); if (v) burstAt(v.root.position.clone().setY(0.4), good ? "#ffd86a" : "#c07aff", 10, 0.9, 0.28, -0.5); }
+  function buff(key, good, kind) { const v = views.get(key); if (v && vfx) return kind === "shield" ? vfx.shield(v.root.position) : vfx.buff(v.root.position, !!good); if (v) burstAt(v.root.position.clone().setY(0.4), good ? "#ffd86a" : "#c07aff", 10, 0.9, 0.28, -0.5); }
+  // Damage over time (poison and friends) ticking on a unit.
+  function dot(key, kind = "poison") { const v = views.get(key); if (v && vfx) vfx.debuffTick(v.root.position, kind); else burst(key, "#7dff7a", false); }
   function cast(key, color) { const v = views.get(key); if (v && vfx) return; if (v) burstAt(v.root.position.clone().setY(0.1), color, 26, 1.4, 0.35, -0.7); }
 
   function projectile(fromKey, toKey, color, dur = 0.3) {
     const a = worldCenter(fromKey), b = worldCenter(toKey);
     if (!a || !b || !scene) return Promise.resolve();
+    if (vfx && lastAtkOpts.ult && lastAtkOpts.single && !lastAtkOpts.support) return vfx.beam(a, b, elOf(color)); // single-target ultimates
     if (vfx) {
       const fv = views.get(fromKey), prop = fv && !fv.u.titan && LOOKS[fv.u.template.id] ? LOOKS[fv.u.template.id].prop : "";
       return vfx.projectile(a, b, elOf(color), prop === "bow" ? "arrow" : prop === "mirror" || prop === "staff" ? "bolt" : prop === "orb" || prop === "candle" ? "orb" : "shard");
@@ -2219,7 +2223,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   }
   function slash(key, color) {
     const p = worldCenter(key); if (!p || !scene) return;
-    if (vfx) { vfx.slash(p, elOf(color)); return; }
+    if (vfx) { const tv = views.get(key); vfx.slash(p, elOf(color), lastAtk && tv ? tv.root.position.clone().sub(lastAtk.home) : undefined); return; }
     const arc = new T.Mesh(new T.RingGeometry(0.55, 0.75, 32, 1, -0.9, 2.2), new T.MeshBasicMaterial({ color: new T.Color(color), transparent: true, side: T.DoubleSide, blending: T.AdditiveBlending, depthWrite: false }));
     arc.position.copy(p); arc.quaternion.copy(camera.quaternion); arc.rotateZ(Math.random() * 0.8 - 0.4);
     scene.add(arc);
@@ -2436,7 +2440,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
 
   preload();
   return {
-    supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, victory, setHighlight, setQuality,
+    supported, mount, unmount, addUnit, removeSide, screen, attack, recover, hit, die, victory, setHighlight, setQuality, dot,
     get quality() { return qm ? qm.current : null; }, get qualityAuto() { return qm ? qm.auto : true; },
     burst, heal, buff, cast, projectile, slash, shake, onFrame, whenReady, face, onFaces, showcase, showcaseStop, setCamera, cameras: CAMS, get camera() { return camKey(); },
     debugStep, has: (k) => views.has(k), get active() { return !!renderer; }, get modelsReady() { return modelsSettled; },

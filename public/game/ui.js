@@ -855,10 +855,11 @@ async function showEvents(events, color = "#7dff7a") {
       else if (e.type === "death") SOUND.play(key.startsWith("A") ? "downed" : "kill", { volume: 0.9 });
       if (B && B.use3d) {
         if (e.type === "dmg") {
-          W3D.burst(key, e.dot ? "#7dff7a" : color, e.crit); W3D.hit(key, e);
+          if (e.dot && W3D.dot) W3D.dot(key, "poison"); else W3D.burst(key, color, e.crit);
+          W3D.hit(key, e);
           if (e.crit) { W3D.shake(); NATIVE.haptic("medium"); }
         } else if (e.type === "heal") W3D.heal(key);
-        else if (e.type === "fx") W3D.buff(key, EFFECTS[e.t].buff);
+        else if (e.type === "fx") W3D.buff(key, EFFECTS[e.t].buff, e.t);
         else if (e.type === "death") W3D.die(key);
         continue;
       }
@@ -917,7 +918,7 @@ async function doAct(u, choice, token) {
   if (B.use3d) {
     const melee = sk.mult > 0 && sk.target === "enemy" && spriteKind(u.template.id) === "melee";
     SOUND.play(melee ? "swing" : "cast", { volume: 0.6 });
-    await W3D.attack(u.key, hitKeys[0], melee, { ult: choice.skill === 2 || sk.target === "allEnemies", support: sk.mult === 0 });
+    await W3D.attack(u.key, hitKeys[0], melee, { ult: choice.skill === 2 || sk.target === "allEnemies", support: sk.mult === 0, single: sk.target === "enemy" });
     if (sk.mult === 0) W3D.cast(u.key, color);
     if (melee) hitKeys.forEach((k) => W3D.slash(k, color));
     else if (hitKeys.length) await Promise.all(hitKeys.map((k) => W3D.projectile(u.key, k, color)));

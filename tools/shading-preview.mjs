@@ -48,7 +48,9 @@ const VARIANTS = [
   { key: "high", label: "upgraded · High" },
   { key: "ultra", label: "upgraded + subdiv · Ultra" },
   { key: "outline", label: "Ultra + outline" },
-];
+  { key: "medium", label: "upgraded · Medium" },
+  { key: "low", label: "upgraded · Low" },
+].filter((v, i, all) => (Q.get("variants") ? Q.get("variants").split(",").includes(v.key) : i < 4));
 
 // ---------------------------------------------------------------------------------------------
 const glCanvas = document.getElementById("gl");
@@ -136,7 +138,7 @@ function buildHero(lib, base, pal, variant) {
   let info = { tris: 0 };
   if (variant !== "orig") {
     info = applyCharacterLook(root, {
-      quality: variant === "high" ? "high" : "ultra", rimColor: ELEMENT[pal.el], ...LOOK,
+      quality: variant === "outline" ? "ultra" : variant, rimColor: ELEMENT[pal.el], ...LOOK,
       outline: variant === "outline" ? { color: "#120c18", width: 1.4 } : false,
     });
   } else root.traverse((o) => { if (o.isMesh) info.tris += triCount(o.geometry); });

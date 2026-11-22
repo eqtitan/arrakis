@@ -42,9 +42,9 @@ const N_ROLES = 9;
 // D: albedo gain, painterly ramp scale, spare, spare
 export const ROLE_PARAMS = {
   default: { A: [0.18, 0.0, 0.0, 0.0], B: [-1, -1, 1.0, 0.0], C: [1.0, 1.0, 0.0, 0.5], D: [1.0, 1.0, 0, 0] },
-  skin:    { A: [0.5, 0.75, 0.0, 0.0], B: [0.5, 0.0, 0.5, 0.0], C: [0.75, 1.18, 0.0, 0.5], D: [1.0, 0.8, 0, 0] },
+  skin:    { A: [0.3, 0.35, 0.0, 0.0], B: [0.5, 0.0, 0.45, 0.0], C: [0.75, 0.98, 0.0, 0.5], D: [1.0, 0.45, 0, 0] },
   hair:    { A: [0.28, 0.12, 0.0, 1.0], B: [0.55, 0.0, 0.3, 0.0], C: [1.0, 1.1, 0.0, 0.5], D: [1.0, 1.0, 0, 0] },
-  cloth:   { A: [0.32, 0.0, 0.55, 0.0], B: [0.88, 0.0, 0.35, 0.0], C: [1.0, 0.85, 0.0, 0.5], D: [1.0, 1.0, 0, 0] },
+  cloth:   { A: [0.3, 0.0, 0.4, 0.0], B: [0.88, 0.0, 0.35, 0.0], C: [1.0, 0.92, 0.0, 0.5], D: [1.0, 1.0, 0, 0] },
   leather: { A: [0.2, 0.0, 0.15, 0.0], B: [0.52, 0.0, 0.85, 0.25], C: [0.9, 1.0, 0.0, 0.5], D: [1.0, 1.0, 0, 0] },
   metal:   { A: [0.06, 0.0, 0.0, 0.0], B: [0.3, 0.88, 1.0, 1.0], C: [0.75, 1.0, 0.0, 0.5], D: [1.2, 0.7, 0, 0] },
   gold:    { A: [0.06, 0.0, 0.0, 0.0], B: [0.26, 1.0, 1.0, 1.0], C: [0.75, 1.1, 0.0, 0.5], D: [1.15, 0.7, 0, 0] },
@@ -141,7 +141,7 @@ void RE_Direct_Sigil( const in IncidentLight directLight, const in GeometricCont
   // Cloth: sheen at grazing view + fuzz that wraps into the shadow side.
   if ( vSbA.z > 0.001 ) {
     float fuzz = pow( 1.0 - nv, 3.0 ) * smoothstep( -0.3, 0.6, nl );
-    reflectedLight.directSpecular += directLight.color * ( fuzz * vSbA.z * 0.35 ) * mix( material.diffuseColor, vec3( 1.0 ), 0.45 );
+    reflectedLight.directSpecular += directLight.color * ( fuzz * vSbA.z * 0.4 ) * ( material.diffuseColor * 0.85 + 0.03 );
   }
   // Hair: tangent-free Kajiya-Kay band. Strand direction = world up projected on the surface.
   if ( vSbA.w > 0.001 ) {
@@ -150,13 +150,13 @@ void RE_Direct_Sigil( const in IncidentLight directLight, const in GeometricCont
     Tg = Tg / max( length( Tg ), 1e-3 );
     vec3 H = normalize( L + V );
     float th = dot( normalize( Tg + N * 0.1 ), H );
-    float band = pow( sqrt( max( 1.0 - th * th, 0.0 ) ), 110.0 ) * 0.5;
+    float band = pow( sqrt( max( 1.0 - th * th, 0.0 ) ), 110.0 ) * 0.28;
   #if SB_Q >= 2
     float th2 = dot( normalize( Tg - N * 0.18 ), H );
     band += pow( sqrt( max( 1.0 - th2 * th2, 0.0 ) ), 24.0 ) * 0.22 * sbLuma( material.diffuseColor ) * 3.0;
   #endif
     float hl = smoothstep( -0.1, 0.4, nl ) * vSbA.w;
-    reflectedLight.directSpecular += directLight.color * hl * band * mix( vec3( 1.0 ), material.diffuseColor * 2.0 + 0.2, 0.4 );
+    reflectedLight.directSpecular += directLight.color * hl * band * ( material.diffuseColor * 1.6 + 0.06 );
   }
 #endif
 }
@@ -173,6 +173,8 @@ const FRAG_FINISH = /* glsl */`
 
 const FRAG_COLOR = /* glsl */`
   diffuseColor.rgb *= vSbD.x;
+  // Albedo ceiling: very light albedos are pulled down a touch so whites keep form under the bright rig.
+  diffuseColor.rgb *= 1.0 - 0.2 * smoothstep( 0.45, 0.85, sbLuma( diffuseColor.rgb ) ) * ( 1.0 - metalnessFactor );
   // Hair: darker toward the bottom of each hair part (and its roots/underside), lighter on top.
   diffuseColor.rgb *= mix( 1.0, mix( 0.6, 1.08, smoothstep( 0.0, 0.8, vSbC.w ) ), vSbA.w );
 `;
@@ -231,8 +233,7 @@ function patchShader(sh, u) {
   sh.fragmentShader = sh.fragmentShader
     .replace("#include <common>", "#include <common>\n" + FRAG_PARS)
     .replace("#include <lights_physical_pars_fragment>", "#include <lights_physical_pars_fragment>\n" + FRAG_DIRECT)
-    .replace("#include <metalnessmap_fragment>", "#include <metalnessmap_fragment>\n" + FRAG_FINISH)
-    .replace("#include <color_fragment>", "#include <color_fragment>\n" + FRAG_COLOR)
+    .replace("#include <metalnessmap_fragment>", "#include <metalnessmap_fragment>\n" + FRAG_FINISH + FRAG_COLOR)
     .replace("#include <aomap_fragment>", "#include <aomap_fragment>\n" + FRAG_POST)
     .replace("#include <output_fragment>", FRAG_OUT + "\n#include <output_fragment>");
 }
@@ -244,7 +245,7 @@ function patchShader(sh, u) {
 const QUALITY = { low: 0, medium: 1, high: 2, ultra: 2 };
 const normQ = (q) => (q == null ? "high" : String(q).toLowerCase());
 const matCache = new Map();
-const DEFAULTS = { rim: 0.55, ramp: 0.35, saturation: 0.1, sky: "#cfe0ff", ground: "#4a3a30", sss: "#ff5a3a", rimColor: "#9fb4ff" };
+const DEFAULTS = { rim: 0.7, ramp: 0.35, saturation: 0.06, sky: "#cfe0ff", ground: "#4a3a30", sss: "#e0603f", rimColor: "#9fb4ff" };
 const hex = (c) => new T.Color(c).getHexString();
 
 /**
