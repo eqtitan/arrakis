@@ -502,10 +502,10 @@ const W3D = (() => {
         for (let i = 0; i < 7; i++) {
           const a = (Math.sin(i * 0.9) * 55 - i * 8) * D2R, len = 0.13 - i * 0.006;
           const nx = x + Math.sin(a) * len, ny = y + Math.cos(a) * len;
-          P(lash, "rod", [(x + nx) / 2, (y + ny) / 2, 0], [0.03 - i * 0.003, len + 0.01, 0.03 - i * 0.003], C.accG, [0, 0, -a / D2R]);
+          P(lash, "rod", [(x + nx) / 2, (y + ny) / 2, 0], [0.055 - i * 0.005, len + 0.01, 0.055 - i * 0.005], C.accG, [0, 0, -a / D2R]);
           x = nx; y = ny;
         }
-        P(lash, "sphere", [x, y, 0], [0.05, 0.05, 0.05], C.glowC);
+        P(lash, "sphere", [x, y, 0], [0.08, 0.08, 0.08], C.glowC);
         g.add(lash);
         live.push({ obj: lash, fn: (o, t) => { o.rotation.y = Math.sin(t * 2.2) * 0.5; o.rotation.z = Math.sin(t * 3.1) * 0.12; } });
       },
@@ -564,7 +564,10 @@ const W3D = (() => {
       },
     };
     // Tilt (degrees towards vertical in idle) per weapon.
-    const TILT = { spear: 25, staff: 55, lantern: 55, candle: 85, bell: 60, orb: 60, mirror: 45, bow: 70, trident: 30, club: 40, hammer: 15, axe: 15, hook: 25 };
+    // Idle holds the fist forward with the arm low; the cast pose raises it pointing at the
+    // target, so tall foci use a compromise that stands up in idle without leaning far back
+    // when casting.
+    const TILT = { spear: 25, staff: 32, lantern: 32, candle: 42, bell: 35, orb: 40, mirror: 30, bow: 15, trident: 30, club: 40, hammer: 15, axe: 15, hook: 25 };
     const ROLL = { bow: 90 };
 
     // ---- right hand ----
@@ -687,7 +690,7 @@ const W3D = (() => {
       const back = socket(bones.Chest, model, [0, 0, 0], null);
       attach("B", back, (g) => {
         if (K.cape) {
-          const cloth = M(K.capeColor || mix(L.armor, "#000000", 0.25)), trim = M(L.accent, 0.3);
+          const cloth = M(K.capeColor || mul(L.armor, 0.55)), trim = M(L.accent, 0.3);
           const z = base === "hooded" ? -0.2 : -0.17;
           // A curved, flared cloak: a flattened frustum hanging from the shoulders.
           P(g, "taper", [0, -0.3, z - 0.03], [0.44, 0.84, 0.1], cloth, [172, 0, 0]);
