@@ -1785,8 +1785,8 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   function addUnit(u, i, n) {
     const ally = u.side === "A";
     const scale = u.titan ? 1.0 : u.boss ? 1.3 : 1;
-    const rigged = u.titan ? buildRigged("titan", "titan", false, u.el) : buildRigged(u.template.id, BASE[u.template.id] || "adventurer", !ally, undefined, unitGear(u));
-    const built = rigged || (u.titan ? buildTitanPrimitive(u.el) : buildHero(u.template.id, !ally));
+    const rigged = u.titan ? buildRigged("titan", "titan", false, u.el) : buildRigged(u.template.id, BASE[u.template.id] || "adventurer", !ally && !u.rival, undefined, unitGear(u));
+    const built = rigged || (u.titan ? buildTitanPrimitive(u.el) : buildHero(u.template.id, !ally && !u.rival));
     const root = new T.Group();
     root.add(built.model);
     built.model.scale.multiplyScalar(scale);

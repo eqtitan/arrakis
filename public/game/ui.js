@@ -127,12 +127,12 @@ function homeBadge() {
   return n;
 }
 function nav() {
-  const items = [["home", "🏰", "Home"], ["campaign", "⚔️", "Campaign"], ["heroes", "🧙", "Heroes"], ["summon", "🔮", "Summon"], ["titan", "🗿", "Titan"], ["friends", "👥", "Friends"]];
+  const items = [["home", "🏰", "Home"], ["campaign", "⚔️", "Campaign"], ["heroes", "🧙", "Heroes"], ["summon", "🔮", "Summon"], ["trials", "🏛️", "Trials"], ["friends", "👥", "Friends"]];
   const badge = homeBadge();
   return `<nav class="nav"><div class="nav-inner">${items.map(([k, ic, name]) =>
-    `<button class="${UI.screen === k || (k === "heroes" && ["hero", "equip"].includes(UI.screen)) || (k === "friends" && ["friend", "chat"].includes(UI.screen)) ? "on" : ""}" data-act="go" data-to="${k}">
+    `<button class="${UI.screen === k || (k === "heroes" && ["hero", "equip"].includes(UI.screen)) || (k === "friends" && ["friend", "chat"].includes(UI.screen)) || (k === "trials" && ["titan", "dungeon", "arena"].includes(UI.screen)) ? "on" : ""}" data-act="go" data-to="${k}">
       <span class="ic">${ic}</span>${name}${k === "home" && badge ? `<span class="badge">${badge}</span>` : ""}
-      ${k === "titan" && G.daily && G.daily.titanTries ? `<span class="badge" style="background:var(--blue)">${G.daily.titanTries}</span>` : ""}
+      ${k === "trials" && typeof trialsBadge === "function" && trialsBadge() ? `<span class="badge" style="background:var(--blue)">${trialsBadge()}</span>` : ""}
       ${k === "friends" && typeof ON !== "undefined" && onlineBadgeCount() ? `<span class="badge">${onlineBadgeCount()}</span>` : ""}
     </button>`).join("")}</div></nav>`;
 }
@@ -330,7 +330,7 @@ const SCREENS = {
   titan() {
     const el = titanElement();
     const best = G.daily.titanBest;
-    return `<h2>🗿 ${TITAN.name}</h2>
+    return `<div class="row"><button class="btn sec sm" data-act="go" data-to="trials">‹ Trials</button></div><h2>🗿 ${TITAN.name}</h2>
       <div class="card col" style="align-items:center;text-align:center">
         ${portrait({ ...TITAN, el }, { big: true, el })}
         <div>Today's element: <b style="color:${ELEMENTS[el].color}">${ELEMENTS[el].icon} ${ELEMENTS[el].name}</b></div>
@@ -522,6 +522,7 @@ Object.assign(ACTIONS, {
           ? `Auto picks the best your phone can run smoothly, up to Ultra${q.tier ? ` (now: ${q.tier})` : ""}` : q.choice === "Ultra" ? "Maximum detail at full screen resolution. Uses more battery and may warm the phone." : "Lower it if battles stutter or the phone gets warm"}</div></div>
           <div class="row wrap" style="gap:6px">${opt("auto", "Auto")}${opt("Ultra", "Ultra")}${opt("High", "High")}${opt("Medium", "Medium")}${opt("Low", "Low")}</div></div>`;
       })()}
+      ${!B && typeof promoRow === "function" ? promoRow() : ""}
       ${B ? "" : `<div class="row" style="gap:8px;margin-top:10px">
         <button class="btn sec sm grow" data-act="saveCode">Save code</button>
         <button class="btn sec sm grow" data-act="showHelp">How to play</button>
@@ -586,13 +587,14 @@ Object.assign(ACTIONS, {
     renderBattle();
   },
   bFlee() {
-    modal(`<h3>Retreat?</h3><p class="small dim">${B && B.mode === "titan" ? "Damage dealt so far still counts and uses up this try." : "You'll get no rewards for this battle."}</p>
+    modal(`<h3>Retreat?</h3><p class="small dim">${B && B.mode === "titan" ? "Damage dealt so far still counts and uses up this try." : B && B.mode === "arena" ? "Retreating counts as a loss." : "You'll get no rewards for this battle."}</p>
       <div class="row"><button class="btn sec grow" data-act="closeModal">Stay</button><button class="btn red grow" data-act="bFleeYes">Retreat</button></div>`);
   },
   bFleeYes() {
     closeModal();
     if (!B) return;
     if (B.mode === "titan") { B.battle.over = true; B.battle.result = "timeout"; finishBattle(); }
+    else if (B.mode === "arena") { B.battle.over = true; B.battle.result = "defeat"; finishBattle(); }
     else {
       B.token = null; B = null; FX.clear(); W3D.unmount(); SOUND.stopMusic(); G.settings.autoReplay = false; render();
       if (AUTO && AUTO.battles) showAutoSummary("stopped by retreat"); else AUTO = null;
@@ -637,11 +639,13 @@ function startBattle(cfg) {
   if (cfg.mode === "titan") {
     const tp = team.reduce((s, h) => s + power(heroStats(h)), 0) / team.length * 4;
     battle = new Battle(allies, [[titanUnit(tp)]], { titan: true, turnLimit: TITAN_TURNS });
+  } else if (typeof MODES !== "undefined" && MODES[cfg.mode]) {
+    battle = MODES[cfg.mode].makeBattle(allies, cfg);
   } else {
     battle = new Battle(allies, stageWaves(cfg.idx).map((w) => w.map(unitFromEnemy)));
   }
   SOUND.startMusic();
-  B = { id: ++battleSeq, battle, mode: cfg.mode, idx: cfg.idx, token: {}, actor: null, sel: 0, awaiting: false, skillName: "",
+  B = { id: ++battleSeq, battle, mode: cfg.mode, idx: cfg.idx, cfg, token: {}, actor: null, sel: 0, awaiting: false, skillName: "",
     use3d: !G.settings.flat && typeof W3D !== "undefined" && W3D.supported() };
   renderBattle();
   setTimeout(() => loop(B.token), 400);
@@ -668,7 +672,7 @@ function unitHtml(u) {
   return `<div class="unit ${u.side}" data-key="${u.key}">
     <div class="stand" style="animation-delay:${(-Math.random() * 3).toFixed(2)}s">${u.titan
       ? portrait(t, { el: u.el })
-      : heroSprite(u.template.id, u.el, { hollow: u.side === "B" })}</div>
+      : heroSprite(u.template.id, u.el, { hollow: u.side === "B" && !u.rival })}</div>
     <div class="uname"><span class="uel">${ELEMENTS[u.el].icon}</span>${u.titan ? "" : `<span class="ulv">${u.level}</span>`}<span class="unm">${u.titan ? u.name : u.side === "A" ? u.name.split(/[ ,]/)[0] : u.name.replace("Hollow ", "")}</span></div>
     <div class="hp"><b></b><i></i></div>
     <div class="tmb"><i></i></div>
@@ -726,13 +730,14 @@ function renderBattle() {
         <div class="skillname"></div><div class="bdesc small"></div></div>
       <div class="skillbar"></div></div>`;
     root = $app.querySelector(".battle");
-    W3D.mount(root.querySelector(".stage3d"), { chapter: B.mode === "titan" ? 9 : Math.floor(B.idx / STAGES_PER_CHAPTER), titan: B.mode === "titan" });
+    W3D.mount(root.querySelector(".stage3d"), typeof battleScene === "function" ? battleScene(B) : { chapter: B.mode === "titan" ? 9 : Math.floor(B.idx / STAGES_PER_CHAPTER), titan: B.mode === "titan" });
     b.allies.forEach((u, i) => W3D.addUnit(u, i, b.allies.length));
     W3D.onFrame(placeOverlays);
     B.domWave = -1;
   }
   if (!B.use3d && (!root || root.dataset.bid !== String(B.id))) {
-    const scene = B.mode === "titan" ? titanSceneUrl() : sceneUrl(Math.floor(B.idx / STAGES_PER_CHAPTER));
+    const sc = typeof battleScene === "function" ? battleScene(B) : { chapter: Math.floor(B.idx / STAGES_PER_CHAPTER), titan: B.mode === "titan" };
+    const scene = sc.titan ? titanSceneUrl() : sceneUrl(sc.chapter);
     $app.innerHTML = `<div class="battle" data-bid="${B.id}" style="background-image:linear-gradient(180deg,#0006,#0000 35%,#0000 60%,#000c),${scene}">
       <div class="bhead"></div><div class="side enemies"></div>
       <div class="skillname"></div><div class="bdesc small"></div>
@@ -748,7 +753,7 @@ function renderBattle() {
   }
   const manual = B.awaiting && a && a.side === "A";
   const targets = manual ? battleTargetsFor(a, B.sel).map((u) => u.key) : [];
-  const info = B.mode === "titan"
+  const info = typeof MODES !== "undefined" && MODES[B.mode] ? MODES[B.mode].info(B, b) : B.mode === "titan"
     ? `🗿 Titan · Turn ${Math.min(b.bossTurns + 1, TITAN_TURNS)}/${TITAN_TURNS} · 💥 ${fmt(b.titanDamage || 0)}`
     : `Stage ${stageLabel(B.idx)} · Wave ${b.wave + 1}/${b.waves.length}`;
   root.querySelector(".bhead").innerHTML = `<button class="btn sec sm" data-act="bFlee">✕</button><div class="info">${info}</div>
@@ -963,6 +968,7 @@ function finishBattle() {
   B.finished = true;
   const b = B.battle;
   const team = G.team.map(heroByUid).filter(Boolean);
+  if (typeof MODES !== "undefined" && MODES[B.mode]) { MODES[B.mode].finish(B, b, team); return; }
   if (B.mode === "titan") {
     const dmg = Math.round(b.titanDamage || 0);
     let tier = TITAN_TIERS[0];
@@ -1033,7 +1039,7 @@ function finishBattle() {
 }
 
 // Android hardware back button: close dialogs, leave battles, step back, then exit.
-const BACK_TO = { hero: "heroes", equip: "hero", friend: "friends", chat: "friend" };
+const BACK_TO = { hero: "heroes", equip: "hero", friend: "friends", chat: "friend", titan: "trials", dungeon: "trials", arena: "trials" };
 NATIVE.onBack(() => {
   if (!$modal.classList.contains("hidden")) { closeModal(); return; }
   if (B) { if (!B.finished) ACTIONS.bFlee(); return; }
