@@ -121,5 +121,8 @@ It's a separate side project from the optimizer and shares no code with it.
   summoning with pity, an essence exchange, daily login and quests.
 - **No monetization:** there's no shop and no paid currency.
   Every shard is earned in play. Progress saves to `localStorage`.
+- Art is drawn in code (`art.js`): vector hero portraits, chapter backdrops and
+  canvas battle effects. To use real artwork, add images under `public/game/art/`
+  and list them in `ART_FILES` in `art.js`.
 - Files: `data.js` (content), `state.js` (save/progression), `battle.js`
   (DOM-free engine), `ui.js` (screens), `style.css`.

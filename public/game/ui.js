@@ -5,14 +5,16 @@ const $modal = document.getElementById("modal");
 const $toast = document.getElementById("toast");
 const UI = { screen: "home", tab: "roster", heroUid: null, slot: null, bagSlot: "all", sort: "power", prep: null, chapterOpen: null };
 let B = null; // active battle controller
+let battleSeq = 0;
 
 // ---------- helpers ----------
 const starStr = (n) => "★".repeat(n);
 function portrait(t, opts = {}) {
   const el = opts.el || t.el;
-  const rc = RARITY[t.rarity].color, ec = ELEMENTS[el].color;
+  const rc = opts.hollow ? "#8a2a2a" : RARITY[t.rarity].color, ec = ELEMENTS[el].color;
   return `<div class="por ${opts.big ? "big" : ""}" style="--rc:${rc};--ec:${ec}">
-    <span class="el">${ELEMENTS[el].icon}</span>${t.face}
+    <div class="pa">${heroArt(t.id, el, { hollow: opts.hollow })}</div>
+    <span class="el">${ELEMENTS[el].icon}</span>
     ${opts.lv ? `<span class="lv">${opts.lv}</span>` : ""}</div>`;
 }
 function heroCell(h, opts = {}) {
@@ -141,7 +143,7 @@ const SCREENS = {
       const first = c * STAGES_PER_CHAPTER;
       const locked = first > G.cleared;
       const doneCount = Math.max(0, Math.min(STAGES_PER_CHAPTER, G.cleared - first));
-      return `<div class="card chapter" style="${locked ? "opacity:.45" : ""}">
+      return `<div class="card chapter" style="background-image:linear-gradient(90deg,#120e1ae6 30%,#120e1a80),${sceneUrl(c)};${locked ? "opacity:.45" : ""}">
         <button class="row spread" style="background:none;width:100%;padding:0;text-align:left" data-act="toggleChapter" data-c="${c}">
           <div><h3>${c + 1}. ${name}</h3><div class="small dim">${ELEMENTS[ELEMENT_KEYS[c % 5]].icon} Lv ${stageLevel(first)}–${stageLevel(first + 5)} · ${doneCount}/${STAGES_PER_CHAPTER}</div></div>
           <span>${locked ? "🔒" : open === c ? "▾" : "▸"}</span></button>
@@ -171,7 +173,7 @@ const SCREENS = {
     }
     const roster = sortedHeroes();
     return `<div class="row spread"><button class="btn sec sm" data-act="go" data-to="${p.back || "home"}">‹ Back</button><span class="small dim">Power ${fmt(teamPower)}</span></div>
-      <div><h2>${title}</h2><div class="small dim">${sub}</div></div>
+      <div class="banner" style="background-image:linear-gradient(0deg,#120e1ae6,#120e1a40),${p.mode === "titan" ? titanSceneUrl() : p.mode === "stage" ? sceneUrl(Math.floor(p.idx / STAGES_PER_CHAPTER)) : sceneUrl(0)}"><h2>${title}</h2><div class="small dim">${sub}</div></div>
       <div class="card"><div class="small dim" style="margin-bottom:8px">Team (tap to remove) — up to 4</div>
         <div class="row" style="gap:10px;min-height:96px">${sel.map((h) => heroCell(h, { act: "teamToggle", noTag: true })).join("")}
         ${Array.from({ length: 4 - sel.length }, () => `<div class="por" style="--rc:#3a3150;--ec:#1f1a2b;opacity:.5">+</div>`).join("")}</div></div>
@@ -404,12 +406,22 @@ const ACTIONS = {
     const res = summon(d.k, +d.n);
     if (!res.length) return toast("Not enough shards.");
     const best = res.reduce((m, h) => Math.max(m, RARITY_KEYS.indexOf(HERO[h.id].rarity)), 0);
+    closeModal();
+    const color = RARITY[RARITY_KEYS[best]].color;
+    FX.portal(innerWidth / 2, innerHeight / 2, color, 1100);
+    if (best >= 2) setTimeout(() => FX.flash(color), 950);
+    setTimeout(() => showSummonResult(d, res, best), 1000);
+  },
+};
+function showSummonResult(d, res, best) {
     modal(`<div class="result-title" style="color:${RARITY[RARITY_KEYS[best]].color}">${RARITY_KEYS[best] === "legendary" ? "LEGENDARY!" : "Summoned!"}</div>
       <div class="reveal" style="${res.length === 1 ? "grid-template-columns:1fr" : ""}">${res.map((h, i) => `<div class="glow-${HERO[h.id].rarity}" style="animation-delay:${i * 0.08}s">${heroCell(h, { act: "noop", noTag: true })}</div>`).join("")}</div>
       ${res.length === 1 ? `<p style="text-align:center"><b>${HERO[res[0].id].name}</b><br><span class="small" style="color:${RARITY[HERO[res[0].id].rarity].color}">${RARITY[HERO[res[0].id].rarity].name}</span></p>` : ""}
       <div class="row"><button class="btn sec grow" data-act="closeModal">OK</button>
       ${G.shards[d.k] >= +d.n ? `<button class="btn grow" data-act="summon" data-k="${d.k}" data-n="${d.n}">Again ×${d.n}</button>` : ""}</div>`);
-  },
+    render();
+}
+Object.assign(ACTIONS, {
   exchange(d) { if (exchange(d.k)) toast(`+1 ${SHARDS[d.k].name}`); },
   showHelp() {
     modal(`<h3>How to play</h3><div class="small col" style="margin-top:8px">
@@ -455,15 +467,16 @@ const ACTIONS = {
   resultReplay(d) { closeModal(); startBattle({ mode: "stage", idx: +d.idx }); },
   resultBack(d) { closeModal(); B = null; UI.screen = d.to || "campaign"; render(); },
   resultStopReplay() { G.settings.autoReplay = false; save(); if (B) B.replayTimer && clearTimeout(B.replayTimer); render(); ACTIONS.resultBack({ to: "campaign" }); },
-};
+});
 
 document.addEventListener("click", (e) => {
   const el = e.target.closest("[data-act]");
   if (!el) return;
-  const fn = ACTIONS[el.dataset.act];
+  const act = el.dataset.act;
+  const fn = ACTIONS[act];
   if (!fn) return;
-  fn(el.dataset);
-  if (!el.dataset.act.startsWith("b") || el.dataset.act === "bagSlot") { if (!B) render(); }
+  fn({ ...el.dataset });
+  if ((!act.startsWith("b") || act === "bagSlot") && !B) render();
 });
 
 // ---------- battle presentation ----------
@@ -478,7 +491,7 @@ function startBattle(cfg) {
   } else {
     battle = new Battle(allies, stageWaves(cfg.idx).map((w) => w.map(unitFromEnemy)));
   }
-  B = { battle, mode: cfg.mode, idx: cfg.idx, token: {}, actor: null, sel: 0, awaiting: false, skillName: "" };
+  B = { id: ++battleSeq, battle, mode: cfg.mode, idx: cfg.idx, token: {}, actor: null, sel: 0, awaiting: false, skillName: "" };
   renderBattle();
   setTimeout(() => loop(B.token), 400);
 }
@@ -491,76 +504,118 @@ function battleTargetsFor(u, i) {
   return [u];
 }
 
-function unitHtml(u, targets) {
-  const b = B.battle;
-  const isTarget = targets.includes(u.key);
-  const tmPct = Math.min(100, (u.tm / TM_FULL) * 100);
+function unitClass(u, targets) {
+  return `unit ${u.side} ${u.boss ? "boss" : ""} ${u.titan ? "titan" : ""} ${!u.alive ? "dead" : ""} ${B.actor === u ? "active" : ""} ${targets.includes(u.key) ? "target" + (u.side === "A" ? " ally" : "") : ""}`;
+}
+function unitHtml(u) {
   const t = { ...u.template, el: u.el };
-  const shield = u.effects.find((e) => e.t === "shield");
-  return `<div class="unit ${u.side} ${u.boss ? "boss" : ""} ${u.titan ? "titan" : ""} ${!u.alive ? "dead" : ""} ${B.actor === u ? "active" : ""} ${isTarget ? "target" + (u.side === "A" ? " ally" : "") : ""}"
-      data-key="${u.key}" ${isTarget ? `data-act="bTarget"` : ""}>
-    ${portrait(t, { el: u.el, lv: u.titan ? "" : "Lv" + u.level })}
+  return `<div class="unit ${u.side}" data-key="${u.key}">
+    <div class="stand" style="animation-delay:${(-Math.random() * 3).toFixed(2)}s">${portrait(t, { el: u.el, lv: u.titan ? "" : "Lv" + u.level, hollow: u.side === "B" && !u.titan })}</div>
     <div class="uname">${u.name}</div>
-    <div class="hp">${shield ? `<b style="width:${Math.min(100, (shield.val / u.maxHp) * 100)}%"></b>` : ""}<i style="width:${u.titan ? 100 : (u.hp / u.maxHp) * 100}%"></i></div>
-    <div class="tmb"><i style="width:${tmPct}%"></i></div>
-    <div class="fx">${u.effects.map((e) => `<span title="${EFFECTS[e.t].name}">${EFFECTS[e.t].icon}</span>`).join("")}</div>
+    <div class="hp"><b></b><i></i></div>
+    <div class="tmb"><i></i></div>
+    <div class="fx"></div>
   </div>`;
 }
+function updateUnit(el, u, targets) {
+  el.className = unitClass(u, targets);
+  if (targets.includes(u.key)) el.dataset.act = "bTarget"; else delete el.dataset.act;
+  const shield = u.effects.find((e) => e.t === "shield");
+  el.querySelector(".hp i").style.width = (u.titan ? 100 : (u.hp / u.maxHp) * 100) + "%";
+  el.querySelector(".hp b").style.width = (shield ? Math.min(100, (shield.val / u.maxHp) * 100) : 0) + "%";
+  el.querySelector(".tmb i").style.width = Math.min(100, (u.tm / TM_FULL) * 100) + "%";
+  const fx = u.effects.map((e) => `<span title="${EFFECTS[e.t].name}">${EFFECTS[e.t].icon}</span>`).join("");
+  const fxEl = el.querySelector(".fx");
+  if (fxEl.innerHTML !== fx) fxEl.innerHTML = fx;
+}
+const unitEl = (key) => $app.querySelector(`.unit[data-key="${key}"]`);
 
 function renderBattle() {
   if (!B) return;
   const b = B.battle, a = B.actor;
+  let root = $app.querySelector(".battle");
+  if (!root || root.dataset.bid !== String(B.id)) {
+    const scene = B.mode === "titan" ? titanSceneUrl() : sceneUrl(Math.floor(B.idx / STAGES_PER_CHAPTER));
+    $app.innerHTML = `<div class="battle" data-bid="${B.id}" style="background-image:linear-gradient(180deg,#0006,#0000 35%,#0000 60%,#000c),${scene}">
+      <div class="bhead"></div><div class="side enemies"></div>
+      <div class="skillname"></div><div class="bdesc small"></div>
+      <div class="side allies">${b.allies.map(unitHtml).join("")}</div>
+      <div class="skillbar"></div></div>`;
+    root = $app.querySelector(".battle");
+    B.domWave = -1;
+  }
+  if (B.domWave !== b.wave) {
+    root.querySelector(".enemies").innerHTML = b.enemies.map(unitHtml).join("");
+    B.domWave = b.wave;
+  }
   const manual = B.awaiting && a && a.side === "A";
   const targets = manual ? battleTargetsFor(a, B.sel).map((u) => u.key) : [];
   const info = B.mode === "titan"
     ? `🗿 Titan · Turn ${Math.min(b.bossTurns + 1, TITAN_TURNS)}/${TITAN_TURNS} · 💥 ${fmt(b.titanDamage || 0)}`
     : `Stage ${stageLabel(B.idx)} · Wave ${b.wave + 1}/${b.waves.length}`;
-  let bar;
-  if (manual) {
-    bar = a.template.skills.map((s, i) => `<button class="skill ${B.sel === i ? "sel" : ""} ${a.cds[i] ? "cd" : ""}" data-act="bSkill" data-i="${i}">
-      ${a.cds[i] ? `<span class="cdn">${a.cds[i]}</span>` : ""}<b>${s.name}</b><span class="dim">${{ enemy: "Single", allEnemies: "All foes", ally: "Ally", allAllies: "All allies", self: "Self" }[s.target]}${s.cd ? ` · ⏳${s.cd}` : ""}</span></button>`).join("");
-  } else {
-    bar = `<div class="hint">${G.settings.auto ? "🤖 Auto battle" : a && a.side === "B" ? "Enemy turn…" : "…"}</div>`;
-  }
-  const html = `<div class="battle">
-    <div class="bhead"><button class="btn sec sm" data-act="bFlee">✕</button><div class="info">${info}</div>
+  root.querySelector(".bhead").innerHTML = `<button class="btn sec sm" data-act="bFlee">✕</button><div class="info">${info}</div>
       ${B.mode === "stage" ? `<button class="btn sec sm tgl ${G.settings.autoReplay ? "on" : ""}" data-act="bReplayToggle">🔁</button>` : ""}
       <button class="btn sec sm tgl ${G.settings.auto ? "on" : ""}" data-act="bAuto">🤖 Auto</button>
-      <button class="btn sec sm" data-act="bSpeed">⏩${G.settings.speed}x</button></div>
-    <div class="side enemies">${b.enemies.map((u) => unitHtml(u, targets)).join("")}</div>
-    <div class="skillname">${B.skillName || (manual ? `${a.name}'s turn` : "")}</div>
-    <div class="small dim" style="text-align:center;min-height:16px">${manual ? skillDesc(a.template.skills[B.sel]) : ""}</div>
-    <div class="side allies">${b.allies.map((u) => unitHtml(u, targets)).join("")}</div>
-    <div class="skillbar">${bar}</div></div>`;
-  $app.innerHTML = html;
+      <button class="btn sec sm" data-act="bSpeed">⏩${G.settings.speed}x</button>`;
+  for (const u of b.units) { const el = unitEl(u.key); if (el) updateUnit(el, u, targets); }
+  root.querySelector(".skillname").textContent = B.skillName || (manual ? `${a.name}'s turn` : "");
+  root.querySelector(".bdesc").textContent = manual ? skillDesc(a.template.skills[B.sel]) : "";
+  root.querySelector(".skillbar").innerHTML = manual
+    ? a.template.skills.map((s, i) => `<button class="skill ${B.sel === i ? "sel" : ""} ${a.cds[i] ? "cd" : ""}" data-act="bSkill" data-i="${i}">
+      ${a.cds[i] ? `<span class="cdn">${a.cds[i]}</span>` : ""}<b>${s.name}</b><span class="dim">${{ enemy: "Single", allEnemies: "All foes", ally: "Ally", allAllies: "All allies", self: "Self" }[s.target]}${s.cd ? ` · ⏳${s.cd}` : ""}</span></button>`).join("")
+    : `<div class="hint">${G.settings.auto ? "🤖 Auto battle" : a && a.side === "B" ? "Enemy turn…" : "…"}</div>`;
 }
 
 function floatAt(key, text, cls) {
-  const el = $app.querySelector(`.unit[data-key="${key}"]`);
+  const el = unitEl(key);
   if (!el) return;
   const f = document.createElement("div");
   f.className = "float " + cls; f.textContent = text;
   el.appendChild(f);
-  if (cls !== "heal" && cls !== "text") { el.classList.remove("hitfx"); void el.offsetWidth; el.classList.add("hitfx"); }
+  setTimeout(() => f.remove(), 1100);
+}
+function hitShake(key) {
+  const el = unitEl(key);
+  if (el) el.querySelector(".stand").animate([{ transform: "translateX(0)", filter: "brightness(2.2)" }, { transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "translateX(0)", filter: "brightness(1)" }], { duration: 260 });
 }
 
-async function showEvents(events) {
+async function showEvents(events, color = "#7dff7a") {
   renderBattle();
-  // stagger floats so multi-hit skills read clearly
   const groups = {};
   for (const e of events) {
     let text = null, cls = "";
-    if (e.type === "dmg") { text = (e.crit ? "CRIT " : "") + fmt(e.amount); cls = e.crit ? "crit" : e.em > 1 ? "strong" : e.em < 1 ? "weak" : ""; if (e.dot) cls = "text", text = "☠️ " + fmt(e.amount); }
-    else if (e.type === "heal") { text = "+" + fmt(e.amount); cls = "heal"; }
+    const el = unitEl(e.key);
+    const c = el && FX.center(el);
+    if (e.type === "dmg") {
+      text = (e.crit ? "CRIT " : "") + fmt(e.amount); cls = e.crit ? "crit" : e.em > 1 ? "strong" : e.em < 1 ? "weak" : "";
+      if (e.dot) { cls = "text"; text = "☠️ " + fmt(e.amount); }
+    } else if (e.type === "heal") { text = "+" + fmt(e.amount); cls = "heal"; }
     else if (e.type === "absorb") { text = "🔰 " + fmt(e.amount); cls = "text"; }
     else if (e.type === "fx") { text = EFFECTS[e.t].icon + " " + EFFECTS[e.t].name; cls = "text"; }
     else if (e.type === "text") { text = e.text; cls = "text"; }
-    if (text) (groups[e.key] = groups[e.key] || []).push([text, cls]);
+    if (text || e.type === "death") (groups[e.key] = groups[e.key] || []).push({ text, cls, e, c });
   }
   const maxLen = Math.max(0, ...Object.values(groups).map((g) => g.length));
   for (let i = 0; i < maxLen; i++) {
-    for (const [key, list] of Object.entries(groups)) if (list[i]) floatAt(key, ...list[i]);
-    await sleep(160);
+    for (const [key, list] of Object.entries(groups)) {
+      const it = list[i];
+      if (!it) continue;
+      const { e, c } = it;
+      if (it.text) floatAt(key, it.text, it.cls);
+      if (!c) continue;
+      if (e.type === "dmg") {
+        FX.burst(c.x, c.y, e.dot ? "#7dff7a" : color, e.crit ? 30 : 16, e.crit ? 1.4 : 1);
+        hitShake(key);
+        if (e.crit) { FX.shake(7); FX.flash(color); }
+      } else if (e.type === "heal") FX.rise(c.x, c.y, "#7dff7a", 14);
+      else if (e.type === "fx") {
+        if (e.t === "shield") FX.burst(c.x, c.y, "#7fc8ff", 10, 0.5);
+        else FX.rise(c.x, c.y, EFFECTS[e.t].buff ? "#ffd56a" : "#c07aff", 5, EFFECTS[e.t].buff ? "▲" : "▼");
+      } else if (e.type === "death") {
+        FX.dissolve(c.x, c.y);
+      }
+    }
+    await sleep(170);
   }
 }
 
@@ -591,13 +646,34 @@ async function loop(token) {
 }
 async function doAct(u, choice, token) {
   const sk = u.template.skills[choice.skill];
-  B.skillName = `${u.face} ${sk.name}`;
+  B.skillName = sk.name;
   renderBattle();
-  await sleep(350);
+  await sleep(250);
   if (B?.token !== token) return;
+  const color = ELEMENTS[u.el].color;
   const events = B.battle.act(u, choice.skill, choice.target);
-  await showEvents(events);
-  await sleep(450);
+  const actorEl = unitEl(u.key);
+  const hitKeys = [...new Set(events.filter((e) => e.type === "dmg" && e.key !== u.key).map((e) => e.key))];
+  if (actorEl) {
+    const dir = u.side === "A" ? -1 : 1;
+    const lunge = sk.mult > 0 ? 26 : 8;
+    actorEl.querySelector(".stand").animate([{ transform: "translateY(0) scale(1)" }, { transform: `translateY(${dir * lunge}px) scale(1.08)` }, { transform: "translateY(0) scale(1)" }],
+      { duration: 380 / G.settings.speed, easing: "ease-out" });
+    if (sk.mult === 0) FX.rise(FX.center(actorEl).x, FX.center(actorEl).y, color, 10);
+  }
+  if (actorEl && hitKeys.length) {
+    const from = FX.center(actorEl);
+    const melee = sk.target === "enemy" && u.template.role !== "support";
+    if (melee) {
+      await sleep(150);
+      for (const k of hitKeys) { const el = unitEl(k); if (el) { const c = FX.center(el); FX.slash(c.x, c.y, color); } }
+    } else {
+      await Promise.all(hitKeys.map((k) => { const el = unitEl(k); return el ? FX.projectile(from, FX.center(el), color) : null; }));
+    }
+  }
+  if (B?.token !== token) return;
+  await showEvents(events, color);
+  await sleep(380);
 }
 async function endTurnAndCheck(u, token) {
   const r = B.battle.endTurn(u);
