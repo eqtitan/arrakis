@@ -109,6 +109,21 @@ const W3D = (() => {
     const t = new T.CanvasTexture(c); t.encoding = T.sRGBEncoding;
     return t;
   }
+  // Soft mottled noise so the ground isn't one flat colour.
+  function groundTexture() {
+    const c = document.createElement("canvas"); c.width = c.height = 128;
+    const g = c.getContext("2d");
+    g.fillStyle = "#b8b8b8"; g.fillRect(0, 0, 128, 128);
+    let s = 7; const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
+    for (let i = 0; i < 260; i++) {
+      const v = 150 + Math.floor(rnd() * 105), r = 2 + rnd() * 9;
+      g.fillStyle = `rgba(${v},${v},${v},0.18)`;
+      g.beginPath(); g.arc(rnd() * 128, rnd() * 128, r, 0, 7); g.fill();
+    }
+    const t = new T.CanvasTexture(c);
+    t.wrapS = t.wrapT = T.RepeatWrapping; t.encoding = T.sRGBEncoding;
+    return t;
+  }
   let _dot = null;
   function dot() {
     if (_dot) return _dot;
@@ -154,7 +169,9 @@ const W3D = (() => {
     const rim = new T.DirectionalLight(0x99aaff, 0.6); rim.position.set(4, 5, -8); scene.add(rim);
     const front = new T.DirectionalLight(0xffffff, 0.35); front.position.set(0, 4, 10); scene.add(front);
 
-    const ground = new T.Mesh(new T.PlaneGeometry(120, 120), lit(mul(sc[2], 0.8)));
+    const groundMat = new T.MeshStandardMaterial({ color: new T.Color(mul(sc[2], 1.05)), roughness: 1, map: groundTexture() });
+    groundMat.map.repeat.set(24, 24);
+    const ground = new T.Mesh(new T.PlaneGeometry(120, 120), groundMat);
     ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
     const ring = new T.Mesh(new T.RingGeometry(3.4, 3.6, 64), glow("#ffffff", 0.08));
     ring.rotation.x = -Math.PI / 2; ring.position.set(0, 0.01, -0.6); ring.scale.set(1.25, 1, 1); scene.add(ring);
@@ -176,7 +193,7 @@ const W3D = (() => {
       const x = Math.cos(ang) * rad, z = Math.sin(ang) * rad * 0.8 - 5;
       if (z > 4 || (z > -4.5 && Math.abs(x) < 7)) continue; // keep the battlefield and the camera's view clear
       const k = 0.6 + rnd() * 1.4;
-      if (kind === 0) { part("cyl", scene, [x, 0.6 * k, z], [0.25 * k, 0.3 * k, 0.25 * k], propMat); part("capsule", scene, [x, 2 * k, z], [1.4 * k, 0.8 * k, 1.4 * k], propMat); }
+      if (kind === 0) { part("cyl", scene, [x, 0.65 * k, z], [0.25 * k, 0.65 * k, 0.25 * k], propMat); part("capsule", scene, [x, 2 * k, z], [1.4 * k, 0.8 * k, 1.4 * k], propMat); }
       else if (kind === 1 || kind === 3) part("cyl", scene, [x, 0.5 * k, z], [0.12, 0.5 * k, 0.12], propMat);
       else if (kind === 2) part("box", scene, [x, 0.7 * k, z], [1.2 * k, 1.6 * k, 1 * k], propMat, [rnd() * 30 - 15, rnd() * 90, rnd() * 30 - 15]);
       else if (i % 2) part("box", scene, [x, 1.2 * k, z], [0.5 * k, 2.4 * k, 0.5 * k], propMat);
@@ -326,6 +343,7 @@ const W3D = (() => {
     return { model: m, armL, armR, height: 4.1 };
   }
 
+  const ALLY_FACING = Math.PI - 0.95;
   function slot(ally, i, n) {
     const spread = ally ? 4.0 : 3.6;
     const x = n <= 1 ? 0 : -spread / 2 + i * (spread / (n - 1));
@@ -342,7 +360,7 @@ const W3D = (() => {
     built.model.scale.multiplyScalar(scale);
     const pos = u.titan ? new T.Vector3(0, 0, -3.2) : slot(ally, i, n);
     root.position.copy(pos);
-    root.rotation.y = ally ? Math.PI - 0.55 : 0; // allies face the enemies three-quarter on, so their faces show
+    root.rotation.y = ally ? ALLY_FACING : 0; // allies face the enemies side-on, so their faces show
     const aura = new T.Mesh(new T.CircleGeometry(0.62 * (u.titan ? 2 : scale), 32), glow(ELEMENTS[u.el].color, 0.35));
     aura.rotation.x = -Math.PI / 2; aura.position.y = 0.02; root.add(aura);
     const ring = new T.Mesh(new T.RingGeometry(0.72 * (u.titan ? 2 : scale), 0.86 * (u.titan ? 2 : scale), 40),
@@ -446,7 +464,7 @@ const W3D = (() => {
   async function recover(key) {
     const v = views.get(key); if (!v || v.dead) return;
     const from = v.root.position.clone(), rotFrom = v.root.rotation.y;
-    const rotHome = v.u.side === "A" ? Math.PI - 0.55 : 0;
+    const rotHome = v.u.side === "A" ? ALLY_FACING : 0;
     const r0 = v.armR ? v.armR.rotation.x : 0, l0 = v.armL ? v.armL.rotation.x : 0;
     await tween(0.25, (k) => {
       v.root.position.lerpVectors(from, v.home, ease(k));

@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.6.2 (2026-11-22)
+- Battle visuals: heroes turned side-on so faces show, softer textured ground, trees no longer float above their trunks.
+
+
 ## 0.6.1 (2026-11-22)
 - Android test builds are now signed with one permanent key, so updates install over the old app and keep your progress. Earlier builds each had a random key, which forced an uninstall and lost data.
 
