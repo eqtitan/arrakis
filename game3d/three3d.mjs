@@ -12,6 +12,7 @@ import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUt
 import { detailMaterial, envMap, disposeEnv, bevelBox, roundedPlate } from "./materials.mjs";
 import { createPipeline, createQualityManager, deviceHint } from "./post.mjs";
 import { buildArena } from "./scenery.mjs";
+import { applyCharacterLook, roleFromGame, tagRole } from "./shading.mjs";
 
 // Proper colour management: hex colours (LOOKS, palettes) are sRGB and get converted to
 // linear for lighting, then back to sRGB on output. Legacy mode skipped that conversion,
@@ -362,6 +363,7 @@ const W3D = (() => {
   function setCamera(k) { if (CAMS[k] && typeof G !== "undefined") { G.settings.cam = k; if (typeof save === "function") save(); } if (renderer) resize(); }
   // Shared quality manager (one per session; remembers the tier in localStorage).
   let pipe = null, qm = null;
+  const lookTier = () => (qm ? qm.current : "High").toLowerCase();
   function quality(r) {
     if (!qm) qm = createQualityManager({ initial: deviceHint(r), onChange: (n) => { if (pipe) pipe.setQuality(n); } });
     return qm;
@@ -555,6 +557,7 @@ const W3D = (() => {
         if (base !== "titan") { c.roughness = shiny ? 0.5 : 0.8; c.metalness = shiny ? 0.3 : 0; }
         // Glowing molten seams over the armour (forge heroes).
         if (K.seams && (role === "armor" || role === "trim" || role === "pants")) crackMaterial(c, hollow ? "#ff2a2a" : K.seams, fx, K.seamScale || 3.2);
+        c.userData.sbRole = roleFromGame(role, srcBase, m.name) || "default";
         return c;
       };
       o.material = Array.isArray(o.material) ? o.material.map(recolor) : recolor(o.material);
@@ -575,6 +578,11 @@ const W3D = (() => {
       mergeKit(model, `${id}|${hollow ? 1 : 0}|${base}|${gearKey(gear)}`);
       mergeBody(model, `${id}|${hollow ? 1 : 0}|${base}`);
       shapeBody(model, B);
+      // Stylized character shading (shading.mjs): skin scatter, hair and cloth sheen, painted
+      // metal, element-coloured rim; smoothed normals on all tiers, subdivision on Ultra.
+      try {
+        applyCharacterLook(model, { quality: lookTier(), rimColor: hollow ? "#ff3355" : el && ELEMENTS[el] ? ELEMENTS[el].color : "#9fb4ff" });
+      } catch (e) { console.warn("Sigilbound: character shading failed", e); }
     }
     else buildTitanKit(model, el, fx);
     return { model: root, mixer, actions, anim, fx, height: base === "titan" ? 4.7 : 2.3 * h };
@@ -711,7 +719,11 @@ const W3D = (() => {
     for (let i = 0; i < n; i++) for (let c = 0; c < s; c++) out[i * s + c] = get[c].call(a, i);
     return new T.BufferAttribute(out, s);
   };
-  function prepGeo(src, color, keepSkin) {
+  // Shading role per merged vertex (shading.mjs reads it so skin, hair, cloth and metal in one
+  // merged mesh still shade differently).
+  const KIT_ROLE = { "dm-metal": "metal", "dm-gold": "gold", "dm-leather": "leather", "dm-cloth": "cloth", "dm-wood": "leather", "dm-hair": "hair", "dm-bone": "leather", "dm-skin": "skin", "dm-gem": "gem", "dm-stone": "leather" };
+  const shadeRole = (m) => m.userData.sbRole || KIT_ROLE[m.name] || (m.isMeshBasicMaterial ? "gem" : "default");
+  function prepGeo(src, color, keepSkin, role) {
     const g = new T.BufferGeometry();
     for (const n of ["position", "normal", "uv", ...(keepSkin ? ["skinIndex", "skinWeight"] : [])]) if (src.attributes[n]) g.setAttribute(n, plain(src.attributes[n]));
     if (src.index) g.setIndex(src.index);
@@ -720,6 +732,7 @@ const W3D = (() => {
     const n = out.attributes.position.count, col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { col[i * 3] = color.r; col[i * 3 + 1] = color.g; col[i * 3 + 2] = color.b; }
     out.setAttribute("color", new T.BufferAttribute(col, 3));
+    if (role) tagRole(out, role);
     return out;
   }
   function mergeKit(model, cacheKey) {
@@ -732,7 +745,7 @@ const W3D = (() => {
       const buckets = new Map();
       meshes.forEach((m, i) => {
         const f = finishOf(m.material);
-        const g = prepGeo(m.geometry, m.material.color, false), n = g.attributes.position.count;
+        const g = prepGeo(m.geometry, m.material.color, false, shadeRole(m.material)), n = g.attributes.position.count;
         const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4);
         for (let k = 0; k < n; k++) { si[k * 4] = i; sw[k * 4] = 1; }
         g.setAttribute("skinIndex", new T.Uint16BufferAttribute(si, 4));
@@ -796,7 +809,7 @@ const W3D = (() => {
       if (!g) {
         const toFirst = new T.Matrix4(), nm = new T.Matrix3();
         g = mergeBufferGeometries(grp.list.map((o, li) => {
-          const pg = prepGeo(o.geometry, o.material.color, true);
+          const pg = prepGeo(o.geometry, o.material.color, true, shadeRole(o.material));
           // invB_g · bindF · v' = invB_g · X · bind_o · v  →  v' = bindF⁻¹ · X · bind_o · v
           toFirst.copy(first.bindMatrix).invert().multiply(grp.xs[li]).multiply(o.bindMatrix);
           pg.applyMatrix4(toFirst);
@@ -1869,7 +1882,7 @@ float cN2(vec3 p){ return cNoise(p) * 0.75 + cNoise(p * 2.7 + 3.1) * 0.25; }`)
   function addUnit(u, i, n) {
     const ally = u.side === "A";
     const scale = u.titan ? 1.0 : u.boss ? 1.3 : 1;
-    const rigged = u.titan ? buildRigged("titan", "titan", false, u.el) : buildRigged(u.template.id, BASE[u.template.id] || "adventurer", !ally && !u.rival, undefined, unitGear(u));
+    const rigged = u.titan ? buildRigged("titan", "titan", false, u.el) : buildRigged(u.template.id, BASE[u.template.id] || "adventurer", !ally && !u.rival, u.el, unitGear(u));
     const built = rigged || (u.titan ? buildTitanPrimitive(u.el) : buildHero(u.template.id, !ally && !u.rival));
     const root = new T.Group();
     root.add(built.model);
