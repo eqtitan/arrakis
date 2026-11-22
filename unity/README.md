@@ -8,7 +8,7 @@ numbers, rendered in 3D. Unity builds the native Android and iOS apps from this 
 | Path | What it is |
 |---|---|
 | `Assets/Sigilbound/Core/` | Game rules in plain C# (no Unity code): heroes, skills, battles, progression, saves. Compiled and tested outside Unity by `Tests~/`. |
-| `Assets/Sigilbound/Client/` | Everything you see: 3D arena, characters, effects, battle HUD and menus. All of it is built in code at startup, so the project needs no hand-made scenes or prefabs. |
+| `Assets/Sigilbound/Client/` | Everything you see, plus the friends & chat client (`Online.cs`): 3D arena, characters, effects, battle HUD and menus. All of it is built in code at startup, so the project needs no hand-made scenes or prefabs. |
 | `Assets/Sigilbound/Editor/` | One-time project setup (scene, portrait mode, Android 64-bit) and a command-line build script. |
 | `Assets/Resources/Heroes/` | Drop real 3D hero models here to replace the placeholders (see the README inside). |
 | `Tests~/` | .NET console checks for the core (Unity ignores folders ending in `~`). |
@@ -41,7 +41,10 @@ numbers, rendered in 3D. Unity builds the native Android and iOS apps from this 
   - The full game loop: intro, home with daily login and quests, campaign, team prep, heroes (training, rank-up, gear), summon, Titan.
   - 3D turn-meter battles with manual targeting, auto, 1–3× speed and auto-replay.
 - **Placeholder art:** heroes are built from Unity's basic shapes in each hero's colours, with code-driven idle, attack, cast, hit and death animations.
-- **Not yet in the Unity version:** friends and chat (the server is ready, at `functions/api/sb`), save codes, and sound.
+- **Friends & chat:** a Friends tab using the same server as the web version, so web and app players can be friends.
+  It has profiles, friend codes, requests, friend profiles (their team stands in 3D), 1-on-1 chat with unread badges, and report, block, unblock and delete-profile.
+  It talks to `Online.ServerUrl`, which must be the site where `functions/api/sb` runs with its D1 database.
+- **Not yet in the Unity version:** save codes and sound.
 - **Separate saves:** progress is stored per device and doesn't carry over from the web version.
 
 Check the core without Unity: `dotnet run --project unity/Tests~` (needs the .NET 8 SDK).

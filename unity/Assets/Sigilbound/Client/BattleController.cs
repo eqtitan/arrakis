@@ -180,6 +180,7 @@ namespace Sigilbound.Client
             if (_b.Result == BattleResult.Victory)
             {
                 var res = G.CompleteStage(_stage); App.Save();
+                App.Online.PushProfile();
                 string ups = string.Join("\n", res.LevelUps.Select(l => $"{Hero(l.hero.id).ShortName} → Lv {l.hero.level}"));
                 string gear = res.Gear == null ? "" : $"\nFound: {GearRarityNames[res.Gear.rarity]} {res.Gear.Set} {res.Gear.Slot}";
                 bool canNext = _stage + 1 < TotalStages && G.S.cleared > _stage;

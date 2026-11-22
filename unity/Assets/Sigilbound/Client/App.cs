@@ -22,7 +22,7 @@ namespace Sigilbound.Client
         }
     }
 
-    public enum ScreenId { Intro, Home, Campaign, Prep, Heroes, Hero, Equip, Summon, Titan, Battle }
+    public enum ScreenId { Intro, Home, Campaign, Prep, Heroes, Hero, Equip, Summon, Titan, Battle, Friends, FriendProfile, Chat, Blocked }
 
     public sealed partial class App : MonoBehaviour
     {
@@ -53,6 +53,8 @@ namespace Sigilbound.Client
             Vfx.Create(Arena.Cam);
             Battle = gameObject.AddComponent<BattleController>();
             Battle.App = this;
+            Online = gameObject.AddComponent<Online>();
+            Online.App = this;
             Screen = G.S.started ? ScreenId.Home : ScreenId.Intro;
             Arena.Build(Math.Min(GameData.Chapters.Length - 1, G.S.cleared / GameData.StagesPerChapter), false);
         }
@@ -95,6 +97,8 @@ namespace Sigilbound.Client
                 case ScreenId.Hero: Go(ScreenId.Heroes); break;
                 case ScreenId.Equip: Go(ScreenId.Hero); break;
                 case ScreenId.Prep: Go(_prepBack); break;
+                case ScreenId.FriendProfile: case ScreenId.Blocked: Go(ScreenId.Friends); break;
+                case ScreenId.Chat: Go(ScreenId.FriendProfile); break;
                 case ScreenId.Home: case ScreenId.Intro: Application.Quit(); break;
                 default: Go(ScreenId.Home); break;
             }
@@ -111,6 +115,13 @@ namespace Sigilbound.Client
                     var h = G.HeroByUid(_heroUid);
                     want = h == null ? new List<(HeroDef, Element)>() : new List<(HeroDef, Element)> { (GameData.Hero(h.id), GameData.Hero(h.id).Element) };
                     scale = 1.5f; single = true; break;
+                case ScreenId.FriendProfile:
+                    var fr = Online.Friend(_friendId);
+                    want = fr?.profile?.heroes == null ? new List<(HeroDef, Element)>()
+                        : fr.profile.heroes.Where(x => GameData.Hero(x.id) != null).Take(4).Select(x => (GameData.Hero(x.id), GameData.Hero(x.id).Element)).ToList();
+                    break;
+                case ScreenId.Chat: case ScreenId.Blocked:
+                    want = new List<(HeroDef, Element)>(); break;
                 case ScreenId.Intro:
                     want = GameData.Starters.Select(id => (GameData.Hero(id), GameData.Hero(id).Element)).ToList(); break;
                 default:
@@ -158,6 +169,10 @@ namespace Sigilbound.Client
                 case ScreenId.Equip: DrawEquip(content); break;
                 case ScreenId.Summon: DrawSummon(content); break;
                 case ScreenId.Titan: DrawTitan(content); break;
+                case ScreenId.Friends: DrawFriends(content); break;
+                case ScreenId.FriendProfile: DrawFriendProfile(content); break;
+                case ScreenId.Chat: DrawChat(content); break;
+                case ScreenId.Blocked: DrawBlocked(content); break;
             }
             DrawNav(new Rect(0, bottom - 64, Ui.W, 64 + (Ui.H - bottom)));
             DrawModalAndToasts();
@@ -184,20 +199,22 @@ namespace Sigilbound.Client
         {
             GUI.DrawTexture(r, Ui.Solid(new Color(0.08f, 0.07f, 0.11f, 0.96f)));
             GUI.DrawTexture(new Rect(r.x, r.y, r.width, 1), Ui.Solid(Palette.Line));
-            var items = new (ScreenId id, string label)[] { (ScreenId.Home, "Home"), (ScreenId.Campaign, "Campaign"), (ScreenId.Heroes, "Heroes"), (ScreenId.Summon, "Summon"), (ScreenId.Titan, "Titan") };
+            var items = new (ScreenId id, string label)[] { (ScreenId.Home, "Home"), (ScreenId.Campaign, "Campaign"), (ScreenId.Heroes, "Heroes"), (ScreenId.Summon, "Summon"), (ScreenId.Titan, "Titan"), (ScreenId.Friends, "Friends") };
             float w = Ui.W / items.Length;
             for (int i = 0; i < items.Length; i++)
             {
                 var it = items[i];
-                bool on = Screen == it.id || (it.id == ScreenId.Heroes && (Screen == ScreenId.Hero || Screen == ScreenId.Equip));
+                bool on = Screen == it.id || (it.id == ScreenId.Heroes && (Screen == ScreenId.Hero || Screen == ScreenId.Equip))
+                    || (it.id == ScreenId.Friends && (Screen == ScreenId.FriendProfile || Screen == ScreenId.Chat || Screen == ScreenId.Blocked));
                 var cell = new Rect(i * w, r.y, w, 64);
-                if (Ui.Button(cell, "", Ui.Kind.Ghost)) Go(it.id);
+                if (Ui.Button(cell, "", Ui.Kind.Ghost)) { if (it.id == ScreenId.Friends) OpenFriends(); else Go(it.id); }
                 if (on) GUI.DrawTexture(new Rect(cell.x + w / 2 - 14, r.y + 6, 28, 4), Ui.RoundTex(Palette.Gold, null, 2));
-                Ui.Text(new Rect(cell.x, r.y + 12, w, 40), it.label, 13, on ? Palette.Gold : Palette.Dim, FontStyle.Bold, TextAnchor.MiddleCenter);
-                int badge = it.id == ScreenId.Home ? HomeBadge() : it.id == ScreenId.Titan ? G.S.daily.titanTries : 0;
+                Ui.Text(new Rect(cell.x, r.y + 12, w, 40), it.label, 12, on ? Palette.Gold : Palette.Dim, FontStyle.Bold, TextAnchor.MiddleCenter);
+                int badge = it.id == ScreenId.Home ? HomeBadge() : it.id == ScreenId.Titan ? G.S.daily.titanTries
+                    : it.id == ScreenId.Friends && Online.SignedIn ? Online.Unread.messages + Online.Unread.requests : 0;
                 if (badge > 0)
                 {
-                    var b = new Rect(cell.x + w / 2 + 18, r.y + 8, 18, 18);
+                    var b = new Rect(cell.x + w / 2 + 14, r.y + 8, 18, 18);
                     GUI.DrawTexture(b, Ui.RoundTex(it.id == ScreenId.Titan ? Palette.Blue : Palette.Bad, null, 9));
                     Ui.Text(b, badge.ToString(), 11, Color.white, FontStyle.Bold, TextAnchor.MiddleCenter);
                 }
