@@ -27,7 +27,7 @@ _Last updated: 2026-11-22._
 
 ## Next up (priority order)
 
-1. **Hero card art.** Generate the 24 portraits with the prompts in `ART_DIRECTION.md`, then wire them into `ART_FILES`. *Owner: you (images) + art-director.*
+1. **Hero card art.** ~~Cards~~ now show faces photographed from the 3D models (0.12.0), and the detail page shows the live 3D hero (0.13.0). Painted illustrations are optional: if the owner sends images, they go in `ART_FILES` and replace the 3D faces. *Owner: you (images, optional) + art-director.*
 2. **3D hero polish (follow-ups from the 0.10.0 art pass).**
    - ~~**Color pipeline**~~ fixed in 0.11.0.
    - ~~**Light heroes**~~ given distinct palettes in 0.11.1.
@@ -39,7 +39,7 @@ _Last updated: 2026-11-22._
 
    *Owner: art-director.*
 3. **Friends & chat live.** Unblocked by blockers 1 and 2. *Owner: engineering.*
-4. **Sound & music.** CC0 battle music and hit sounds; the asset library used for models also has audio. *Owner: art-director (selection) + engineering.*
+4. ~~**Sound & music.**~~ Shipped in 0.9.0, with volume sliders in 0.10.0. The in-app update banner works without a restart as of 0.13.1.
 5. **Play Store release build.** A release signing key in GitHub secrets, an AAB build, and the store listing. *Owner: pmo (checklist) + engineering.*
 6. **TestFlight.** Once there's an Apple account: signing secrets and an upload step in the workflow. *Owner: engineering.*
 
