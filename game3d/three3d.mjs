@@ -159,6 +159,14 @@ const W3D = (() => {
     geo.dome = new T.SphereGeometry(0.5, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2);
     // Kit parts: boxes with rounded edges (unit size; non-uniform scale keeps them chamfered).
     geo.bbox = bevelBox(1, 1, 1, 0.14, 2);
+    // Sculpted lathe shapes (unit size, +Y up, base at y = 0):
+    // helm: a domed skull with a flared, rolled rim; shell: a pauldron with a ridge and a turned
+    // edge; boss: a raised shield boss; gem: a faceted cut stone.
+    const lathe = (pts, seg = 32) => { const g = new T.LatheGeometry(pts.map(([x, y]) => new T.Vector2(x, y)), seg); g.computeVertexNormals(); return g; };
+    geo.helm = lathe([[0.53, -0.04], [0.55, 0.0], [0.52, 0.04], [0.5, 0.12], [0.48, 0.3], [0.42, 0.5], [0.33, 0.66], [0.2, 0.79], [0.07, 0.86], [0, 0.875]]);
+    geo.shell = lathe([[0.54, -0.02], [0.53, 0.03], [0.5, 0.06], [0.47, 0.18], [0.4, 0.36], [0.3, 0.5], [0.18, 0.58], [0.1, 0.63], [0, 0.64]], 28);
+    geo.boss = lathe([[0.5, 0], [0.5, 0.1], [0.42, 0.18], [0.36, 0.42], [0.22, 0.62], [0.08, 0.72], [0, 0.74]], 28);
+    geo.gem = new T.OctahedronGeometry(0.5, 1);
     geo.breast = roundedPlate(0.3, 0.27, 0.03, 0.07, { curve: 0.17, curveY: 0.45, cornerSeg: 4, seg: 6 });
     return geo;
   }
@@ -1162,7 +1170,7 @@ const W3D = (() => {
       const trim = gtrim(w.r), gem = Gl(SET_GLOW[w.s] || L.accent);
       P(g, "ring", [0, 0.06, 0], [0.075, 0.075, 0.3], trim, [90, 0, 0]);
       if (w.r >= 2) P(g, "ring", [0, -0.02, 0], [0.07, 0.07, 0.3], trim, [90, 0, 0]);
-      if (w.r >= 3) P(g, "octa", [0, -0.14, 0], [0.06, 0.08, 0.06], gem);
+      if (w.r >= 3) P(g, "gem", [0, -0.14, 0], [0.065, 0.085, 0.065], gem);
       if (w.r >= 4) for (const s of [-1, 1]) P(g, "cone", [s * 0.06, 0.12, 0], [0.03, 0.09, 0.03], trim, [0, 0, s * -60]);
       if (w.r >= 5) {
         P(g, "octa", [0, 0.13, 0], [0.07, 0.09, 0.07], gem);
@@ -1238,7 +1246,7 @@ const W3D = (() => {
           const r = K.big ? 0.62 : 0.56;
           P(g, "disc", [0, 0, 0], [r, 0.035, r], face, [90, 0, 0]);
           P(g, "ring", [0, 0, 0], [r, r, 0.6], K.big ? Gl(L.accent) : rim);
-          P(g, "sphere", [0, 0, 0.02], [0.12, 0.12, 0.08], rim);
+          P(g, "boss", [0, 0, 0.012], [0.16, 0.16, 0.12], rim, [90, 0, 0]);
           if (K.studs) for (let i = 0; i < 6; i++) { const a = i * 60 * D2R; P(g, "sphere", [Math.cos(a) * r * 0.36, Math.sin(a) * r * 0.36, 0.02], [0.045, 0.045, 0.03], M(L.accent)); }
           if (K.big) for (let i = 0; i < 8; i++) { const a = i * 45 * D2R; P(g, "box", [Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3, 0.02], [0.03, r * 0.5, 0.012], rim, [0, 0, i * 45 + 90]); }
         }
@@ -1253,8 +1261,9 @@ const W3D = (() => {
       const top = H.top, r = H.r;
       const helm = (g, metal, open) => {
         // A rounded helm that covers the crown and sides, with a nasal bar; `open` has cheek guards instead.
-        P(g, "dome", [0, top - 0.12, -0.01], [r * 2.25, r * 1.55, r * 2.35], metal);
-        P(g, "rod", [0, top - 0.12, -0.01], [r * 2.3, 0.035, r * 2.4], metal);
+        P(g, "helm", [0, top - 0.12, -0.01], [r * 2.2, r * 1.75, r * 2.3], metal);
+        P(g, "ring", [0, top - 0.105, -0.01], [r * 2.28, r * 2.4, 0.4], metal, [90, 0, 0]);
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; P(g, "sphere", [Math.sin(a) * r * 1.13, top - 0.1, -0.01 + Math.cos(a) * r * 1.18], [0.016, 0.016, 0.016], metal); }
         P(g, "box", [0, top - 0.17, H.face + 0.012], [0.03, 0.1, 0.02], metal);
         if (open) for (const s of [-1, 1]) P(g, "box", [s * r * 0.98, top - 0.21, 0.04], [0.03, 0.12, 0.1], metal);
       };
@@ -1500,16 +1509,16 @@ const W3D = (() => {
         if (pStyle === "leather") {
           P(pg, "sphere", [side * 0.02, 0.0, 0], [0.2, 0.12, 0.2], M("#5a4232"), [0, 0, tiltZ]);
         } else if (pStyle === "shell") {
-          P(pg, "dome", [side * 0.02, -0.01, 0], [0.24, 0.16, 0.22], base0, [0, 0, tiltZ]);
+          P(pg, "shell", [side * 0.02, -0.03, 0], [0.24, 0.26, 0.22], base0, [0, 0, tiltZ]);
           for (let i = -1; i <= 1; i++) P(pg, "box", [side * 0.06, 0.03, i * 0.05], [0.02, 0.1, 0.02], trim, [i * 20, 0, tiltZ]);
         } else if (pStyle === "ice") {
-          P(pg, "dome", [side * 0.01, -0.01, 0], [0.2, 0.12, 0.2], base0, [0, 0, tiltZ]);
+          P(pg, "shell", [side * 0.01, -0.03, 0], [0.2, 0.2, 0.2], base0, [0, 0, tiltZ]);
           for (let i = -1; i <= 1; i++) P(pg, "octa", [side * (0.06 + Math.abs(i) * 0.01), 0.07 - Math.abs(i) * 0.02, i * 0.05], [0.04, 0.16 - Math.abs(i) * 0.04, 0.04], C.accG, [i * 15, 0, side * -25]);
         } else if (pStyle === "spike") {
-          P(pg, "dome", [side * 0.02, -0.01, 0], [0.24, 0.17, 0.24], base0, [0, 0, tiltZ]);
+          P(pg, "shell", [side * 0.02, -0.03, 0], [0.24, 0.27, 0.24], base0, [0, 0, tiltZ]);
           for (let i = -1; i <= 1; i++) P(pg, "cone", [side * 0.08, 0.06, i * 0.06], [0.04, 0.14, 0.04], trim, [i * 15, 0, side * -45]);
         } else { // plate
-          P(pg, "dome", [side * 0.02, -0.01, 0], [0.26, 0.17, 0.25], base0, [0, 0, tiltZ]);
+          P(pg, "shell", [side * 0.02, -0.03, 0], [0.26, 0.27, 0.25], base0, [0, 0, tiltZ]);
           P(pg, "ring", [side * 0.0, -0.035, 0], [0.13, 0.13, 0.4], trim, [90, 0, tiltZ]);
           // Lames: two narrower plates stepping down the upper arm, with rivets on the cap.
           for (let i = 1; i <= 2; i++) P(pg, "dome", [side * (0.03 + i * 0.012), -0.035 - i * 0.03, 0], [0.24 - i * 0.025, 0.1, 0.23 - i * 0.025], base0, [0, 0, tiltZ - side * 8 * i]);
