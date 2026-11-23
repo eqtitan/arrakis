@@ -106,3 +106,8 @@ functions/api/            Cloudflare Pages Functions (serve the JSON data)
 tools/
   rslhelper-export.mjs     reads RSL Helper's local SQLite DB, outputs roster.json
 ```
+
+## Sigilbound
+
+The Sigilbound game that used to live here has moved to its own repository:
+[eqtitan/SigilBound](https://github.com/eqtitan/SigilBound).
