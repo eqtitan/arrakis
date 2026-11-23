@@ -5,8 +5,8 @@
 // Does nothing on the website or in local "dev" copies.
 
 const UPDATE = {
-  releaseApi: "https://api.github.com/repos/eqtitan/arrakis/releases/tags/android-latest",
-  apkUrl: "https://github.com/eqtitan/arrakis/releases/download/android-latest/Sigilbound.apk",
+  releaseApi: "https://api.github.com/repos/eqtitan/SigilBound/releases/tags/android-latest",
+  apkUrl: "https://github.com/eqtitan/SigilBound/releases/download/android-latest/Sigilbound.apk",
   latest: null,      // { version, build } when a newer build exists
   lastCheck: 0,
   announced: 0,      // build number we've already popped a notice for

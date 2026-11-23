@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.21.1 (2026-11-23)
+- Sigilbound now lives in its own repository (eqtitan/SigilBound); updates come from there
+
+
 ## 0.21.0 (2026-11-23)
 - Skill upgrades with Skill Tomes (+8% power per level, mastery cuts the cooldown); tomes from Hard bosses, dungeon floors 5/10, achievements and weekly Arena rewards. Team presets (3 slots), Best team and Auto-equip whole team on the team screen. Gear lock (locked gear can't be sold).
 
