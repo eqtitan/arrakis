@@ -239,6 +239,8 @@ namespace Sigilbound.Client
                 bool packOff = kit.ContainsKey("cape") || (kit.TryGetValue("pack", out var pk) && pk is bool pb && !pb) || kit.ContainsKey("back");
                 if (packOff && bones.TryGetValue("Backpack", out var pack)) pack.gameObject.SetActive(false);
             }
+            // Rest positions for the character shader's detail textures (before anything moves).
+            foreach (var smr0 in holder.GetComponentsInChildren<SkinnedMeshRenderer>(true)) CharacterLook.WriteRestPositions(smr0, holder);
             Recolour(holder, baseModel, look, body, hollow, unit.El);
 
             // Height: head at 1.85 m (3.6 for the Titan) times the hero's build (three3d.mjs).
@@ -250,13 +252,16 @@ namespace Sigilbound.Client
                 if (r is SkinnedMeshRenderer smr) smr.updateWhenOffscreen = true;
             }
 
+            // Fresnel rim in the element colour (red for Hollow enemies), as applyCharacterLook.
+            var rim = hollow ? Palette.Hex("#ff3355") : Palette.Element(unit.El);
             if (!titan)
             {
                 float hipY = bones.TryGetValue("Hips", out var hips) ? holder.InverseTransformPoint(hips.position).y : 0.9f;
                 var sockets = KitBuilder.Build(id, hollow, gear, hipY);
-                KitAssembler.Attach(holder, bones, sockets, $"{id}|{(hollow ? 1 : 0)}|{baseModel}|{gear?.Key ?? "-"}|{string.Join(",", parts.Select(p => p.Key + p.Value))}");
+                KitAssembler.Attach(holder, bones, sockets, $"{id}|{(hollow ? 1 : 0)}|{baseModel}|{gear?.Key ?? "-"}|{string.Join(",", parts.Select(p => p.Key + p.Value))}", rim);
                 BodyShaper.ShapeBody(holder, bones, body);
             }
+            else KitAssembler.Attach(holder, bones, KitBuilder.BuildTitan(unit.El), $"titan|{unit.El}", Color.black); // stone horns, brow, tusks, shards
 
             var anim = holder.GetComponentInChildren<Animation>();
             if (anim != null && !titan)
@@ -296,7 +301,15 @@ namespace Sigilbound.Client
                     if (role == "eye" && (hollow || (look != null && look.Glow != null))) { var c = Palette.Hex(colors["eye"]); mats[i] = Materials.Glow(c, c, 3f); continue; }
                     Color col = role != null && colors.TryGetValue(role, out var hex) ? Palette.Hex(hex) : hollow ? Color.Lerp(Materials.BaseColor(m), Palette.Hex("#2e1f33"), 0.5f) : Materials.BaseColor(m);
                     bool shiny = (role == "armor" && srcBase == "monarch") || role == "trim" || role == "blade" || role == "crown";
-                    mats[i] = look == null ? Materials.Lit(col, 0f, 0.05f) : Materials.Lit(col, shiny ? 0.3f : 0f, shiny ? 0.5f : 0.2f);
+                    if (look == null)
+                    {
+                        // Titan: dark basalt with glowing seams in the day's element (crackMaterial on Yeti_Main/Secondary).
+                        bool seams = role == "stone" || role == "stoneDark";
+                        mats[i] = CharacterLook.ShaderAvailable ? CharacterLook.For(col, seams ? "stone" : "default", Color.black, seams, elColor) : Materials.Lit(col, 0f, 0.05f);
+                    }
+                    else if (CharacterLook.ShaderAvailable)
+                        mats[i] = CharacterLook.For(col, CharacterLook.RoleFromGame(role, srcBase, StripName(m.name)), hollow ? Palette.Hex("#ff3355") : elColor);
+                    else mats[i] = Materials.Lit(col, shiny ? 0.3f : 0f, shiny ? 0.5f : 0.2f);
                 }
                 r.sharedMaterials = mats;
             }

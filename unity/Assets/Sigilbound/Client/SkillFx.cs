@@ -55,7 +55,14 @@ namespace Sigilbound.Client
             return f;
         }
 
-        public void SetTier(int tier) => _mult = new[] { 0.35f, 0.6f, 1f, 1.2f }[Mathf.Clamp(tier, 0, 3)];
+        // Per tier: particle count scale and particle pool sizes (additive sparks / alpha smoke).
+        public void SetTier(int tier)
+        {
+            tier = Mathf.Clamp(tier, 0, 3);
+            _mult = new[] { 0.35f, 0.6f, 1f, 1.2f }[tier];
+            if (_over != null) { var m = _over.main; m.maxParticles = new[] { 500, 900, 1500, 2000 }[tier]; }
+            if (_under != null) { var m = _under.main; m.maxParticles = new[] { 150, 300, 500, 700 }[tier]; }
+        }
 
         void Init()
         {

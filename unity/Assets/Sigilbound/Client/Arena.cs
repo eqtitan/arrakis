@@ -1,5 +1,6 @@
 // The 3D battlefield: camera, lights, sky backdrop, ground, the rune circle and chapter scenery.
 // Battle positions and camera framing come from Core.BattleLayout (ported from three3d.mjs).
+using System.Collections.Generic;
 using UnityEngine;
 using Sigilbound.Core;
 
@@ -57,6 +58,13 @@ namespace Sigilbound.Client
 
         void LateUpdate()
         {
+            // Light shafts: Ultra only, slowly breathing.
+            if (_shafts != null)
+            {
+                bool on = Quality.I != null && Quality.I.Tier == 3;
+                if (_shafts.activeSelf != on) _shafts.SetActive(on);
+                if (on) for (int i = 0; i < _shaftMats.Count; i++) { var c = _shaftMats[i].color; c.a = 0.07f + 0.035f * Mathf.Sin(Time.time * (0.4f + i * 0.13f) + i * 1.7f); _shaftMats[i].color = c; }
+            }
             // Re-fit when the screen changes shape (rotation, split screen, foldables).
             if (_framedBattle && Mathf.Abs(Cam.aspect - _framedAspect) > 0.01f) FrameBattle(_camKey, _framedTitan);
         }
@@ -99,6 +107,62 @@ namespace Sigilbound.Client
             // Ground, water or lava, scatter, horizon silhouettes and motes (scenery.mjs themes).
             float density = Quality.I == null ? 1f : new[] { 0.4f, 0.7f, 1f, 1.3f }[Quality.I.Tier];
             Scenery.Build(_scenery.transform, chapter, titan, density, bottom);
+            StaticBatch(_scenery);
+            Shafts(titan ? Palette.Hex("#ff9a5a") : Color.Lerp(bottom, new Color(1f, 0.95f, 0.8f), 0.7f));
+        }
+
+        // Ultra: a few soft light shafts slanting down from the sun's side onto the arena
+        // (alpha-blended gradient quads; no extra passes). Toggled with the tier in LateUpdate.
+        GameObject _shafts; readonly List<Material> _shaftMats = new List<Material>();
+        static Texture2D _shaftTex;
+        void Shafts(Color tint)
+        {
+            _shaftMats.Clear();
+            _shafts = new GameObject("LightShafts");
+            _shafts.transform.SetParent(_scenery.transform, false);
+            if (_shaftTex == null)
+            {
+                _shaftTex = new Texture2D(32, 64, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "Shaft" };
+                for (int y = 0; y < 64; y++) for (int x = 0; x < 32; x++)
+                {
+                    float u = x / 31f * 2 - 1, v = y / 63f; // v = 0 on the ground, 1 towards the sun
+                    float a = Mathf.Pow(1 - Mathf.Abs(u), 2.2f) * Mathf.SmoothStep(0, 1, Mathf.Clamp01(v / 0.6f)) * Mathf.SmoothStep(0, 1, Mathf.Clamp01((1 - v) / 0.2f));
+                    _shaftTex.SetPixel(x, y, new Color(1, 1, 1, a));
+                }
+                _shaftTex.Apply();
+            }
+            var sunDir = Sun != null ? Sun.transform.forward : new Vector3(0.4f, -0.7f, 0.5f).normalized;
+            var rng = new System.Random(7);
+            for (int i = 0; i < 4; i++)
+            {
+                var q = GameObject.CreatePrimitive(PrimitiveType.Quad); Destroy(q.GetComponent<Collider>());
+                q.name = "Shaft"; q.transform.SetParent(_shafts.transform, false);
+                float x = -4.5f + i * 3f + (float)rng.NextDouble(), z = 2.5f + (float)rng.NextDouble() * 4f, len = 14f;
+                // Lay the quad along the light direction, centred above its landing spot, turned to the camera.
+                var foot = new Vector3(x, 0, z);
+                q.transform.position = foot - sunDir * (len * 0.5f);
+                var toCam = Cam.transform.position - q.transform.position; toCam -= Vector3.Dot(toCam, sunDir) * sunDir;
+                q.transform.rotation = Quaternion.LookRotation(-toCam.normalized, -sunDir);
+                q.transform.localScale = new Vector3(1.4f + (float)rng.NextDouble() * 1.4f, len, 1);
+                var m = Materials.Unlit(new Color(tint.r, tint.g, tint.b, 0.08f)); m.mainTexture = _shaftTex;
+                _shaftMats.Add(m);
+                var r = q.GetComponent<Renderer>(); r.sharedMaterial = m; r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; r.receiveShadows = false;
+            }
+            _shafts.SetActive(Quality.I != null && Quality.I.Tier == 3);
+        }
+
+        // Static batching: everything in the arena that never moves (ground, circle, scatter,
+        // silhouettes) is combined per material; animated water/lava and particles are left out.
+        static void StaticBatch(GameObject root)
+        {
+            var still = new List<GameObject>();
+            foreach (var mr in root.GetComponentsInChildren<MeshRenderer>())
+            {
+                var mf = mr.GetComponent<MeshFilter>();
+                if (mf == null || mf.sharedMesh == null || !mf.sharedMesh.isReadable || mr.GetComponent<SceneryWave>() != null) continue;
+                still.Add(mr.gameObject);
+            }
+            if (still.Count > 1) StaticBatchingUtility.Combine(still.ToArray(), root);
         }
 
         // A glowing ellipse on the ground at `k` times the rim size.

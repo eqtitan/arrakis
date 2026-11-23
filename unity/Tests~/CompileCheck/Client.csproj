@@ -19,11 +19,19 @@
     <DefineConstants>$(DefineConstants);UNITY_ANDROID;SB_URP;SB_GLTFAST;SB_COMPILE_CHECK</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" PrivateAssets="all" Condition="'$(UnityManaged)' == ''" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="../../Assets/Sigilbound/Core/**/*.cs" />
     <Compile Include="../../Assets/Sigilbound/Client/**/*.cs" />
     <Compile Include="Stubs/Packages/**/*.cs" />
+  </ItemGroup>
+  <!-- With -p:UnityManaged=<dir> (Unity's Editor/Data/Managed, see unity/Tools~/unity-refs), compile
+       against the real Unity 6 assemblies instead of the 2021.3 nuget modules and editor stubs. -->
+  <PropertyGroup Condition="'$(UnityManaged)' != ''">
+    <DefineConstants>$(DefineConstants);SB_REAL_UNITY_REFS</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(UnityManaged)' != ''">
+    <Reference Include="$(UnityManaged)/UnityEngine/UnityEngine*.dll" Private="false" />
   </ItemGroup>
 </Project>

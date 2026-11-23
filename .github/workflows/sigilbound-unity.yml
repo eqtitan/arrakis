@@ -3,8 +3,9 @@ name: Sigilbound Unity
 # The native Unity version (unity/), built in parallel with the web/Capacitor app.
 #
 # - checks: on every push touching unity/**, runs the game-core tests (including parity with the
-#   web game's own code) and compiles the Unity client and editor scripts against Unity
-#   reference assemblies. No Unity license needed.
+#   web game's own code), compiles the Unity client and editor scripts against Unity reference
+#   assemblies (2021.3 nuget + stubs, then the real Unity 6 ones from the game-ci image) and
+#   compiles the HLSL shaders with DXC. No Unity license needed.
 # - android: builds an APK with game-ci and publishes it to the "unity-latest" pre-release
 #   (separate from android-latest; app id com.sigilbound.unity, so both apps install side by
 #   side). Runs only when Unity license secrets exist; otherwise it is skipped with a note.
@@ -45,6 +46,27 @@ jobs:
         run: dotnet run --project unity/Tests~
       - name: Compile check (Client + Editor scripts against Unity reference assemblies)
         run: dotnet build unity/Tests~/CompileCheck/Editor.csproj
+      - name: Fetch the real Unity 6 assemblies (from the game-ci editor image; no Docker, no license)
+        id: unityrefs
+        # Streams the editor layer from Docker Hub and keeps only Editor/Data/Managed/*.dll. If Docker
+        # Hub rate-limits us, the step is skipped with a warning; the stub-based check above still ran.
+        continue-on-error: true
+        run: python3 unity/Tools~/unity-refs/fetch_unity_refs.py "$RUNNER_TEMP/unity-managed"
+      - name: Compile check against the real Unity 6000.0.58f1 assemblies (URP and glTFast still stubbed)
+        if: steps.unityrefs.outcome == 'success'
+        run: dotnet build unity/Tests~/CompileCheck/Editor.csproj -p:UnityManaged="$RUNNER_TEMP/unity-managed" -o "$RUNNER_TEMP/refs-out"
+      - name: Shader check (HLSL passes compiled with DXC against URP 17's ShaderLibrary)
+        # No Unity needed: unity/Tools~/shadercheck expands the multi_compile variants of each pass.
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/dxc.tgz" https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.8.2407/linux_dxc_2024_07_31.x86_64.tar.gz
+          echo "b58725ac191df0686994fb9d54d27ee8dd3f180b023d562733112a499ea1195c  $RUNNER_TEMP/dxc.tgz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/dxc" && tar -xzf "$RUNNER_TEMP/dxc.tgz" -C "$RUNNER_TEMP/dxc"
+          git clone -q --depth 1 --filter=blob:none --sparse -b 6000.0/staging https://github.com/Unity-Technologies/Graphics.git "$RUNNER_TEMP/graphics"
+          git -C "$RUNNER_TEMP/graphics" sparse-checkout set Packages/com.unity.render-pipelines.core/ShaderLibrary Packages/com.unity.render-pipelines.core/Runtime Packages/com.unity.render-pipelines.universal/ShaderLibrary Packages/com.unity.render-pipelines.universal/Runtime Packages/com.unity.render-pipelines.universal-config
+          for s in unity/Assets/Sigilbound/Client/Shaders/*.shader; do
+            python3 unity/Tools~/shadercheck/shadercheck.py "$s" "$RUNNER_TEMP/graphics" "$RUNNER_TEMP/dxc/bin/dxc"
+            python3 unity/Tools~/shadercheck/shadercheck.py "$s" "$RUNNER_TEMP/graphics" "$RUNNER_TEMP/dxc/bin/dxc" SHADER_API_MOBILE > /dev/null
+          done
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22

@@ -52,6 +52,8 @@ namespace Sigilbound.Client
             // Frame-rate cap (60, or 30 to run cooler) and graphics tier mapped to URP settings.
             Quality.Create(gameObject, G.S.settings.quality, G.S.settings.fpsCap).Sun = Arena.Sun;
             Quality.I.Apply();
+            Quality.Notice = Toast; // thermal fallback messages
+            PerfOverlay.Sync();     // debug FPS / draw-call overlay, if turned on in Settings
             Vfx.Create(Arena.Cam);
             SkillFx.Create(Arena.Cam).SetTier(Quality.I.Tier); // vfx.mjs-style skill effects
             PostFx.Init(Arena.Cam); PostFx.SetTier(Quality.I.Tier);
@@ -115,6 +117,7 @@ namespace Sigilbound.Client
             Scroller.Tick();
             if (Input.GetKeyDown(KeyCode.Escape)) Back(); // Android back button
             if (Screen != ScreenId.Battle) UpdateLineup();
+            if (Screen == ScreenId.Hero && !ModalOpen) UpdateHeroViewer();
             CheckTips();
         }
 
@@ -157,12 +160,14 @@ namespace Sigilbound.Client
         void UpdateLineup()
         {
             List<(HeroDef def, Element el)> want;
+            List<GearLook> gear = null; // equipped gear on our own heroes (helm, chest, boots, weapon)
             float scale = 1f; bool single = false;
             switch (Screen)
             {
                 case ScreenId.Hero: case ScreenId.Equip:
                     var h = G.HeroByUid(_heroUid);
                     want = h == null ? new List<(HeroDef, Element)>() : new List<(HeroDef, Element)> { (GameData.Hero(h.id), GameData.Hero(h.id).Element) };
+                    gear = new List<GearLook> { G.GearLookOf(h) };
                     scale = 1.5f; single = true; break;
                 case ScreenId.FriendProfile:
                     var fr = Online.Friend(_friendId);
@@ -174,9 +179,11 @@ namespace Sigilbound.Client
                 case ScreenId.Intro:
                     want = GameData.Starters.Select(id => (GameData.Hero(id), GameData.Hero(id).Element)).ToList(); break;
                 default:
-                    want = G.Team.Select(x => (GameData.Hero(x.id), GameData.Hero(x.id).Element)).ToList(); break;
+                    want = G.Team.Select(x => (GameData.Hero(x.id), GameData.Hero(x.id).Element)).ToList();
+                    gear = G.Team.Select(x => G.GearLookOf(x)).ToList(); break;
             }
-            string key = string.Join(",", want.Select(w => w.def.Id)) + (single ? "!" : "");
+            GearLook GearAt(int i) => gear != null && i < gear.Count ? gear[i] : null;
+            string key = string.Join(",", want.Select((w, i) => w.def.Id + ":" + (GearAt(i)?.Key ?? "-"))) + (single ? "!" : "");
             if (key == _lineupKey) return;
             _lineupKey = key;
             ClearLineup();
@@ -185,12 +192,39 @@ namespace Sigilbound.Client
                 var u = new Unit { Template = want[i].def, Name = want[i].def.Name, El = want[i].el, Ally = true, Key = "L" + i };
                 var pos = single ? new Vector3(0, 0, 0.4f) : new Vector3(-2.1f + i * (4.2f / Math.Max(1, want.Count - 1)) * (want.Count > 1 ? 1 : 0), 0, 0.6f + (i % 2) * 0.5f);
                 if (want.Count == 1 && !single) pos = new Vector3(0, 0, 0.6f);
-                var v = CharacterView.Create(u, pos, false, scale);
                 var toCam = Arena.Cam.transform.position - pos; toCam.y = 0;
-                v.transform.rotation = Quaternion.LookRotation(toCam, Vector3.up);
+                var v = CharacterView.Create(u, pos, Quaternion.LookRotation(toCam, Vector3.up).eulerAngles.y, scale, GearAt(i));
                 _lineup.Add(v);
             }
         }
+        // Hero screen viewer: drag sideways on the hero to spin them, tap to see an attack.
+        Vector2 _viewDown; bool _viewTouch, _viewSpin; float _viewDownT;
+        void UpdateHeroViewer()
+        {
+            if (_lineup.Count != 1 || !_lineup[0]) return;
+            var v = _lineup[0];
+            if (Input.GetMouseButtonDown(0))
+            {
+                // Only touches on the hero (screen box around the model) count.
+                var c = Arena.Cam.WorldToScreenPoint(v.Center);
+                Vector2 p = Input.mousePosition;
+                _viewTouch = c.z > 0 && Mathf.Abs(p.x - c.x) < 110 * Ui.Scale && Mathf.Abs(p.y - c.y) < 150 * Ui.Scale;
+                _viewSpin = false; _viewDown = p; _viewDownT = Time.unscaledTime;
+            }
+            if (!_viewTouch) return;
+            if (Input.GetMouseButton(0))
+            {
+                Vector2 p = Input.mousePosition; float dx = p.x - _viewDown.x;
+                if (!_viewSpin && Mathf.Abs(dx) > 12 * Ui.Scale / 2 && Mathf.Abs(dx) > Mathf.Abs(p.y - _viewDown.y)) _viewSpin = true;
+                if (_viewSpin) { v.transform.Rotate(0, -(p.x - _viewDown.x) / Ui.Scale * 0.6f, 0, Space.World); _viewDown = p; }
+            }
+            if (Input.GetMouseButtonUp(0))
+            {
+                if (!_viewSpin && !Scroller.WasDragging && Time.unscaledTime - _viewDownT < 0.4f) v.Showcase();
+                _viewTouch = false;
+            }
+        }
+
         public void ClearLineup()
         {
             foreach (var v in _lineup) if (v) Destroy(v.gameObject);

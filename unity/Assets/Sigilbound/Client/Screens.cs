@@ -239,7 +239,8 @@ namespace Sigilbound.Client
             y += 44;
             Ui.Text(new Rect(Pad, y, Ui.W - 32, 28), t.Name, 20, Palette.Text, FontStyle.Bold); y += 26;
             Ui.Text(new Rect(Pad, y, Ui.W - 32, 20), $"{Ui.ColorTag(Ui.Stars(h.stars), Palette.Gold)}{Ui.ColorTag(new string('☆', MaxStars - h.stars), Palette.Dim)}   {Tag(t)}   Power {Ui.ColorTag(Ui.Fmt(st.Power), Palette.Gold)}", 13, Palette.Text);
-            y += 230; // the hero stands here in 3D
+            y += 230; // the hero stands here in 3D (App.UpdateHeroViewer: drag to spin, tap to attack)
+            Ui.Text(new Rect(Pad, y - 20, Ui.W - 32, 16), "Drag to spin · tap to attack", 11, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter);
 
             var r = Row(ref y, atCap ? 110 : 96);
             Ui.Card(r);

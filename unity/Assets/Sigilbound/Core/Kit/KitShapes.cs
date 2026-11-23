@@ -66,6 +66,7 @@ namespace Sigilbound.Core
                 "hook" => Torus(0.5, 0.18, 6, 12, PI * 1.25),
                 "crook" => Torus(0.5, 0.2, 6, 10, PI),
                 "octa" => Octa(),
+                "rock" => Rock(),
                 "gem" => Octa(),
                 "helm" => Lathe(new[] { (0.53, -0.04), (0.55, 0.0), (0.52, 0.04), (0.5, 0.12), (0.48, 0.3), (0.42, 0.5), (0.33, 0.66), (0.2, 0.79), (0.07, 0.86), (0.0, 0.875) }, 24),
                 "shell" => Lathe(new[] { (0.54, -0.02), (0.53, 0.03), (0.5, 0.06), (0.47, 0.18), (0.4, 0.36), (0.3, 0.5), (0.18, 0.58), (0.1, 0.63), (0.0, 0.64) }, 20),
@@ -218,6 +219,36 @@ namespace Sigilbound.Core
                     int a = (tseg + 1) * j + i - 1, b = (tseg + 1) * (j - 1) + i - 1, c = (tseg + 1) * (j - 1) + i, d = (tseg + 1) * j + i;
                     m.Tri(a, b, d); m.Tri(b, c, d);
                 }
+            FixWinding(m);
+            return m;
+        }
+
+        // geo.rock: IcosahedronGeometry(0.5, 1) (each face split in four, pushed to the sphere),
+        // made lumpy by the same sine noise, flat-shaded (three.js non-indexed normals).
+        static MeshData Rock()
+        {
+            double t = (1 + Math.Sqrt(5)) / 2;
+            double[] v = { -1, t, 0, 1, t, 0, -1, -t, 0, 1, -t, 0, 0, -1, t, 0, 1, t, 0, -1, -t, 0, 1, -t, t, 0, -1, t, 0, 1, -t, 0, -1, -t, 0, 1 };
+            int[] f = { 0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11, 1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8, 3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1 };
+            V3 P(int i) => new V3(v[i * 3], v[i * 3 + 1], v[i * 3 + 2]);
+            V3 Lump(V3 p)
+            {
+                p = p.Normalized * 0.5;
+                double n = 1 + 0.12 * Math.Sin(p.X * 23.1 + p.Y * 17.3) * Math.Cos(p.Z * 19.7 - p.Y * 7.1);
+                return p * n;
+            }
+            var m = new MeshData();
+            void Face(V3 a, V3 b, V3 c)
+            {
+                a = Lump(a); b = Lump(b); c = Lump(c);
+                var n = (b - a).Cross(c - a).Normalized;
+                m.Tri(m.Add(a, n), m.Add(b, n), m.Add(c, n));
+            }
+            for (int i = 0; i < f.Length; i += 3)
+            {
+                V3 a = P(f[i]), b = P(f[i + 1]), c = P(f[i + 2]), ab = (a + b) * 0.5, bc = (b + c) * 0.5, ca = (c + a) * 0.5;
+                Face(a, ab, ca); Face(ab, b, bc); Face(ca, bc, c); Face(ab, bc, ca);
+            }
             FixWinding(m);
             return m;
         }

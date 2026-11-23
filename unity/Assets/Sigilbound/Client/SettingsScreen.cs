@@ -9,9 +9,11 @@ namespace Sigilbound.Client
     public sealed partial class App
     {
         string _promoInput = "", _loadInput = "";
+        Vector2 _settingsScroll; float _settingsH = 900;
 
         public void OpenSettings()
         {
+            _settingsScroll = Vector2.zero;
             Modal("Settings", Mathf.Min(Ui.Safe.height - 40, 740), DrawSettings);
         }
 
@@ -46,9 +48,13 @@ namespace Sigilbound.Client
             y += 52;
         }
 
-        void DrawSettings(Rect b)
+        // The rows scroll (drag) inside the modal; the version line and Done stay pinned below.
+        void DrawSettings(Rect outer)
         {
-            float y = b.y;
+            var view = new Rect(outer.x, outer.y, outer.width, outer.height - 78);
+            _settingsScroll = Scroller.Begin(view, _settingsScroll, _settingsH);
+            var b = new Rect(0, 0, outer.width - 1, view.height);
+            float y = 0;
             var st = G.S.settings;
             // Volume sliders (0 = off) that apply instantly, as audio.js.
             Slider(ref y, b, "Music", st.musicVol, v => { st.musicVol = v; Sound.I?.ApplyVolumes(); });
@@ -74,6 +80,9 @@ namespace Sigilbound.Client
                 st.quality = qKeys[i]; Save(); Quality.I?.Set(st.quality, st.fpsCap);
                 Toast("Graphics: " + (i == 0 ? "Auto" : qKeys[i]));
             });
+
+            SettingRow(ref y, b, "Performance overlay", "Shows frame rate and draw calls. For testing; saved on this device.");
+            Chips(ref y, b, new[] { "Off", "On" }, PerfOverlay.Enabled ? 1 : 0, i => PerfOverlay.Enabled = i == 1);
 
             if (Screen != ScreenId.Battle)
             {
@@ -101,8 +110,12 @@ namespace Sigilbound.Client
                 { GUIUtility.systemCopyBuffer = ExportSaveCode(); Toast("Save code copied"); }
                 y += 48;
             }
-            Ui.Text(new Rect(b.x, b.yMax - 70, b.width, 18), $"Sigilbound (Unity) v{Application.version}", 11, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter);
-            if (Ui.Button(new Rect(b.x, b.yMax - 46, b.width, 44), "Done")) CloseModal();
+            _settingsH = y + 8;
+            Scroller.End();
+            if (_settingsH > view.height + 1) // a hint that there's more below
+                GUI.DrawTexture(new Rect(view.x, view.yMax - 18, view.width, 18), Ui.GradientTex(new Color(0, 0, 0, 0), new Color(0, 0, 0, 0.45f), null, 2));
+            Ui.Text(new Rect(outer.x, outer.yMax - 70, outer.width, 18), $"Sigilbound (Unity) v{Application.version}", 11, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter);
+            if (Ui.Button(new Rect(outer.x, outer.yMax - 46, outer.width, 44), "Done")) CloseModal();
         }
 
         void ConfirmLoad()
