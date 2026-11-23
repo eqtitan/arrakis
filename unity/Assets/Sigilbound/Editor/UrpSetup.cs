@@ -73,6 +73,11 @@ namespace Sigilbound.EditorTools
             Directory.CreateDirectory(MaterialsDir);
             if (AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/HeroLit.mat") == null)
                 AssetDatabase.CreateAsset(new Material(lit) { name = "HeroLit" }, MaterialsDir + "/HeroLit.mat");
+            // The character shader (Client/Shaders/SigilCharacter.shader): referenced by a Resources
+            // material so it ships in the build; Client/CharacterLook.cs clones it.
+            var character = Shader.Find("Sigilbound/Character");
+            if (character != null && AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/Character.mat") == null)
+                AssetDatabase.CreateAsset(new Material(character) { name = "Character" }, MaterialsDir + "/Character.mat");
             if (AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/HeroGlow.mat") == null)
             {
                 var glow = new Material(lit) { name = "HeroGlow" };

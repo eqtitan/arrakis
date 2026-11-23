@@ -14,9 +14,11 @@ namespace Sigilbound.Client
         sealed class CachedKit { public Mesh Mesh; public KitMat[] Mats; }
         static readonly Dictionary<string, CachedKit> _cache = new Dictionary<string, CachedKit>();
 
-        public static Material MaterialFor(KitMat m)
+        // With the character shader: per-role finish, detail texture and the element rim; otherwise URP Lit.
+        public static Material MaterialFor(KitMat m, Color rim)
         {
             var c = Palette.Hex(m.Color);
+            if (m.Finish != KitFinish.Glow && CharacterLook.ShaderAvailable) return CharacterLook.For(c, CharacterLook.RoleFromFinish(m.Finish), rim);
             switch (m.Finish)
             {
                 case KitFinish.Metal: return Materials.Lit(c, 0.75f, 0.6f);
@@ -34,7 +36,7 @@ namespace Sigilbound.Client
         }
 
         // modelRoot: the object scaled to hero size (three3d.mjs `model`); bones by name.
-        public static void Attach(Transform modelRoot, Dictionary<string, Transform> bones, List<KitSocket> sockets, string cacheKey)
+        public static void Attach(Transform modelRoot, Dictionary<string, Transform> bones, List<KitSocket> sockets, string cacheKey, Color rim)
         {
             var inners = new List<Transform>();
             var used = new List<KitSocket>();
@@ -61,7 +63,7 @@ namespace Sigilbound.Client
                 }
                 inner.localScale = Vector3.one * (float)s.ScaleMul;
                 inners.Add(inner); used.Add(s);
-                foreach (var live in s.Root.Children.Where(n => n.Live != null)) BuildLive(live, inner);
+                foreach (var live in s.Root.Children.Where(n => n.Live != null)) BuildLive(live, inner, rim);
             }
             if (inners.Count == 0) return;
 
@@ -73,7 +75,7 @@ namespace Sigilbound.Client
             smr.sharedMesh = kit.Mesh;
             smr.bones = inners.ToArray();
             smr.rootBone = modelRoot;
-            smr.sharedMaterials = kit.Mats.Select(MaterialFor).ToArray();
+            smr.sharedMaterials = kit.Mats.Select(m => MaterialFor(m, rim)).ToArray();
             smr.updateWhenOffscreen = true;
             smr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
         }
@@ -104,6 +106,7 @@ namespace Sigilbound.Client
             var mesh = new Mesh { name = "Kit" };
             if (verts.Count > 65000) mesh.indexFormat = UnityEngine.Rendering.IndexFormat.UInt32;
             mesh.SetVertices(verts); mesh.SetNormals(norms);
+            mesh.SetUVs(1, verts); // rest positions in model metres for the character shader's detail textures
             mesh.subMeshCount = order.Count;
             for (int i = 0; i < order.Count; i++) mesh.SetTriangles(subs[order[i]].idx, i);
             mesh.boneWeights = weights.ToArray();
@@ -114,20 +117,20 @@ namespace Sigilbound.Client
 
         // A live part: its own transform (animated by KitLive) with its geometry merged per material;
         // geometry-less sub-pivots (the cape's lower panel) become child transforms.
-        static Transform BuildLive(KitNode node, Transform parent)
+        static Transform BuildLive(KitNode node, Transform parent, Color rim)
         {
             var go = new GameObject("Live_" + node.Live?.Kind);
             var t = go.transform;
             t.SetParent(parent, false);
             t.localPosition = KitLive.ToUnity(node.Pos); t.localRotation = KitLive.ToUnity(node.Rotation); t.localScale = new Vector3((float)node.Scale.X, (float)node.Scale.Y, (float)node.Scale.Z);
-            AddMesh(go, KitBuilder.Bake(node, splitPivots: true));
+            AddMesh(go, KitBuilder.Bake(node, splitPivots: true), rim);
             Transform lastPivot = null;
             foreach (var c in node.Children.Where(KitBuilder.IsPivot))
             {
                 var ct = new GameObject("Pivot").transform;
                 ct.SetParent(t, false);
                 ct.localPosition = KitLive.ToUnity(c.Pos); ct.localRotation = KitLive.ToUnity(c.Rotation); ct.localScale = new Vector3((float)c.Scale.X, (float)c.Scale.Y, (float)c.Scale.Z);
-                AddMesh(ct.gameObject, KitBuilder.Bake(c, splitPivots: true));
+                AddMesh(ct.gameObject, KitBuilder.Bake(c, splitPivots: true), rim);
                 lastPivot = ct;
             }
             if (node.Live != null)
@@ -140,7 +143,7 @@ namespace Sigilbound.Client
             return t;
         }
 
-        static void AddMesh(GameObject go, KitBuilder.Baked baked)
+        static void AddMesh(GameObject go, KitBuilder.Baked baked, Color rim)
         {
             if (baked.ByMat.Count == 0) return;
             var verts = new List<Vector3>(); var norms = new List<Vector3>(); var mats = new List<Material>();
@@ -151,9 +154,9 @@ namespace Sigilbound.Client
                 var md = kv.Value.mesh; int b0 = verts.Count; var idx = new List<int>();
                 for (int i = 0; i < md.Pos.Count; i++) { verts.Add(KitLive.ToUnity(md.Pos[i])); norms.Add(KitLive.ToUnity(md.Nrm[i])); }
                 for (int i = 0; i < md.Idx.Count; i += 3) { idx.Add(b0 + md.Idx[i]); idx.Add(b0 + md.Idx[i + 2]); idx.Add(b0 + md.Idx[i + 1]); }
-                lists.Add(idx); mats.Add(MaterialFor(kv.Value.mat));
+                lists.Add(idx); mats.Add(MaterialFor(kv.Value.mat, rim));
             }
-            mesh.SetVertices(verts); mesh.SetNormals(norms);
+            mesh.SetVertices(verts); mesh.SetNormals(norms); mesh.SetUVs(1, verts);
             mesh.subMeshCount = lists.Count;
             for (int i = 0; i < lists.Count; i++) mesh.SetTriangles(lists[i], i);
             mesh.RecalculateBounds();

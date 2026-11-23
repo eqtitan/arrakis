@@ -54,6 +54,7 @@ static class KitTests
     public static void Run(Action<bool, string> check)
     {
         Check = check;
+        DetailTexturesCheck();
         Console.WriteLine("\nKit (weapons, headgear, faces, robes, capes, gear) vs the web's buildKit:");
         var cases = (List<object>)Json.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "kit-fixture.json")));
         int builds = 0, okBuilds = 0, parts = 0; var errors = new List<string>();
@@ -134,5 +135,22 @@ static class KitTests
         Check(st.Idle == "Idle_Neutral" && st.Cast == "Spell_Simple_Shoot" && AnimStyle.For("gorrum").Strike[0] == "Punch_Right" && AnimStyle.For("tamsin").Cast == "Gun_Shoot", "per-hero clip choice matches styleOf()");
         var hollowKit = KitBuilder.Build("hask", true, null);
         Check(!hollowKit.SelectMany(s => s.Root.All()).Any(n => n.Mat != null && n.Mat.Color == "#fbf6ee"), "Hollow enemies get no faces (as on the web)");
+    }
+
+    // Detail textures (materials.mjs GEN port): deterministic, in range, tileable (edges wrap).
+    static void DetailTexturesCheck()
+    {
+        Console.WriteLine("\nDetail textures:");
+        foreach (var kind in DetailTextures.Kinds)
+        {
+            var a = DetailTextures.Generate(kind, 64); var b = DetailTextures.Generate(kind, 64);
+            bool same = a.H.SequenceEqual(b.H) && a.A.SequenceEqual(b.A) && a.R.SequenceEqual(b.R);
+            bool range = a.H.Concat(a.A).Concat(a.R).All(v => v >= 0f && v <= 1f && !float.IsNaN(v));
+            float hMin = a.H.Min(), hMax = a.H.Max();
+            // wrap seam: mean |difference| across the edge ~ mean |difference| between interior neighbours
+            int S = a.Size; double edge = 0, inner = 0;
+            for (int y = 0; y < S; y++) { edge += Math.Abs(a.H[y * S + S - 1] - a.H[y * S]); inner += Math.Abs(a.H[y * S + S / 2] - a.H[y * S + S / 2 - 1]); }
+            Check(same && range && hMax - hMin > 0.5f && edge <= inner * 3 + 1e-3, $"{kind}: deterministic, 0..1, contrast {hMax - hMin:F2}, seam {edge / S:F3} vs {inner / S:F3}");
+        }
     }
 }
