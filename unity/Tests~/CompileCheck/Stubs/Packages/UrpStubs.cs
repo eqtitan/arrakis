@@ -21,7 +21,11 @@ namespace UnityEngine.Rendering.Universal
     public partial class UniversalRenderPipelineAsset : RenderPipelineAsset
     {
         // (protected in URP; the 2021.3 reference assembly declares the base member public)
+#if SB_REAL_UNITY_REFS
+        protected override RenderPipeline CreatePipeline() => throw new NotImplementedException();
+#else
         public override RenderPipeline CreatePipeline() => throw new NotImplementedException();
+#endif
         // #if UNITY_EDITOR in the package; the editor assembly sees it.
         public static readonly string packagePath = "Packages/com.unity.render-pipelines.universal";
         public static UniversalRenderPipelineAsset Create(ScriptableRendererData rendererData = null) => throw new NotImplementedException();

@@ -3,8 +3,9 @@ name: Sigilbound Unity
 # The native Unity version (unity/), built in parallel with the web/Capacitor app.
 #
 # - checks: on every push touching unity/**, runs the game-core tests (including parity with the
-#   web game's own code) and compiles the Unity client and editor scripts against Unity
-#   reference assemblies. No Unity license needed.
+#   web game's own code), compiles the Unity client and editor scripts against Unity reference
+#   assemblies (2021.3 nuget + stubs, then the real Unity 6 ones from the game-ci image) and
+#   compiles the HLSL shaders with DXC. No Unity license needed.
 # - android: builds an APK with game-ci and publishes it to the "unity-latest" pre-release
 #   (separate from android-latest; app id com.sigilbound.unity, so both apps install side by
 #   side). Runs only when Unity license secrets exist; otherwise it is skipped with a note.
@@ -45,6 +46,15 @@ jobs:
         run: dotnet run --project unity/Tests~
       - name: Compile check (Client + Editor scripts against Unity reference assemblies)
         run: dotnet build unity/Tests~/CompileCheck/Editor.csproj
+      - name: Fetch the real Unity 6 assemblies (from the game-ci editor image; no Docker, no license)
+        id: unityrefs
+        # Streams the editor layer from Docker Hub and keeps only Editor/Data/Managed/*.dll. If Docker
+        # Hub rate-limits us, the step is skipped with a warning; the stub-based check above still ran.
+        continue-on-error: true
+        run: python3 unity/Tools~/unity-refs/fetch_unity_refs.py "$RUNNER_TEMP/unity-managed"
+      - name: Compile check against the real Unity 6000.0.58f1 assemblies (URP and glTFast still stubbed)
+        if: steps.unityrefs.outcome == 'success'
+        run: dotnet build unity/Tests~/CompileCheck/Editor.csproj -p:UnityManaged="$RUNNER_TEMP/unity-managed" -o "$RUNNER_TEMP/refs-out"
       - name: Shader check (HLSL passes compiled with DXC against URP 17's ShaderLibrary)
         # No Unity needed: unity/Tools~/shadercheck expands the multi_compile variants of each pass.
         run: |
