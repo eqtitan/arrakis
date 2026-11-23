@@ -33,6 +33,7 @@ namespace Sigilbound.Client
         bool Auto => G.S.settings.auto;
         bool IsTitan => _spec.Mode == BattleMode.Titan;
         public BattleMode Mode => _spec?.Mode ?? BattleMode.Stage;
+        public bool InProgress => _b != null && !_finished;
 
         public void Begin(int stage) => Begin(stage < 0 ? BattleSpec.Titan() : BattleSpec.ForStage(stage));
 
@@ -90,6 +91,7 @@ namespace Sigilbound.Client
         {
             if (_loop != null) StopCoroutine(_loop);
             Time.timeScale = 1;
+            _auto = null;
             Clear();
             App.CloseModal();
             App.Arena.Build(Mathf.Min(Chapters.Length - 1, G.S.cleared / StagesPerChapter), false);
@@ -287,8 +289,24 @@ namespace Sigilbound.Client
                 string ups = string.Join("\n", res.LevelUps.Select(l => $"{Hero(l.hero.id).ShortName} → Lv {l.hero.level}"));
                 string gear = res.Gear == null ? "" : $"\nFound: {GearRarityNames[res.Gear.rarity]} {res.Gear.Set} {res.Gear.Slot}";
                 bool canNext = stage + 1 < TotalStages && G.S.cleared > stage;
+                bool replay = G.S.settings.autoReplay;
+                // Auto-replay run totals (ui.js autoRecord): a summary when the run ends.
+                if (replay || _auto != null)
+                {
+                    _auto ??= new AutoRun();
+                    _auto.Record(true, res.Reward, res.Gear != null, res.LevelUps.Select(l => $"{Hero(l.hero.id).ShortName} Lv {l.hero.level}"));
+                    if (!replay) { ShowAutoSummary("auto-replay switched off", stage); return; }
+                }
                 App.Modal("VICTORY", 330, r =>
                 {
+                    if (replay && _auto != null)
+                    {
+                        Ui.Text(new Rect(r.x, r.y + 150, r.width, 40), $"Next battle in a moment…\nThis run: {_auto.Wins} win{(_auto.Wins == 1 ? "" : "s")} · {Ui.Fmt(_auto.Gold)} gold{(_auto.Gear > 0 ? $" · {_auto.Gear} gear" : "")}", 12, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                        if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width, 44), "Stop auto-replay", Ui.Kind.Red)) { G.S.settings.autoReplay = false; App.Save(); ShowAutoSummary("stopped", stage); }
+                        Ui.Text(new Rect(r.x, r.y, r.width, 60), res.Reward + $"\n+{Ui.Fmt(res.Reward.Xp)} XP each", 14, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                        Ui.Text(new Rect(r.x, r.y + 64, r.width, 80), ups + gear, 13, Palette.Good, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                        return;
+                    }
                     Ui.Text(new Rect(r.x, r.y, r.width, 60), res.Reward + $"\n+{Ui.Fmt(res.Reward.Xp)} XP each" + (res.FirstClear ? " · First clear bonus!" : ""), 14, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
                     Ui.Text(new Rect(r.x, r.y + 64, r.width, 90), ups + gear, 13, Palette.Good, FontStyle.Normal, TextAnchor.UpperCenter, true);
                     float y = r.yMax - 100;
@@ -301,6 +319,7 @@ namespace Sigilbound.Client
             else
             {
                 G.S.settings.autoReplay = false; App.Save();
+                if (_auto != null) { _auto.Record(false, null, false, null); ShowAutoSummary("ended by a defeat", _spec.Stage); return; }
                 App.Modal("DEFEAT", 250, r =>
                 {
                     Ui.Text(new Rect(r.x, r.y, r.width, 80), "Level heroes with training, equip and upgrade gear, bring elements that beat the enemy, and summon new heroes.", 13, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
@@ -308,6 +327,22 @@ namespace Sigilbound.Client
                     if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Heroes")) End(ScreenId.Heroes);
                 });
             }
+        }
+
+        AutoRun _auto;
+
+        // The whole auto-replay run (battles, wins, losses, gold, XP, shards, gear, level ups).
+        void ShowAutoSummary(string why, int stage)
+        {
+            var run = _auto; _auto = null;
+            if (run == null) return;
+            App.Modal("Auto-replay summary", 330, r =>
+            {
+                Ui.Text(new Rect(r.x, r.y, r.width, 20), $"Run {why}", 12, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleCenter);
+                Ui.Text(new Rect(r.x, r.y + 26, r.width, 160), run.Summary(), 13, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Replay", Ui.Kind.Secondary)) { App.CloseModal(); Begin(stage); }
+                if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Map")) End(ScreenId.Campaign);
+            });
         }
 
         void FinishTitan()
@@ -384,7 +419,7 @@ namespace Sigilbound.Client
                 {
                     App.CloseModal();
                     if (IsTitan || _spec.Mode == BattleMode.Arena) { if (_loop != null) StopCoroutine(_loop); _b.Retreat(); Finish(); }
-                    else { G.S.settings.autoReplay = false; End(BackScreen); }
+                    else { G.S.settings.autoReplay = false; if (_auto != null) { if (_loop != null) StopCoroutine(_loop); Time.timeScale = 1; _finished = true; _auto.Record(false, null, false, null); ShowAutoSummary("ended by a retreat", _spec.Stage); } else End(BackScreen); }
                 }
             });
         }

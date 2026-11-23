@@ -320,6 +320,15 @@ static class ParityTests
         Check(Promo.Redeem(g, " Unity Test ", out var e) == PromoResult.Redeemed && g.S.shardRadiant == rad0 + 2 && e.Label == "Test", "a valid code grants its reward (case, spaces and dashes ignored)");
         Check(Promo.Redeem(g, "UNITYTEST", out _) == PromoResult.AlreadyUsed, "a code works once per save");
         Promo.Codes.Remove(Promo.Hash("unity-test"));
+        // First-time tips and the auto-replay summary.
+        var tg = new Game(seed: 2) { Now = () => now };
+        tg.StartWith("hask");
+        var t1 = Tips.Next(tg, true, false); var t2 = Tips.Next(tg, true, false); var t3 = Tips.Next(tg, false, true);
+        Check(t1?.Id == "welcome" && t2 == null && t3?.Id == "battle" && tg.S.modes.tips.SequenceEqual(new[] { "welcome", "battle" }), "first-time tips show once each, in order, when their condition holds");
+        var vet = new Game(seed: 3) { Now = () => now }; vet.StartWith("hask"); vet.S.wins = 4; vet.S.summons = 2; Tips.Seed(vet);
+        Check(vet.S.modes.tips.Contains("welcome") && vet.S.modes.tips.Contains("battle") && vet.S.modes.tips.Contains("gear") && vet.S.modes.tips.Contains("summon"), "existing players skip beginner tips (seedTips)");
+        var run = new AutoRun(); run.Record(true, new Reward { Gold = 500, Xp = 100, Common = 1 }, true, new[] { "Hask Lv 6" }); run.Record(false, null, false, null);
+        Check(run.Battles == 2 && run.Wins == 1 && run.Losses == 1 && run.Summary().Contains("500 gold") && run.Summary().Contains("1 gear piece"), "auto-replay run summary totals");
         var back = SaveCodec.FromCode(SaveCodec.ToCode(g.S));
         Check(back.modes.codes.Count == 1 && back.modes.arena.points == 1260 && back.modes.floorsVault == 1, "trials progress and used codes survive a save code");
     }

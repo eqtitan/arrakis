@@ -61,6 +61,7 @@ namespace Sigilbound.Client
             Online = gameObject.AddComponent<Online>();
             Online.App = this;
             Screen = G.S.started ? ScreenId.Home : ScreenId.Intro;
+            Tips.Seed(G); // existing players skip beginner tips for things they've done
             Arena.Build(Math.Min(GameData.Chapters.Length - 1, G.S.cleared / GameData.StagesPerChapter), false);
             Arena.FrameMenu();
         }
@@ -114,6 +115,7 @@ namespace Sigilbound.Client
             Scroller.Tick();
             if (Input.GetKeyDown(KeyCode.Escape)) Back(); // Android back button
             if (Screen != ScreenId.Battle) UpdateLineup();
+            CheckTips();
         }
 
         void Back()
@@ -131,6 +133,24 @@ namespace Sigilbound.Client
                 case ScreenId.Home: case ScreenId.Intro: Application.Quit(); break;
                 default: Go(ScreenId.Home); break;
             }
+        }
+
+        // ---------- first-time tips (modes.js checkTips) ----------
+        float _tipAt;
+        void CheckTips()
+        {
+            if (ModalOpen || Time.unscaledTime < _tipAt) return;
+            _tipAt = Time.unscaledTime + 0.35f;
+            bool inBattle = Screen == ScreenId.Battle && Battle.InProgress;
+            if (Screen == ScreenId.Battle && !inBattle) return;
+            var tip = Tips.Next(G, Screen == ScreenId.Home, inBattle);
+            if (tip == null) return;
+            Save();
+            Modal(tip.Title, 300, b =>
+            {
+                Ui.Text(new Rect(b.x, b.y, b.width, b.height - 56), tip.Body, 13, Palette.Text, FontStyle.Normal, TextAnchor.UpperLeft, true);
+                if (Ui.Button(new Rect(b.x, b.yMax - 46, b.width, 44), "Got it")) CloseModal();
+            });
         }
 
         // ---------- 3D lineup behind the menus ----------
