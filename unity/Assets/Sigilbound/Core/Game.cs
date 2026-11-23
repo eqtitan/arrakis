@@ -153,6 +153,18 @@ namespace Sigilbound.Core
             return st;
         }
         public int Power(HeroSave h) => HeroStats(h).Power;
+
+        // Equipped gear as the 3D model shows it (art.js heroGearLook): rarity and set per slot.
+        public GearLook GearLookOf(HeroSave h)
+        {
+            if (h == null) return null;
+            GearLook.Item I(Slot s) { var g = GearByUid(h.GetGear(s)); return g == null ? null : new GearLook.Item { R = g.rarity, S = SaveCodec.SetKey(g.Set) }; }
+            var look = new GearLook { Weapon = I(Slot.Weapon), Helm = I(Slot.Helm), Chest = I(Slot.Chest), Boots = I(Slot.Boots) };
+            return look.Weapon == null && look.Helm == null && look.Chest == null && look.Boots == null ? null : look;
+        }
+
+        // Gear look for any battle unit: allies their equipped items, Hollow enemies plain gear by level, rivals by level.
+        public GearLook GearLookOf(Unit u) => u.Titan ? null : u.Ally ? GearLookOf(HeroByUid(u.HeroUid)) : u.Rival ? GearLook.ForRival(u.Level) : GearLook.ForEnemy(u.Level, u.Boss);
         public int TeamPower => Team.Sum(Power);
 
         public int GiveXp(HeroSave h, int amount)

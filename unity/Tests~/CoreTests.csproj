@@ -15,5 +15,6 @@
     <Compile Remove="CompileCheck/**" />
     <None Remove="CompileCheck/**" />
     <None Include="fixtures/*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="fixtures" />
+    <None Include="../Assets/StreamingAssets/Models/anims_ual.json" CopyToOutputDirectory="PreserveNewest" Link="fixtures/anims_ual.json" />
   </ItemGroup>
 </Project>

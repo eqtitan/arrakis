@@ -3,6 +3,7 @@
 // built from Unity's primitive shapes in the hero's colours, animated in code. A prefab at
 // Resources/Heroes/<heroId> (with an Animator: triggers Attack / Cast / Hit / Die) overrides both.
 using System.Collections;
+using System.Linq;
 using UnityEngine;
 using Sigilbound.Core;
 
@@ -11,6 +12,8 @@ namespace Sigilbound.Client
     public sealed class CharacterView : MonoBehaviour
     {
         public Unit Unit;
+        public GearLook Gear;             // equipped gear shown on the model (rarity and set)
+        public HeroModel Hero => _model;
         public Transform Model, ArmR, ArmL, HeadTop, Aura, Ring;
         Animator _animator;
         HeroModel _model;
@@ -42,13 +45,13 @@ namespace Sigilbound.Client
             Create(unit, pos, faceForward ? 0f : 180f, scale);
 
         // yaw: degrees around Y, 0 = facing +Z (battle units face the rune circle's centre).
-        public static CharacterView Create(Unit unit, Vector3 pos, float yaw, float scale)
+        public static CharacterView Create(Unit unit, Vector3 pos, float yaw, float scale, GearLook gear = null)
         {
             var root = new GameObject(unit.Name).transform;
             root.position = pos;
             root.rotation = Quaternion.Euler(0, yaw, 0);
             var view = root.gameObject.AddComponent<CharacterView>();
-            view.Unit = unit;
+            view.Unit = unit; view.Gear = gear;
             view.Model = Pivot("Model", root, Vector3.zero);
             view.Model.localScale = Vector3.one * scale;
 
@@ -81,7 +84,7 @@ namespace Sigilbound.Client
             var holder = new GameObject("GLB").transform;
             holder.SetParent(Model, false);
             HeroModel built = null;
-            yield return HeroModels.Build(Unit, holder, m => built = m);
+            yield return HeroModels.Build(Unit, Gear, holder, m => built = m);
             if (built == null || this == null) { if (holder) Destroy(holder.gameObject); yield break; }
             foreach (Transform child in Model) if (child != holder) child.gameObject.SetActive(false);
             _model = built;
@@ -90,7 +93,7 @@ namespace Sigilbound.Client
             HeadTop.SetParent(Model, false);
             HeadTop.gameObject.SetActive(true);
             HeadTop.localPosition = new Vector3(0, built.Height * 0.87f, 0);
-            if (_dead) built.Play(Clip.Death);
+            if (_dead) built.Die();
         }
 
         void BuildPlaceholder(bool hollow)
@@ -235,11 +238,14 @@ namespace Sigilbound.Client
             r.sharedMaterial.color = c ?? new Color(1, 1, 1, 0);
         }
 
-        public IEnumerator Attack(Vector3 targetPos, bool melee)
+        // The web's attack choreography (three3d.mjs attack()): melee heroes run in, stop short and
+        // strike; casters step forward and cast (or the support cast for heals and buffs); the Titan
+        // jump-slams or swings in place. onSlam fires when the Titan lands.
+        public IEnumerator Attack(Vector3 targetPos, bool melee, bool support = false, bool ult = false, System.Action onSlam = null)
         {
+            if (_model != null) { yield return ModelAttack(targetPos, melee, support, ult, onSlam); yield break; }
             _busy = true;
             if (_animator != null) _animator.SetTrigger(melee ? "Attack" : "Cast");
-            _model?.Play(melee ? Clip.Attack : Clip.Cast);
             Vector3 dir = (targetPos - _home); dir.y = 0;
             Vector3 lungeTo = melee ? _home + dir * 0.55f : _home + dir.normalized * 0.2f;
             float dur = melee ? 0.22f : 0.18f;
@@ -258,10 +264,55 @@ namespace Sigilbound.Client
             _busy = false;
         }
 
+        IEnumerator ModelAttack(Vector3 targetPos, bool melee, bool support, bool ult, System.Action onSlam)
+        {
+            _busy = true;
+            var m = _model;
+            Vector3 dir = targetPos - _home; dir.y = 0;
+            if (Unit.Titan)
+            {
+                if (m.Has("Jump") && m.Has("Jump_Land") && (ult || Random.value < 0.4f))
+                {
+                    m.Play("Jump", false, 0.12f, 1.6f, true);
+                    yield return new WaitForSeconds(0.3f);
+                    m.Play("Jump_Land", false, 0.08f, 1.4f);
+                    yield return new WaitForSeconds(0.12f);
+                    onSlam?.Invoke();
+                    yield return new WaitForSeconds(0.2f);
+                }
+                else { m.Strike(); yield return new WaitForSeconds(0.5f); }
+                _busy = false; yield break;
+            }
+            if (melee)
+            {
+                Vector3 to = _home + dir * Mathf.Max(0.35f, 1 - 1.15f / Mathf.Max(1.2f, dir.magnitude));
+                m.Run();
+                for (float k = 0; k < 1; k += Time.deltaTime / 0.26f) { transform.position = Vector3.Lerp(_home, to, EaseIO(k)); yield return null; }
+                transform.position = to;
+                m.Strike();
+                yield return new WaitForSeconds(0.35f);
+            }
+            else
+            {
+                m.Cast(support);
+                Vector3 to = _home + dir.normalized * 0.2f;
+                for (float k = 0; k < 1; k += Time.deltaTime / 0.2f) { transform.position = Vector3.Lerp(_home, to, Ease(k)); yield return null; }
+                yield return new WaitForSeconds(0.15f);
+            }
+            _busy = false;
+        }
+
         public IEnumerator Recover()
         {
             _busy = true;
             Vector3 from = transform.position;
+            bool far = Vector3.Distance(from, _home) > 0.6f;
+            if (_model != null && Unit.Titan && Random.value < 0.5f)
+            {
+                var roars = new[] { "Yes", "No", "Wave" }.Where(_model.Has).ToArray();
+                if (roars.Length > 0) _model.Play(roars[Random.Range(0, roars.Length)], false, 0.2f, 1.3f);
+            }
+            else if (_model != null && far) _model.Run(true);
             for (float k = 0; k < 1; k += Time.deltaTime / 0.25f)
             {
                 transform.position = Vector3.Lerp(from, _home, Ease(k));
@@ -273,20 +324,28 @@ namespace Sigilbound.Client
                 yield return null;
             }
             transform.position = _home;
+            if (_model != null && far && !Unit.Titan) _model.Idle(0.2f);
             _busy = false;
         }
 
-        public void Hit()
+        // big: a crit or more than 14% of max HP (heavier reaction); glancing blows may be rolled away.
+        public void Hit(bool big = false, bool glancing = false)
         {
             if (_dead) return;
             if (_animator != null) _animator.SetTrigger("Hit");
-            _model?.Play(Clip.Hit);
-            StartCoroutine(HitRoutine());
+            if (_model != null && !_busy)
+            {
+                if (!big && glancing && !Unit.Titan && Random.value < 0.35f && _model.Roll()) { }
+                else _model.Hit(big);
+            }
+            if (!Unit.Titan) StartCoroutine(HitRoutine(big));
         }
-        IEnumerator HitRoutine()
+        public void Win() { if (!_dead && _model != null) { _busy = true; _model.Win(); } }
+        IEnumerator HitRoutine(bool big)
         {
-            Vector3 back = -transform.forward * 0.18f;
-            for (float k = 0; k < 1; k += Time.deltaTime / 0.18f)
+            Vector3 back = -transform.forward * (big ? 0.34f : 0.2f);
+            float dur = big ? 0.24f : 0.18f;
+            for (float k = 0; k < 1; k += Time.deltaTime / dur)
             {
                 transform.position = _home + back * Mathf.Sin(k * Mathf.PI);
                 Model.localScale = Vector3.one * Model.localScale.x; // keep uniform
@@ -300,7 +359,7 @@ namespace Sigilbound.Client
             if (_dead) return;
             _dead = true;
             if (_animator != null) _animator.SetTrigger("Die");
-            if (_model != null && _model.Has(Clip.Death)) { _model.Play(Clip.Death); StartCoroutine(FadeRings(1.2f)); }
+            if (_model != null && _model.Die()) StartCoroutine(SinkAfterDeath());
             else StartCoroutine(DieRoutine());
         }
         IEnumerator DieRoutine()
@@ -313,9 +372,12 @@ namespace Sigilbound.Client
             if (Ring) Ring.gameObject.SetActive(false);
         }
 
-        IEnumerator FadeRings(float after)
+        // After the death clip: wait, then sink into the ground (three3d.mjs die()).
+        IEnumerator SinkAfterDeath()
         {
-            yield return new WaitForSeconds(after);
+            yield return new WaitForSeconds(1.1f);
+            Vector3 p = transform.position;
+            for (float k = 0; k < 1; k += Time.deltaTime / 0.8f) { transform.position = p + Vector3.down * 0.9f * k; yield return null; }
             if (Aura) Aura.gameObject.SetActive(false);
             if (Ring) Ring.gameObject.SetActive(false);
         }
@@ -325,6 +387,7 @@ namespace Sigilbound.Client
         public void FaceHome() => transform.rotation = _homeRot;
 
         static float Ease(float k) => 1 - Mathf.Pow(1 - Mathf.Clamp01(k), 3);
+        static float EaseIO(float k) { k = Mathf.Clamp01(k); return k < 0.5f ? 2 * k * k : 1 - Mathf.Pow(-2 * k + 2, 2) / 2; }
         public Vector3 Center => transform.position + Vector3.up * (HeadTop ? (HeadTop.position.y - transform.position.y) * 0.55f : 1f);
     }
 }

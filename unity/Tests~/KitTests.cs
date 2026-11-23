@@ -114,6 +114,22 @@ static class KitTests
         var full = KitBuilder.Build("seraphine", false, new GearLook { Weapon = new GearLook.Item { R = 5, S = "keen" }, Helm = new GearLook.Item { R = 5, S = "keen" }, Chest = new GearLook.Item { R = 5, S = "keen" }, Boots = new GearLook.Item { R = 5, S = "keen" } });
         int tris = KitBuilder.Triangles(full), mats = full.SelectMany(s => KitBuilder.Bake(s.Root).ByMat.Keys).Distinct().Count();
         Check(tris > 1000 && tris < 60000 && mats < 30, $"a Mythic-geared hero's kit: {tris} triangles in {mats} distinct materials");
+        // Retargeted UAL clips and the three.js -> Unity conversion.
+        var ual = UalClips.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures", "anims_ual.json")));
+        bool shapes = ual.All(kv => kv.Value.All(c => c.Rotations.Values.All(v => v.Length == c.Frames * 4) && c.Positions.Values.All(v => v.Length == c.Frames * 3)));
+        var names = ual["monarch"].Select(c => c.Name).ToList();
+        Check(ual.ContainsKey("monarch") && ual.ContainsKey("hooded_adventurer") && names.Contains("Spell_Simple_Shoot") && names.Contains("Hit_Chest") && names.Contains("Death01") && shapes,
+            $"UAL clips parse ({string.Join(", ", names)}), {ual["monarch"][0].Rotations.Count} bones, frame data complete");
+        var rnd = new Random(3); bool conv = true;
+        for (int i = 0; i < 50; i++)
+        {
+            var q = Quat.FromEuler(rnd.NextDouble() * 6, rnd.NextDouble() * 6, rnd.NextDouble() * 6, "XYZ"); var v = new V3(rnd.NextDouble() - 0.5, rnd.NextDouble(), rnd.NextDouble() - 0.5);
+            var a = ThreeToUnity.Vec(q.Rotate(v)); var b = ThreeToUnity.Rot(q).Rotate(ThreeToUnity.Vec(v));
+            if ((a - b).Length > 1e-9) conv = false;
+        }
+        Check(conv, "three.js -> Unity conversion (mirror X) keeps rotations consistent with positions");
+        var st = AnimStyle.For("seraphine");
+        Check(st.Idle == "Idle_Neutral" && st.Cast == "Spell_Simple_Shoot" && AnimStyle.For("gorrum").Strike[0] == "Punch_Right" && AnimStyle.For("tamsin").Cast == "Gun_Shoot", "per-hero clip choice matches styleOf()");
         var hollowKit = KitBuilder.Build("hask", true, null);
         Check(!hollowKit.SelectMany(s => s.Root.All()).Any(n => n.Mat != null && n.Mat.Color == "#fbf6ee"), "Hollow enemies get no faces (as on the web)");
     }
