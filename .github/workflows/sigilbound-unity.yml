@@ -59,6 +59,20 @@ jobs:
             git diff --stat -- unity/Tests~/fixtures/fixtures.json
             exit 1
           fi
+      - name: Does the hero art (kit, builds, faces, colours) still match the web game?
+        # Re-runs the web's own buildKit()/roleColors() (needs three from the root package) and
+        # regenerates the art tables. A difference means three3d.mjs or art.js changed.
+        continue-on-error: true
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          node unity/Tests~/fixtures/make-hero-art.cjs
+          node unity/Tests~/fixtures/make-role-colors.mjs
+          node unity/Tests~/fixtures/make-kit-fixture.mjs
+          if ! git diff --quiet -- unity/Tests~/fixtures unity/Assets/Sigilbound/Core/HeroArt.Generated.cs; then
+            echo "::warning::The web game's hero art changed since the Unity port. Port the change to unity/Assets/Sigilbound/Core/Kit (KitBuilder / Looks) and commit the regenerated files."
+            git diff --stat -- unity/Tests~/fixtures unity/Assets/Sigilbound/Core/HeroArt.Generated.cs
+            exit 1
+          fi
 
   secrets:
     if: github.event_name != 'workflow_dispatch' || inputs.task == 'build-apk'
