@@ -13,6 +13,10 @@ Bump with `node tools/sigilbound-version.cjs <major|minor|patch> "What changed"`
 
 <!-- new versions go below this line -->
 
+## 0.20.0 (2026-11-23)
+- Turn order bar in battle (who acts next); Hard campaign (replay cleared stages with tougher enemies for double gold, more XP and better gear); 17 Achievements with one-time rewards; Hero Codex showing all 24 heroes and their skills.
+
+
 ## 0.19.2 (2026-11-22)
 - Fixed: pressing the phone's Back button on a Victory/Defeat popup now leaves the battle (to the map, Titan, dungeon or arena screen) instead of dropping you into the ended battle.
 
