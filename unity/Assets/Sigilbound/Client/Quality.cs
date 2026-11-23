@@ -69,6 +69,7 @@ namespace Sigilbound.Client
             QualitySettings.shadowDistance = new[] { 0f, 16f, 22f, 28f }[Tier];
             QualitySettings.antiAliasing = new[] { 0, 2, 2, 4 }[Tier];
 #endif
+            SkillFx.I?.SetTier(Tier);
             _acc = 0; _frames = 0; _settle = 3f;
         }
 

@@ -76,7 +76,7 @@ namespace Sigilbound.Client
                 var u = units[i];
                 float scale = u.Titan ? 1.3f : u.Boss ? 1.35f : 1f;
                 var pos = u.Titan ? Arena.Slot(false, 0, 1) : Arena.Slot(ally, i, units.Count);
-                _views[u] = CharacterView.Create(u, pos, Arena.FacingYaw(pos), scale);
+                _views[u] = CharacterView.Create(u, pos, Arena.FacingYaw(pos), scale, G.GearLookOf(u));
             }
         }
         void Clear()
@@ -172,19 +172,38 @@ namespace Sigilbound.Client
             var view = _views.TryGetValue(u, out var v) ? v : null;
             var hit = events.Where(e => e.Type == EvType.Damage && e.Unit != u).Select(e => e.Unit).Distinct().ToList();
             bool melee = sk.Mult > 0 && !u.Titan && !Looks.IsCaster(u.Template.Id) && sk.Target == Target.Enemy;
+            // As ui.js: ult = the third skill or an all-enemies skill; support = no damage; single = one target.
+            bool ult = skillIdx == 2 || sk.Target == Target.AllEnemies, support = sk.Mult == 0, single = sk.Target == Target.Enemy;
+            _lastEl = u.El;
+            var fx = SkillFx.I;
             if (view != null)
             {
-                Vector3 aim = hit.Count > 0 && _views.ContainsKey(hit[0]) ? _views[hit[0]].transform.position : view.transform.position + view.transform.forward * 2;
+                var tgtView = hit.Count > 0 && _views.ContainsKey(hit[0]) ? _views[hit[0]] : null;
+                Vector3 aim = tgtView != null ? tgtView.transform.position : view.transform.position + view.transform.forward * 2;
                 view.Face(aim); // turn toward the target only while acting (0.17.1)
-                yield return view.Attack(aim, melee);
-                if (sk.Mult == 0) Vfx.I.Cast(view.transform.position + Vector3.up * 0.1f, color);
+                if (!melee && !u.Titan && fx != null)
+                {
+                    // Casters: a spell circle and gathering energy; ultimates on foes also flood the area and shock out.
+                    fx.CastCircle(view.transform.position, u.El); fx.Charge(view.transform, u.El, 0.5f);
+                    if (ult && tgtView != null && !support && !single)
+                    {
+                        var c = tgtView.transform.position; c.x *= 0.3f;
+                        fx.Aoe(c, 1.9f, u.El); StartCoroutine(Later(0.45f, () => fx.Shockwave(c, u.El, 2.6f)));
+                    }
+                }
+                yield return view.Attack(aim, melee, support, ult, () => { Vfx.I.Shake(0.35f); fx?.TitanSlam(view.transform.position, u.El); });
+                if (support && fx == null) Vfx.I.Cast(view.transform.position + Vector3.up * 0.1f, color);
                 if (!melee && hit.Count > 0)
                 {
                     var from = view.Center + view.transform.forward * 0.4f;
-                    var flights = hit.Where(_views.ContainsKey).Select(h => StartCoroutine(Vfx.I.Projectile(from, _views[h].Center, color))).ToList();
+                    string prop = u.Titan ? "" : Looks.Of(u.Template.Id).Prop;
+                    string kind = prop == "bow" ? "arrow" : prop == "mirror" || prop == "staff" ? "bolt" : prop == "orb" || prop == "candle" ? "orb" : "shard";
+                    var flights = hit.Where(_views.ContainsKey).Select(h => StartCoroutine(
+                        fx == null ? Vfx.I.Projectile(from, _views[h].Center, color)
+                        : ult && single && !support ? fx.Beam(from, _views[h].Center, u.El) : fx.Projectile(from, _views[h].Center, u.El, kind))).ToList();
                     foreach (var f in flights) yield return f;
                 }
-                if (melee) foreach (var h in hit) if (_views.ContainsKey(h)) Vfx.I.Slash(_views[h].Center, color);
+                if (melee) foreach (var h in hit) if (_views.ContainsKey(h)) { if (fx != null) fx.Slash(_views[h].Center, u.El, _views[h].transform.position - view.transform.position); else Vfx.I.Slash(_views[h].Center, color); }
             }
             yield return ShowEvents(events, color);
             if (view != null) { yield return view.Recover(); view.FaceHome(); }
@@ -200,23 +219,43 @@ namespace Sigilbound.Client
                 switch (e.Type)
                 {
                     case EvType.Damage:
-                        if (e.Dot) { Vfx.I.Number(c, Ui.Fmt(e.Amount), new Color(0.5f, 1f, 0.45f)); break; }
+                        if (e.Dot) { SkillFx.I?.DebuffTick(v.transform.position, "poison"); Vfx.I.Number(c, Ui.Fmt(e.Amount), new Color(0.5f, 1f, 0.45f)); break; }
                         if (e.Amount <= 0) break; // fully absorbed by a shield: the "Shield" number says it (no "CRIT 0")
-                        Vfx.I.Burst(c, color, e.Crit);
-                        v.Hit();
+                        if (SkillFx.I != null) SkillFx.I.Impact(c, e.Source != null ? e.Source.El : _lastEl, e.Crit); else Vfx.I.Burst(c, color, e.Crit);
+                        // Heavier reaction on crits and hits over 14% of max HP; weak glancing blows may be rolled away.
+                        v.Hit(e.Crit || e.Amount / (float)Mathf.Max(1, e.Unit.MaxHp) > 0.14f, e.Elem < 1 || e.Amount / (float)Mathf.Max(1, e.Unit.MaxHp) < 0.04f);
+                        if (e.Crit) SkillFx.I?.CritFlash(e.Source != null ? e.Source.El : _lastEl);
                         Vfx.I.Number(c + Vector3.up * 0.3f, (e.Crit ? "CRIT " : "") + Ui.Fmt(e.Amount),
                             e.Crit ? new Color(1f, 0.85f, 0.2f) : e.Elem > 1 ? new Color(1f, 0.55f, 0.3f) : e.Elem < 1 ? new Color(0.7f, 0.7f, 0.8f) : Color.white, e.Crit ? 1.3f : 1f);
                         if (e.Crit) Vfx.I.Shake();
                         yield return new WaitForSeconds(0.12f);
                         break;
-                    case EvType.Heal: Vfx.I.Heal(v.transform.position); Vfx.I.Number(c, "+" + Ui.Fmt(e.Amount), new Color(0.45f, 1f, 0.5f)); break;
+                    case EvType.Heal: if (SkillFx.I != null) SkillFx.I.Heal(v.transform.position); else Vfx.I.Heal(v.transform.position); Vfx.I.Number(c, "+" + Ui.Fmt(e.Amount), new Color(0.45f, 1f, 0.5f)); break;
                     case EvType.Absorb: Vfx.I.Number(c + Vector3.up * 0.5f, "Shield " + Ui.Fmt(e.Amount), new Color(0.6f, 0.85f, 1f), 0.7f); break;
-                    case EvType.Status: Vfx.I.Buff(v.transform.position, FxDef.IsBuff(e.Fx)); Vfx.I.Number(c + Vector3.up * 0.6f, SkillText.EffectName(e.Fx), FxDef.IsBuff(e.Fx) ? new Color(1f, 0.85f, 0.4f) : new Color(0.8f, 0.55f, 1f), 0.7f); break;
+                    case EvType.Status:
+                        if (SkillFx.I == null) Vfx.I.Buff(v.transform.position, FxDef.IsBuff(e.Fx));
+                        else if (e.Fx == FxType.Shield) SkillFx.I.Shield(v.transform.position);
+                        else SkillFx.I.Buff(v.transform.position, FxDef.IsBuff(e.Fx)); Vfx.I.Number(c + Vector3.up * 0.6f, SkillText.EffectName(e.Fx), FxDef.IsBuff(e.Fx) ? new Color(1f, 0.85f, 0.4f) : new Color(0.8f, 0.55f, 1f), 0.7f); break;
                     case EvType.Text: Vfx.I.Number(c + Vector3.up * 0.6f, e.Text, new Color(0.8f, 0.9f, 1f), 0.7f); break;
-                    case EvType.Death: v.Die(); Vfx.I.Dissolve(v.transform.position + Vector3.up * 0.8f); break;
+                    case EvType.Death: v.Die(); if (SkillFx.I != null) SkillFx.I.DeathFade(v.transform.position, e.Unit.El); else Vfx.I.Dissolve(v.transform.position + Vector3.up * 0.8f); break;
                 }
             }
             yield return new WaitForSeconds(0.2f);
+        }
+
+        Element _lastEl;
+        IEnumerator Later(float s, System.Action a) { yield return new WaitForSeconds(s); a(); }
+
+        // Winners celebrate (three3d.mjs victory()), staggered so they don't move in lockstep.
+        IEnumerator Celebrate(bool allies)
+        {
+            int i = 0;
+            foreach (var kv in _views.ToList())
+            {
+                if (kv.Key.Ally != allies || !kv.Key.Alive || kv.Value == null) continue;
+                yield return new WaitForSeconds(i++ == 0 ? 0.1f : 0.12f);
+                if (kv.Value != null) kv.Value.Win();
+            }
         }
 
         // ---------- results ----------
@@ -225,6 +264,7 @@ namespace Sigilbound.Client
             if (_finished) return;
             _finished = true;
             Time.timeScale = 1;
+            if (_b.Result == BattleResult.Victory) StartCoroutine(Celebrate(true));
             switch (_spec.Mode)
             {
                 case BattleMode.Titan: FinishTitan(); return;

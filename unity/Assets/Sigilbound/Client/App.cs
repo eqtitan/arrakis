@@ -53,6 +53,7 @@ namespace Sigilbound.Client
             Quality.Create(gameObject, G.S.settings.quality, G.S.settings.fpsCap).Sun = Arena.Sun;
             Quality.I.Apply();
             Vfx.Create(Arena.Cam);
+            SkillFx.Create(Arena.Cam).SetTier(Quality.I.Tier); // vfx.mjs-style skill effects
             Battle = gameObject.AddComponent<BattleController>();
             Battle.App = this;
             Online = gameObject.AddComponent<Online>();
