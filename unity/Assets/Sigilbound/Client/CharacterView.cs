@@ -40,6 +40,26 @@ namespace Sigilbound.Client
             var t = new GameObject(name).transform; t.SetParent(parent, false); t.localPosition = pos; return t;
         }
 
+        static Material _blob;
+        static Material BlobMaterial
+        {
+            get
+            {
+                if (_blob != null) return _blob;
+                const int n = 64;
+                var t = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "ContactShadow" };
+                var px = new Color32[n * n];
+                for (int y = 0; y < n; y++) for (int x = 0; x < n; x++)
+                {
+                    float u = x / (n - 1f) * 2 - 1, v = y / (n - 1f) * 2 - 1, d = Mathf.Clamp01(Mathf.Sqrt(u * u + v * v));
+                    px[y * n + x] = new Color32(0, 0, 0, (byte)(255 * Mathf.Pow(1 - d, 1.6f)));
+                }
+                t.SetPixels32(px); t.Apply();
+                _blob = Unlit(new Color(0, 0, 0, 0.55f)); _blob.mainTexture = t; _blob.name = "ContactShadow";
+                return _blob;
+            }
+        }
+
         // ---------- construction ----------
         public static CharacterView Create(Unit unit, Vector3 pos, bool faceForward, float scale) =>
             Create(unit, pos, faceForward ? 0f : 180f, scale);
@@ -71,6 +91,10 @@ namespace Sigilbound.Client
             }
 
             // Element aura disc and selection ring at the feet.
+            // Contact shadow: a soft dark blob under the feet (grounds units on every tier, also where
+            // real shadows are off), sized to the unit; the Titan's is wider.
+            var blob = Part(PrimitiveType.Quad, root, new Vector3(0, 0.006f, 0), new Vector3(1, 1, 1) * scale * (unit.Titan ? 2.6f : 1.05f), BlobMaterial, new Vector3(90, 0, 0));
+            blob.name = "ContactShadow";
             view.Aura = Part(PrimitiveType.Cylinder, root, new Vector3(0, 0.01f, 0), new Vector3(1.1f, 0.005f, 1.1f) * scale, Unlit(Palette.Element(unit.El) * new Color(1, 1, 1, 0.35f)));
             view.Ring = Part(PrimitiveType.Cylinder, root, new Vector3(0, 0.02f, 0), new Vector3(1.35f, 0.004f, 1.35f) * scale, Unlit(new Color(1, 1, 1, 0.0f)));
             view._home = root.position; view._homeRot = root.rotation;
