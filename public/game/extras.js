@@ -51,7 +51,7 @@ function hardWaves(idx) {
 function hardRewards(idx, first) {
   const base = stageRewards(idx, false);
   const r = { gold: Math.round(base.gold * HARD.gold), xp: Math.round(base.xp * HARD.xp) };
-  if (first) { r.common = 1; if (isBossStage(idx)) r.mystic = 1; }
+  if (first) { r.common = 1; if (isBossStage(idx)) { r.mystic = 1; r.tome = 1; } }
   return r;
 }
 function hardGear(idx) {
@@ -119,12 +119,12 @@ SCREENS.campaign = function () {
 // ---------- Achievements ----------
 const ACHIEVEMENTS = [
   { id: "win10", name: "First Steps", desc: "Win 10 battles", goal: 10, get: () => G.stats.wins, reward: { gold: 3000 } },
-  { id: "win100", name: "Seasoned", desc: "Win 100 battles", goal: 100, get: () => G.stats.wins, reward: { gold: 15000, common: 2 } },
+  { id: "win100", name: "Seasoned", desc: "Win 100 battles", goal: 100, get: () => G.stats.wins, reward: { gold: 15000, common: 2, tome: 1 } },
   { id: "win500", name: "Warlord", desc: "Win 500 battles", goal: 500, get: () => G.stats.wins, reward: { mystic: 3 } },
   { id: "ch1", name: "Sigil Bearer", desc: "Clear chapter 1", goal: 6, get: () => G.cleared, reward: { common: 2 } },
-  { id: "ch5", name: "Halfway There", desc: "Clear chapter 5", goal: 30, get: () => G.cleared, reward: { mystic: 2 } },
+  { id: "ch5", name: "Halfway There", desc: "Clear chapter 5", goal: 30, get: () => G.cleared, reward: { mystic: 2, tome: 2 } },
   { id: "ch10", name: "Sigil Restored", desc: "Clear the whole campaign", goal: 60, get: () => G.cleared, reward: { radiant: 2 } },
-  { id: "hard6", name: "No Mercy", desc: "Clear Hard chapter 1", goal: 6, get: () => hardCleared(), reward: { mystic: 1 } },
+  { id: "hard6", name: "No Mercy", desc: "Clear Hard chapter 1", goal: 6, get: () => hardCleared(), reward: { mystic: 1, tome: 2 } },
   { id: "hard30", name: "Iron Will", desc: "Clear Hard chapter 5", goal: 30, get: () => hardCleared(), reward: { radiant: 1 } },
   { id: "heroes10", name: "Growing Banner", desc: "Own 10 heroes", goal: 10, get: () => G.heroes.length, reward: { common: 2 } },
   { id: "codex24", name: "Collector", desc: "Discover all 24 heroes", goal: 24, get: () => new Set(G.heroes.map((h) => h.id)).size, reward: { radiant: 2 } },
@@ -212,5 +212,49 @@ SCREENS.home = function () {
 const _homeBadgeBase = homeBadge;
 homeBadge = function () { return _homeBadgeBase() + achReady(); };
 BACK_TO.achievements = "home";
+
+// ---------- skill upgrades, gear lock, team presets ----------
+Object.assign(ACTIONS, {
+  skillUp(d) {
+    const h = heroByUid(UI.heroUid), i = +d.i;
+    if (!h) return;
+    h.skillLv = h.skillLv || [];
+    const lv = h.skillLv[i] || 0, cost = lv + 1;
+    if (lv >= 4 || (G.tomes || 0) < cost) return toast("Not enough Skill Tomes.");
+    G.tomes -= cost; h.skillLv[i] = lv + 1; save();
+    SOUND.play("buff"); toast(`${HERO[h.id].skills[i].name} → Lv ${lv + 2}`);
+  },
+  lockGear(d) { const g = gearByUid(+d.uid); if (g) { g.locked = !g.locked; save(); } },
+  teamBest() {
+    const best = [...G.heroes].sort((a, b) => power(heroStats(b)) - power(heroStats(a))).slice(0, 4);
+    G.team = best.map((h) => h.uid); save(); toast("Strongest 4 heroes selected");
+  },
+  teamSave(d) { G.teams = G.teams || [[], [], []]; G.teams[+d.i] = [...G.team]; save(); toast(`Saved as team ${+d.i + 1}`); },
+  teamLoad(d) {
+    const t = (G.teams || [])[+d.i] || [];
+    const valid = t.filter((u) => heroByUid(u));
+    if (!valid.length) return toast("That preset is empty. Build a team, then tap Save.");
+    G.team = valid; save(); toast(`Team ${+d.i + 1} loaded`);
+  },
+  autoEquipTeam() {
+    const team = G.team.map(heroByUid).filter(Boolean).sort((a, b) => power(heroStats(b)) - power(heroStats(a)));
+    for (const h of team) autoEquip(h);
+    save(); toast("Best gear equipped on your team");
+  },
+});
+// Prep screen: presets row + best-team button.
+const _prepBase = SCREENS.prep;
+SCREENS.prep = function () {
+  const html = _prepBase();
+  const teams = G.teams || [[], [], []];
+  const row = `<div class="card col" style="gap:8px"><div class="row spread"><b class="small">Team presets</b>
+      <button class="btn sec sm" data-act="teamBest">⚡ Best team</button></div>
+    ${[0, 1, 2].map((i) => `<div class="row" style="gap:6px"><span class="small" style="width:52px">Team ${i + 1}</span>
+      <span class="small dim grow">${(teams[i] || []).map(heroByUid).filter(Boolean).map((h) => HERO[h.id].face).join(" ") || "empty"}</span>
+      <button class="btn sec sm" data-act="teamLoad" data-i="${i}">Load</button><button class="btn sec sm" data-act="teamSave" data-i="${i}">Save</button></div>`).join("")}
+    <button class="btn sec sm" data-act="autoEquipTeam">🛡️ Auto-equip whole team</button></div>`;
+  const marker = `<div class="small dim">Tap a hero to add them</div>`;
+  return html.includes(marker) ? html.replace(marker, row + marker) : html + row;
+};
 
 if (!B) render();

@@ -84,12 +84,14 @@ function grant(r) {
   if (r.gold) G.gold += r.gold;
   if (r.essence) G.essence += r.essence;
   for (const k of ["common", "mystic", "radiant"]) if (r[k]) G.shards[k] += r[k];
+  if (r.tome) G.tomes = (G.tomes || 0) + r.tome;
 }
 function rewardText(r) {
   const parts = [];
   if (r.gold) parts.push(`🪙 ${fmt(r.gold)}`);
   if (r.essence) parts.push(`💠 ${r.essence}`);
   for (const k of ["common", "mystic", "radiant"]) if (r[k]) parts.push(`${SHARDS[k].icon} ×${r[k]}`);
+  if (r.tome) parts.push(`📕 ×${r.tome}`);
   return parts.join("  ");
 }
 const fmt = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : n >= 1e4 ? (n / 1e3).toFixed(1) + "K" : Math.round(n).toLocaleString();

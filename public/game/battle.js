@@ -11,7 +11,7 @@ function makeUnit(side, template, stats, extra = {}) {
   };
 }
 function unitFromHero(h) {
-  return makeUnit("A", HERO[h.id], heroStats(h), { heroUid: h.uid, level: h.level, stars: h.stars });
+  return makeUnit("A", HERO[h.id], heroStats(h), { heroUid: h.uid, level: h.level, stars: h.stars, skillLv: h.skillLv || [] });
 }
 function unitFromEnemy(e) {
   // Stats use a fixed baseline rarity; e.mul (the stage curve) sets the strength.
@@ -152,7 +152,10 @@ class Battle {
   act(u, skillIdx, targetKey) {
     const ev = [];
     const sk = u.template.skills[skillIdx];
-    u.cds[skillIdx] = sk.cd;
+    // Skill upgrades (Skill Tomes): +8% damage/healing per level up to 3; level 4 cuts the cooldown by 1.
+    const slv = (u.skillLv && u.skillLv[skillIdx]) || 0;
+    u.cds[skillIdx] = Math.max(0, sk.cd - (slv >= 4 && sk.cd > 1 ? 1 : 0));
+    this.boost = 1 + 0.08 * Math.min(slv, 3);
     ev.push({ type: "skill", key: u.key, name: sk.name, side: u.side });
     const own = this.living(this.sideOf(u, true)), foes = this.living(this.sideOf(u, false));
     let targets;
@@ -178,12 +181,13 @@ class Battle {
       const recips = f.to === "self" ? [u] : f.to === "allies" ? this.living(own) : f.to === "enemies" ? this.living(foes) : targets.filter((t) => t.alive);
       for (const r of recips) this.applyFx(u, r, f, ev);
     }
+    this.boost = 1;
     return ev;
   }
 
   hit(u, t, sk, ev) {
     const stat = sk.scale === "def" ? this.defOf(u) : sk.scale === "hp" ? u.maxHp : this.atkOf(u);
-    let dmg = stat * sk.mult;
+    let dmg = stat * sk.mult * (this.boost || 1);
     const em = elemMult(u.el, t.el);
     dmg *= em;
     dmg *= 650 / (650 + this.defOf(t));
@@ -227,7 +231,7 @@ class Battle {
       return;
     }
     switch (f.t) {
-      case "heal": return this.heal(r, r.maxHp * f.pct, ev);
+      case "heal": return this.heal(r, r.maxHp * f.pct * (this.boost || 1), ev);
       case "tm": r.tm += TM_FULL * f.val; ev.push({ type: "text", key: r.key, text: "⏩ Turn Meter" }); return;
       case "tmDrain": r.tm = Math.max(0, r.tm - TM_FULL * f.val); ev.push({ type: "text", key: r.key, text: "⏪ Turn Meter" }); return;
       case "cleanse": {

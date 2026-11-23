@@ -20,9 +20,9 @@ const DUNGEON_KEYS = Object.keys(DUNGEONS);
 const ARENA_TIERS = [
   { name: "Bronze", icon: "🥉", min: 0, week: { gold: 5000, common: 1 } },
   { name: "Silver", icon: "🥈", min: 1150, week: { gold: 10000, common: 2 } },
-  { name: "Gold", icon: "🥇", min: 1300, week: { gold: 18000, common: 2, mystic: 1 } },
-  { name: "Platinum", icon: "💎", min: 1500, week: { gold: 30000, common: 3, mystic: 2 } },
-  { name: "Sigil", icon: "🔱", min: 1700, week: { gold: 50000, mystic: 3, radiant: 1 } },
+  { name: "Gold", icon: "🥇", min: 1300, week: { gold: 18000, common: 2, mystic: 1, tome: 1 } },
+  { name: "Platinum", icon: "💎", min: 1500, week: { gold: 30000, common: 3, mystic: 2, tome: 2 } },
+  { name: "Sigil", icon: "🔱", min: 1700, week: { gold: 50000, mystic: 3, radiant: 1, tome: 3 } },
 ];
 const RIVAL_ADJ = ["Ashen", "Gilded", "Hollowmoor", "Sunken", "Thorn", "Lantern", "Iron", "Moonlit", "Ember", "Silent", "Stormward", "Briar", "Duskwatch", "Saltmarsh", "Riven", "Copper"];
 const RIVAL_NOUN = ["Ravens", "Wardens", "Pilgrims", "Lanterns", "Oaths", "Foxes", "Covenant", "Bellringers", "Hounds", "Circle", "Vanguard", "Wayfarers", "Sigilborn", "Tide-callers", "Kestrels", "Banner"];
@@ -80,7 +80,7 @@ function dungeonRewards(key, f, first) {
   if (key === "vault") r.gold = Math.round(1500 * Math.pow(f + 1, 1.5));
   if (key === "trial") { r.xp = Math.round(stageRewards(idx, false).xp * 3); r.essence = 5 + f * 3; }
   if (key === "forge") r.gold = Math.round(150 + lvl * 20);
-  if (first) { r.common = 1; if (f === 4 || f === 9) r.mystic = 1; }
+  if (first) { r.common = 1; if (f === 4 || f === 9) { r.mystic = 1; r.tome = 1; } }
   return r;
 }
 function forgeDrops(f) {

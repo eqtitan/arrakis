@@ -298,8 +298,12 @@ const SCREENS = {
             <small>${g ? GEAR_SETS[g.set].icon + " " + GEAR_SETS[g.set].name : GEAR_SLOTS[slot].name}</small>
             ${g ? `<span class="glv">+${g.level}</span>` : ""}</button>`;
         }).join("")}</div><div class="small dim" style="margin-top:6px">2 pieces of the same set grant its bonus.</div></div>
-      <div class="card"><h3>Skills</h3>${t.skills.map((s, i) => `<div class="skillrow"><div class="row spread"><b>${["A1", "A2", "A3"][i]} · ${s.name}</b>
-        <span class="small dim">${s.cd ? `⏳ ${s.cd} turns` : "Basic"}</span></div><div class="small dim">${skillDesc(s)}</div></div>`).join("")}</div>`;
+      <div class="card"><div class="row spread"><h3>Skills</h3><span class="small">📕 ${G.tomes || 0} Skill Tomes</span></div>${t.skills.map((s, i) => {
+        const lv = (h.skillLv && h.skillLv[i]) || 0, cost = lv + 1, cd = Math.max(0, s.cd - (lv >= 4 && s.cd > 1 ? 1 : 0));
+        return `<div class="skillrow"><div class="row spread"><b>${["A1", "A2", "A3"][i]} · ${s.name} <span class="gold small">Lv ${lv + 1}/5</span></b>
+        <span class="small dim">${s.cd ? `⏳ ${cd} turns` : "Basic"}</span></div><div class="small dim">${skillDesc(s)}${lv ? ` · <span style="color:var(--good)">+${Math.min(lv, 3) * 8}% power${lv >= 4 && s.cd > 1 ? ", −1 cooldown" : ""}</span>` : ""}</div>
+        ${lv < 4 ? `<button class="btn sec sm ${(G.tomes || 0) >= cost ? "" : "off"}" style="margin-top:6px" data-act="skillUp" data-i="${i}">📕 Upgrade (${cost} tome${cost > 1 ? "s" : ""}) → ${lv + 1 < 4 ? "+8% power" : s.cd > 1 ? "−1 cooldown" : "+mastery"}</button>` : `<div class="small gold" style="margin-top:4px">Mastered</div>`}</div>`;
+      }).join("")}<div class="small dim" style="margin-top:6px">Skill Tomes come from Hard boss stages, dungeon floors 5 and 10, achievements and the weekly Arena reward.</div></div>`;
   },
 
   equip() {
@@ -367,7 +371,8 @@ function gearRow(g, opts = {}) {
     <div class="col" style="gap:4px">
       ${g.level < GEAR_MAX_LEVEL ? `<button class="btn sec sm ${G.gold >= cost ? "" : "off"}" data-act="upgrade" data-uid="${g.uid}">⬆ 🪙${fmt(cost)}</button>` : `<span class="small gold">MAX</span>`}
       ${opts.equipFor ? (owner && owner.uid === opts.equipFor.uid ? `<span class="small" style="color:var(--good)">Equipped</span>` : `<button class="btn sm" data-act="equip" data-uid="${g.uid}">Equip</button>`) : ""}
-      ${opts.sell ? `<button class="btn red sm" data-act="sell" data-uid="${g.uid}">Sell 🪙${fmt(gearSellValue(g))}</button>` : ""}
+      ${opts.sell ? `<button class="btn sec sm" data-act="lockGear" data-uid="${g.uid}">${g.locked ? "🔒 Locked" : "🔓 Lock"}</button>` : ""}
+      ${opts.sell && !g.locked ? `<button class="btn red sm" data-act="sell" data-uid="${g.uid}">Sell 🪙${fmt(gearSellValue(g))}</button>` : ""}
     </div></div>`;
 }
 
@@ -468,7 +473,7 @@ const ACTIONS = {
   sell(d) { const g = gearByUid(+d.uid); const v = gearSellValue(g); sellGear(g); save(); toast(`Sold for 🪙 ${fmt(v)}`); },
   sellJunk() {
     let total = 0;
-    for (const g of G.gear.filter((x) => !gearOwner(x) && x.rarity <= 2)) { total += gearSellValue(g); sellGear(g); }
+    for (const g of G.gear.filter((x) => !gearOwner(x) && x.rarity <= 2 && !x.locked)) { total += gearSellValue(g); sellGear(g); }
     save(); toast(`Sold for 🪙 ${fmt(total)}`);
   },
   summon(d) {
