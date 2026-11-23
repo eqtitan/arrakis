@@ -75,6 +75,9 @@ namespace Sigilbound.Client
                 Toast("Graphics: " + (i == 0 ? "Auto" : qKeys[i]));
             });
 
+            SettingRow(ref y, b, "Performance overlay", "Shows frame rate and draw calls. For testing; saved on this device.");
+            Chips(ref y, b, new[] { "Off", "On" }, PerfOverlay.Enabled ? 1 : 0, i => PerfOverlay.Enabled = i == 1);
+
             if (Screen != ScreenId.Battle)
             {
                 SettingRow(ref y, b, "Promo code", "Got a code? Enter it here for free rewards.");

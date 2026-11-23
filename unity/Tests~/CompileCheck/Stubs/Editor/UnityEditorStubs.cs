@@ -54,6 +54,8 @@ namespace UnityEditor
         public static bool SwitchActiveBuildTarget(BuildTargetGroup targetGroup, BuildTarget target) => throw new NotImplementedException();
     }
 
+    public enum MeshDeformation { CPU = 0, GPU = 1, GPUBatched = 2 }
+
     public sealed class PlayerSettings : UnityEngine.Object
     {
         public static string companyName { get; set; }
@@ -67,6 +69,7 @@ namespace UnityEditor
         public static bool allowedAutorotateToLandscapeRight { get; set; }
         public static bool stripEngineCode { get; set; }
         public static bool runInBackground { get; set; }
+        public static MeshDeformation meshDeformation { get; set; }
         public static void SetApplicationIdentifier(Build.NamedBuildTarget buildTarget, string identifier) => throw new NotImplementedException();
         public static void SetScriptingBackend(Build.NamedBuildTarget buildTarget, ScriptingImplementation backend) => throw new NotImplementedException();
         public static void SetIl2CppCompilerConfiguration(Build.NamedBuildTarget buildTarget, Il2CppCompilerConfiguration configuration) => throw new NotImplementedException();

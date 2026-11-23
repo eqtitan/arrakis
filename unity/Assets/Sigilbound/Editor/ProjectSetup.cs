@@ -43,6 +43,9 @@ namespace Sigilbound.EditorTools
             PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
+            // GPU skinning (compute; batched where the device supports it) takes the hero meshes'
+            // skinning off the CPU. Static batching of the arena happens at runtime (Arena.StaticBatch).
+            PlayerSettings.meshDeformation = MeshDeformation.GPUBatched;
 
             UrpSetup.Apply();
             if (!File.Exists("Assets/StreamingAssets/Models/adventurer.glb"))

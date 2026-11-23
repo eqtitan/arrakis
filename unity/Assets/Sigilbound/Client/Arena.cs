@@ -1,5 +1,6 @@
 // The 3D battlefield: camera, lights, sky backdrop, ground, the rune circle and chapter scenery.
 // Battle positions and camera framing come from Core.BattleLayout (ported from three3d.mjs).
+using System.Collections.Generic;
 using UnityEngine;
 using Sigilbound.Core;
 
@@ -99,6 +100,21 @@ namespace Sigilbound.Client
             // Ground, water or lava, scatter, horizon silhouettes and motes (scenery.mjs themes).
             float density = Quality.I == null ? 1f : new[] { 0.4f, 0.7f, 1f, 1.3f }[Quality.I.Tier];
             Scenery.Build(_scenery.transform, chapter, titan, density, bottom);
+            StaticBatch(_scenery);
+        }
+
+        // Static batching: everything in the arena that never moves (ground, circle, scatter,
+        // silhouettes) is combined per material; animated water/lava and particles are left out.
+        static void StaticBatch(GameObject root)
+        {
+            var still = new List<GameObject>();
+            foreach (var mr in root.GetComponentsInChildren<MeshRenderer>())
+            {
+                var mf = mr.GetComponent<MeshFilter>();
+                if (mf == null || mf.sharedMesh == null || !mf.sharedMesh.isReadable || mr.GetComponent<SceneryWave>() != null) continue;
+                still.Add(mr.gameObject);
+            }
+            if (still.Count > 1) StaticBatchingUtility.Combine(still.ToArray(), root);
         }
 
         // A glowing ellipse on the ground at `k` times the rim size.
