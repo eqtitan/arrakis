@@ -63,9 +63,11 @@ static class KitTests
             string id = Json.Str(c, "id"); bool hollow = Json.Bool(c, "hollow");
             ((Dictionary<string, object>)c).TryGetValue("gear", out var gearObj);
             var gear = GearFrom(gearObj);
-            var mine = KitBuilder.Build(id, hollow, gear, 0.9);
+            bool titan = id == "titan";
+            var el = (Element)Array.IndexOf(new[] { "flame", "gale", "tide", "light", "shadow" }, Json.Str(c, "el"));
+            var mine = titan ? KitBuilder.BuildTitan(el) : KitBuilder.Build(id, hollow, gear, 0.9);
             var theirs = Json.Arr(c, "sockets");
-            string label = $"{id}{(hollow ? " (hollow)" : "")}{(gear == null ? "" : " gear " + gear.Key)}";
+            string label = titan ? $"titan ({el})" : $"{id}{(hollow ? " (hollow)" : "")}{(gear == null ? "" : " gear " + gear.Key)}";
             string err = null;
             var mySlots = mine.Select(s => s.Slot).OrderBy(x => x, StringComparer.Ordinal).ToList();
             var theirSlots = theirs.Select(s => Json.Str(s, "slot")).OrderBy(x => x, StringComparer.Ordinal).ToList();
@@ -108,7 +110,7 @@ static class KitTests
             if (err == null) okBuilds++; else errors.Add($"{label}: {err}");
         }
         foreach (var e in errors.Take(8)) Console.WriteLine("   " + e);
-        Check(okBuilds == builds, $"kit matches buildKit() part for part in {okBuilds}/{builds} builds ({parts} parts: shapes, materials, transforms)");
+        Check(okBuilds == builds, $"kit matches buildKit()/buildTitanKit() part for part in {okBuilds}/{builds} builds, Titan for all 5 elements included ({parts} parts: shapes, materials, transforms)");
 
         // Baking merges each socket into one mesh per material; budget check on a fully geared hero.
         var full = KitBuilder.Build("seraphine", false, new GearLook { Weapon = new GearLook.Item { R = 5, S = "keen" }, Helm = new GearLook.Item { R = 5, S = "keen" }, Chest = new GearLook.Item { R = 5, S = "keen" }, Boots = new GearLook.Item { R = 5, S = "keen" } });

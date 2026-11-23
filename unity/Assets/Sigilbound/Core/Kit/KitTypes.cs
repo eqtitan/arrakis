@@ -8,7 +8,8 @@ using System.Globalization;
 
 namespace Sigilbound.Core
 {
-    public enum KitFinish { Metal, LeatherMetal, Leather, Cloth, Wood, Gold, Hair, Bone, Glow }
+    // Plain = three3d.mjs lit(): an untextured standard material (the Titan's stone kit).
+    public enum KitFinish { Metal, LeatherMetal, Leather, Cloth, Wood, Gold, Hair, Bone, Glow, Plain, Stone }
 
     public sealed class KitMat
     {

@@ -33,6 +33,8 @@ const pieces = [
   lineOf(t3, "const GEAR_METAL ="), lineOf(t3, "const GEAR_TRIM ="), lineOf(t3, "const SET_GLOW ="), lineOf(t3, "const gearSig ="),
   lineOf(t3, "const HELM_GEAR ="), lineOf(t3, "const ADORN_GEAR ="), lineOf(t3, "const gripDir ="), lineOf(t3, "const GRIP_POS ="),
   block(t3, "function buildKit("),
+  block(fs.readFileSync(path.join(root, "public/game/data.js"), "utf8"), "const ELEMENTS = {"),
+  lineOf(t3, "const EYE ="), block(t3, "function buildTitanKit("),
 ];
 
 // ---------- stubs for the module helpers buildKit uses ----------
@@ -75,16 +77,18 @@ function matName(m) {
 const rec = (o, mw) => ({ kind: o.userData.kind, mat: matName(o.userData.mat), m: mw.elements.map(r6) });
 class RecMap extends Map { set(k, v) { recorded.push({ key: k, entry: v }); return super.set(k, v); } }
 
-const src = pieces.join("\n") + "\nreturn { buildKit, LOOKS, BODY };";
+const src = pieces.join("\n") + "\nreturn { buildKit, buildTitanKit, LOOKS, BODY };";
 const kitCacheRef = { v: null };
-const factory = new Function("T", "D2R", "mix", "mul", "part", "geos", "sheet", "pivot", "detailMaterial", "glow", "socket", "socketM", "boneY", "springy", "instantiate", "bake", "kitCacheRef", "qm",
+const factory = new Function("T", "D2R", "mix", "mul", "part", "geos", "sheet", "pivot", "detailMaterial", "glow", "socket", "socketM", "boneY", "springy", "instantiate", "bake", "kitCacheRef", "qm", "lit", "crackMaterial",
   src.replace("function buildKit(", "const kitCache = kitCacheRef.v;\n  function buildKit("));
 // kitCache is read inside buildKit at call time; give it a fresh recorder per build.
+const lit = (color, metal = 0) => ({ finish: "plain", color, metalness: metal });
+const crackMaterial = (m) => m; // a material effect; the Unity port applies it to the stone separately
 const BONES = ["WristR", "WristL", "Head", "Hips", "Chest", "UpperArmL", "UpperArmR", "LowerLegL", "LowerLegR", "FootL", "FootR"];
 
 function run(id, hollow, gear) {
   kitCacheRef.v = new RecMap(); recorded = [];
-  const api = factory(T, D2R, mix, mul, part, geos, sheet, pivot, detailMaterial, glow, socket, socketM, boneY, springy, instantiate, bake, kitCacheRef, null);
+  const api = factory(T, D2R, mix, mul, part, geos, sheet, pivot, detailMaterial, glow, socket, socketM, boneY, springy, instantiate, bake, kitCacheRef, null, lit, crackMaterial);
   const model = new T.Group();
   const bones = {};
   for (const n of BONES) { const b = new T.Bone(); b.name = n; model.add(b); bones[n] = b; }
@@ -112,7 +116,7 @@ function run(id, hollow, gear) {
   return out;
 }
 
-const factoryProbe = factory(T, D2R, mix, mul, part, geos, sheet, pivot, detailMaterial, glow, socket, socketM, boneY, springy, instantiate, bake, kitCacheRef, null);
+const factoryProbe = factory(T, D2R, mix, mul, part, geos, sheet, pivot, detailMaterial, glow, socket, socketM, boneY, springy, instantiate, bake, kitCacheRef, null, lit, crackMaterial);
 const ids = Object.keys(factoryProbe.LOOKS);
 const G = (r, s) => ({ weapon: { r, s }, helm: { r, s }, chest: { r, s }, boots: { r, s } });
 const cases = [];
@@ -126,6 +130,24 @@ for (const id of ["hask", "aurelia", "nyx", "seraphine", "pell", "wren", "gorrum
   cases.push({ id, hollow: true, gear: { helm: { r: 2, s: "" }, chest: { r: 2, s: "" } } });
 }
 const fixture = cases.map((c) => ({ ...c, sockets: run(c.id, c.hollow, c.gear) }));
+// The Titan (buildTitanKit) for each element of the day.
+function runTitan(el) {
+  kitCacheRef.v = new RecMap(); recorded = [];
+  const api = factory(T, D2R, mix, mul, part, geos, sheet, pivot, detailMaterial, glow, socket, socketM, boneY, springy, instantiate, bake, kitCacheRef, null, lit, crackMaterial);
+  const model = new T.Group(), bones = {};
+  for (const n of ["Head", "Torso", "UpperArmL", "UpperArmR"]) { const b = new T.Bone(); b.name = n; model.add(b); bones[n] = b; }
+  api.buildTitanKit(model, el, []);
+  const out = [];
+  for (const b of Object.values(bones)) for (const s of b.children) {
+    const info = s.userData.sock; if (!info) continue;
+    for (const inst of s.children.filter((c) => c.userData.baked)) {
+      const entry = recorded.find((r) => r.entry.baked === inst.userData.baked);
+      out.push({ slot: entry.key.slice(("titan|" + el).length), mode: info.mode, bone: info.bone, pos: info.pos, dir: null, roll: 0, q: s.quaternion.toArray().map(r6), scale: 1, parts: entry.entry.baked, live: [] });
+    }
+  }
+  return out;
+}
+for (const el of ["flame", "gale", "tide", "light", "shadow"]) fixture.push({ id: "titan", el, hollow: false, gear: null, sockets: runTitan(el) });
 fs.writeFileSync(path.join(here, "kit-fixture.json"), JSON.stringify(fixture) + "\n");
 const nParts = fixture.reduce((s, c) => s + c.sockets.reduce((a, k) => a + k.parts.length + k.live.reduce((b, l) => b + l.parts.length, 0), 0), 0);
 console.log(`kit-fixture.json: ${fixture.length} builds, ${nParts} parts`);

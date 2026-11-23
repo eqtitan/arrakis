@@ -916,6 +916,61 @@ namespace Sigilbound.Core
             }
         }
 
+        // ---------- the Titan: dark stone horns, brow, tusks and crest, back shards, shoulder rocks ----------
+        public static string ElementColor(Element e) => e switch
+        {
+            Element.Flame => "#e8553a", Element.Gale => "#3fb57a", Element.Tide => "#3a8ee8", Element.Light => "#e8c23a", _ => "#9a5ae8",
+        }; // data.js ELEMENTS colours
+        static readonly V3 TitanEye = new V3(0.24, 0.27, 0.46); // eye position in the Titan's Head-bone space
+
+        static KitMat Lit(string c) => new KitMat { Finish = KitFinish.Plain, Color = c };
+        // part() with three3d.mjs's raw kinds (the Titan kit calls part() directly: "box" is a plain box).
+        static KitNode Raw(KitNode g, string kind, double[] pos, double[] scale, KitMat mat, double[] rot = null)
+        {
+            var n = P(g, kind == "box" ? "boxRaw" : kind, pos, scale, mat, rot);
+            if (kind == "box") n.Shape = "box";
+            return n;
+        }
+
+        // buildTitanKit() in three3d.mjs. The glowing seams (crackMaterial) are a material effect on
+        // the base mesh's stone, applied by the client.
+        public static List<KitSocket> BuildTitan(Element el)
+        {
+            string ec = ElementColor(el);
+            var rock = Lit("#1e1a17"); var rockD = Lit("#110f0d"); var g = Glow(ec); var gh = Glow(ec, 0.3);
+            var list = new List<KitSocket>();
+            KitSocket S(string slot, string bone) { var s = new KitSocket { Slot = slot, Bone = bone, Mode = SocketMode.Bone, CacheKey = $"titan|{el}{slot}" }; list.Add(s); return s; }
+            var h = S("H", "Head").Root;
+            foreach (var sx in new[] { -1.0, 1.0 })
+            {
+                Raw(h, "cone", A(sx * 0.34, 0.5, -0.02), A(0.22, 0.5, 0.22), rock, A(0, 0, sx * -42));
+                Raw(h, "cone", A(sx * 0.56, 0.8, 0.08), A(0.14, 0.4, 0.14), rockD, A(-30, 0, sx * -14));
+                Raw(h, "box", A(sx * (TitanEye.X - 0.02), TitanEye.Y + 0.12, TitanEye.Z - 0.02), A(0.32, 0.08, 0.16), rockD, A(15, 0, sx * -24));
+            }
+            foreach (var sx in new[] { -1.0, 1.0 })
+            {
+                Raw(h, "rock", A(sx * 0.22, 0.17, 0.55), A(0.2, 0.09, 0.12), rock, A(10, 0, sx * 38));
+                Raw(h, "cone", A(sx * 0.13, 0.05, 0.58), A(0.06, 0.16, 0.06), Lit("#5a4e44"), A(-12, 0, sx * -12));
+            }
+            Raw(h, "box", A(0, -0.03, 0.53), A(0.42, 0.06, 0.12), rockD, A(-8, 0, 0));
+            Raw(h, "rock", A(0, 0.62, 0.12), A(0.3, 0.6, 0.26), rockD, A(-15, 0, 0));
+            Raw(h, "rock", A(0.13, 0.56, -0.06), A(0.22, 0.44, 0.2), rock, A(-35, 0, -22));
+            Raw(h, "rock", A(-0.13, 0.56, -0.06), A(0.22, 0.44, 0.2), rock, A(-35, 0, 22));
+            Raw(h, "rock", A(0, 0.44, -0.3), A(0.2, 0.4, 0.18), rockD, A(-60, 0, 0));
+            var t = S("T", "Torso").Root;
+            var shards = new[] { new[] { 0, 0.45, -0.38, 0.5 }, new[] { 0.22, 0.32, -0.35, 0.36 }, new[] { -0.22, 0.32, -0.35, 0.36 }, new[] { 0, 0.15, -0.44, 0.34 } };
+            for (int i = 0; i < shards.Length; i++) { var s = shards[i]; Raw(t, "rock", A(s[0], s[1], s[2]), A(0.16, s[3], 0.14), i % 2 == 1 ? rockD : rock, A(-50, 0, s[0] * -60)); }
+            Raw(t, "sphere", A(0, 0.3, -0.33), A(0.1, 0.1, 0.1), g);
+            foreach (var bn in new[] { "UpperArmL", "UpperArmR" })
+            {
+                var a = S(bn, bn).Root;
+                Raw(a, "rock", A(0, 0.12, 0), A(0.24, 0.38, 0.22), rock, A(0, 0, 20));
+                Raw(a, "rock", A(0.06, 0.02, 0.12), A(0.14, 0.26, 0.14), rockD, A(30, 0, -10));
+                Raw(a, "sphere", A(0, 0.12, 0), A(0.4, 0.4, 0.4), gh);
+            }
+            return list;
+        }
+
         // ---------- baking (static parts of a socket, merged per material) ----------
         public sealed class Baked { public readonly Dictionary<string, (KitMat mat, MeshData mesh)> ByMat = new Dictionary<string, (KitMat, MeshData)>(); }
 
