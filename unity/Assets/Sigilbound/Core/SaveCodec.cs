@@ -72,13 +72,15 @@ namespace Sigilbound.Core
                 var h = new HeroSave { uid = Json.Int(o, "uid"), id = id, level = Json.Int(o, "level", 1), xp = Json.Int(o, "xp"), stars = Json.Int(o, "stars", NaturalStars(Hero(id).Rarity)), locked = Json.Bool(o, "locked") };
                 var g = Json.Obj(o, "gear");
                 if (g != null) foreach (Slot sl in Enum.GetValues(typeof(Slot))) h.SetGear(sl, Json.Int(g, SlotKey(sl)));
+                // skillLv: an array that can have holes ([null, null, 2]) when a later skill was upgraded first.
+                h.skillLv = (Json.Arr(o, "skillLv") ?? new List<object>()).Select(x => x is double d ? Math.Max(0, Math.Min(4, (int)d)) : 0).ToList();
                 s.heroes.Add(h);
             }
             foreach (var o in Json.Arr(root, "gear") ?? new List<object>())
             {
                 int slot = Array.IndexOf(SlotKeys, Json.Str(o, "slot"));
                 if (slot < 0) continue;
-                var g = new GearSave { uid = Json.Int(o, "uid"), slot = slot, rarity = Math.Max(1, Math.Min(5, Json.Int(o, "rarity", 1))), set = SetIndex(Json.Str(o, "set")), level = Json.Int(o, "level") };
+                var g = new GearSave { uid = Json.Int(o, "uid"), slot = slot, rarity = Math.Max(1, Math.Min(5, Json.Int(o, "rarity", 1))), set = SetIndex(Json.Str(o, "set")), level = Json.Int(o, "level"), locked = Json.Bool(o, "locked") };
                 foreach (var sub in Json.Arr(o, "subs") ?? new List<object>())
                     g.subs.Add(new SubStatSave { stat = (int)StatFrom(Json.Str(sub, "stat")), val = Json.Int(sub, "val") });
                 s.gear.Add(g);
@@ -92,6 +94,12 @@ namespace Sigilbound.Core
             s.nextUid = Math.Max(s.nextUid, maxUid + 1);
 
             s.cleared = Math.Max(0, Math.Min(TotalStages, Json.Int(root, "cleared")));
+            s.hardCleared = Math.Max(0, Math.Min(s.cleared, Json.Int(root, "hardCleared")));
+            s.tomes = Math.Max(0, Json.Int(root, "tomes"));
+            var ach = Json.Obj(root, "ach");
+            if (ach != null) s.ach = ach.Where(kv => Json.Bool(ach, kv.Key)).Select(kv => kv.Key).ToList();
+            foreach (var t in Json.Arr(root, "teams") ?? new List<object>())
+                s.teams.Add(new TeamPreset { uids = (t as List<object> ?? new List<object>()).OfType<double>().Select(d => (int)d).ToList() });
             var pity = Json.Obj(root, "pity");
             s.pityMystic = Json.Int(pity, "mystic"); s.pityRadiant = Json.Int(pity, "radiant");
             var login = Json.Obj(root, "login");
@@ -176,15 +184,27 @@ namespace Sigilbound.Core
             {
                 var gear = new Dictionary<string, object>();
                 foreach (Slot sl in Enum.GetValues(typeof(Slot))) if (h.GetGear(sl) != 0) gear[SlotKey(sl)] = h.GetGear(sl);
-                return (object)new Dictionary<string, object> { ["uid"] = h.uid, ["id"] = h.id, ["level"] = h.level, ["xp"] = h.xp, ["stars"] = h.stars, ["gear"] = gear, ["locked"] = h.locked };
+                var o = new Dictionary<string, object> { ["uid"] = h.uid, ["id"] = h.id, ["level"] = h.level, ["xp"] = h.xp, ["stars"] = h.stars, ["gear"] = gear, ["locked"] = h.locked };
+                if (h.skillLv.Count > 0) o["skillLv"] = h.skillLv.Select(x => (object)x).ToList();
+                return (object)o;
             }).ToList();
-            root["gear"] = s.gear.Select(g => (object)new Dictionary<string, object>
+            root["gear"] = s.gear.Select(g =>
             {
-                ["uid"] = g.uid, ["slot"] = SlotKey(g.Slot), ["rarity"] = g.rarity, ["set"] = SetKey(g.Set), ["level"] = g.level,
-                ["subs"] = g.subs.Select(x => (object)new Dictionary<string, object> { ["stat"] = StatKey((Stat)x.stat), ["val"] = x.val }).ToList(),
+                var o = new Dictionary<string, object>
+                {
+                    ["uid"] = g.uid, ["slot"] = SlotKey(g.Slot), ["rarity"] = g.rarity, ["set"] = SetKey(g.Set), ["level"] = g.level,
+                    ["subs"] = g.subs.Select(x => (object)new Dictionary<string, object> { ["stat"] = StatKey((Stat)x.stat), ["val"] = x.val }).ToList(),
+                };
+                if (g.locked) o["locked"] = true;
+                return (object)o;
             }).ToList();
             root["team"] = s.team.Select(u => (object)u).ToList();
             root["cleared"] = s.cleared;
+            // Fields added in web 0.20/0.21: written once they're used (or were in the source save).
+            if (s.hardCleared > 0 || root.ContainsKey("hardCleared")) root["hardCleared"] = s.hardCleared;
+            if (s.tomes > 0 || root.ContainsKey("tomes")) root["tomes"] = s.tomes;
+            if (s.ach.Count > 0 || root.ContainsKey("ach")) { var a = new Dictionary<string, object>(); foreach (var id in s.ach) a[id] = 1; root["ach"] = a; }
+            if (s.teams.Count > 0 || root.ContainsKey("teams")) root["teams"] = s.teams.Select(t => (object)t.uids.Select(u => (object)u).ToList()).ToList();
             root["pity"] = new Dictionary<string, object> { ["mystic"] = s.pityMystic, ["radiant"] = s.pityRadiant };
             root["login"] = new Dictionary<string, object> { ["last"] = s.loginLast, ["day"] = s.loginDay };
 

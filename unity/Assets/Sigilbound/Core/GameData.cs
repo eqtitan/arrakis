@@ -194,7 +194,7 @@ namespace Sigilbound.Core
 
     public sealed class Reward
     {
-        public int Gold, Essence, Common, Mystic, Radiant, Xp;
+        public int Gold, Essence, Common, Mystic, Radiant, Xp, Tome;
         public override string ToString()
         {
             var parts = new List<string>();
@@ -203,6 +203,7 @@ namespace Sigilbound.Core
             if (Common > 0) parts.Add($"{Common} worn shard{(Common > 1 ? "s" : "")}");
             if (Mystic > 0) parts.Add($"{Mystic} mystic shard{(Mystic > 1 ? "s" : "")}");
             if (Radiant > 0) parts.Add($"{Radiant} radiant shard{(Radiant > 1 ? "s" : "")}");
+            if (Tome > 0) parts.Add($"{Tome} skill tome{(Tome > 1 ? "s" : "")}");
             return string.Join(", ", parts);
         }
     }

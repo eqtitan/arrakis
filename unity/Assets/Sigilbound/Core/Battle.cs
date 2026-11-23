@@ -17,6 +17,8 @@ namespace Sigilbound.Core
         public double Tm; public int[] Cds; public List<Effect> Effects = new List<Effect>();
         public bool Alive = true; public long DmgDealt; public int Level; public int Stars;
         public bool Boss, Titan; public int HeroUid;
+        public int[] SkillLv = new int[0]; // Skill Tome upgrades per skill (allies)
+        public int SkillLevel(int i) => i < SkillLv.Length ? SkillLv[i] : 0;
         public bool Has(FxType t) => Effects.Any(e => e.Type == t);
         public Effect Shield => Effects.FirstOrDefault(e => e.Type == FxType.Shield);
     }
@@ -64,7 +66,7 @@ namespace Sigilbound.Core
         public static Unit FromHero(Game g, HeroSave h)
         {
             var u = Make(true, Hero(h.id), g.HeroStats(h));
-            u.HeroUid = h.uid; u.Level = h.level; u.Stars = h.stars;
+            u.HeroUid = h.uid; u.Level = h.level; u.Stars = h.stars; u.SkillLv = h.skillLv.ToArray();
             return u;
         }
         public static Unit FromEnemy(EnemySpec e)
@@ -91,6 +93,8 @@ namespace Sigilbound.Core
         }
         public static Battle ForStage(Game g, int idx) =>
             new Battle(g.Team.Select(h => FromHero(g, h)).ToList(), Game.StageWaves(idx).Select(w => w.Select(FromEnemy).ToList()).ToList(), g.Rng);
+        public static Battle ForHard(Game g, int idx) =>
+            new Battle(g.Team.Select(h => FromHero(g, h)).ToList(), Game.HardWaves(idx).Select(w => w.Select(FromEnemy).ToList()).ToList(), g.Rng);
         public static Battle ForDungeon(Game g, DungeonKey key, int floor) =>
             new Battle(g.Team.Select(h => FromHero(g, h)).ToList(), Trials.DungeonWaves(key, floor, g.TodayElement).Select(w => w.Select(FromEnemy).ToList()).ToList(), g.Rng);
         public static Battle ForArena(Game g, Rival rv) =>
@@ -143,10 +147,33 @@ namespace Sigilbound.Core
             {
                 var ready = Living(Units).Where(u => u.Tm >= TmFull).OrderByDescending(u => u.Tm).ThenByDescending(Speed).FirstOrDefault();
                 if (ready != null) return ready;
-                foreach (var u in Living(Units)) u.Tm += Speed(u) * 0.7;
+                foreach (var u in Living(Units)) u.Tm += Speed(u) * 0.07 * 10; // exactly as battle.js (0.07 * 10 != 0.7 in floating point)
             }
             return null;
         }
+
+        // The next n actors, by simulating the turn meters with the same rule as NextActor
+        // (extras.js predictTurns, shown as the turn-order bar). Doesn't change the battle.
+        public List<Unit> PredictTurns(int n = 7)
+        {
+            var sim = Living(Units).Select(u => (u, tm: u.Tm, spd: Speed(u))).ToList();
+            var tms = sim.Select(x => x.tm).ToArray();
+            var output = new List<Unit>();
+            for (int guard = 0; output.Count < n && guard < 5000; guard++)
+            {
+                int best = -1;
+                for (int i = 0; i < sim.Count; i++)
+                    if (tms[i] >= TmFull && (best < 0 || tms[i] > tms[best] || (tms[i] == tms[best] && sim[i].spd > sim[best].spd))) best = i;
+                if (best >= 0) { output.Add(sim[best].u); tms[best] = 0; continue; }
+                for (int i = 0; i < sim.Count; i++) tms[i] += sim[i].spd * 0.7;
+            }
+            return output;
+        }
+
+        // Skill Tomes: +8% damage/healing per level up to 3; level 4 cuts the cooldown by 1 (if it's above 1).
+        public static int SkillCooldown(SkillDef sk, int lv) => Math.Max(0, sk.Cooldown - (lv >= 4 && sk.Cooldown > 1 ? 1 : 0));
+        public static double SkillBoost(int lv) => 1 + 0.08 * Math.Min(lv, 3);
+        double _boost = 1;
 
         public (List<BattleEvent> events, bool skip) BeginTurn(Unit u)
         {
@@ -226,7 +253,9 @@ namespace Sigilbound.Core
         {
             var ev = new List<BattleEvent>();
             var sk = u.Template.Skills[skillIdx];
-            u.Cds[skillIdx] = sk.Cooldown;
+            int slv = u.SkillLevel(skillIdx);
+            u.Cds[skillIdx] = SkillCooldown(sk, slv);
+            _boost = SkillBoost(slv);
             ev.Add(new BattleEvent { Type = EvType.Skill, Unit = u, Skill = sk });
             var own = Living(Side(u, true)); var foes = Living(Side(u, false));
             List<Unit> targets;
@@ -250,6 +279,7 @@ namespace Sigilbound.Core
                 var recips = f.To == FxTo.Self ? new List<Unit> { u } : f.To == FxTo.Allies ? Living(own) : f.To == FxTo.Enemies ? Living(foes) : targets.Where(t => t.Alive).ToList();
                 foreach (var r in recips) ApplyFx(u, r, f, ev);
             }
+            _boost = 1;
             return ev;
         }
 
@@ -257,7 +287,7 @@ namespace Sigilbound.Core
         {
             double stat = sk.Scale == Scale.Def ? DefOf(u) : sk.Scale == Scale.Hp ? u.MaxHp : AtkOf(u);
             double em = ElementMultiplier(u.El, t.El);
-            double dmg = stat * sk.Mult * em * (650 / (650 + DefOf(t)));
+            double dmg = stat * sk.Mult * _boost * em * (650 / (650 + DefOf(t)));
             bool crit = _rng.NextDouble() * 100 < u.Crit && em >= 1;
             if (crit) dmg *= 1 + u.Cdmg / 100.0;
             dmg *= 0.95 + _rng.NextDouble() * 0.1;
@@ -300,7 +330,7 @@ namespace Sigilbound.Core
             if (r.Titan && (f.Type == FxType.Stun || f.Type == FxType.TmDrain)) { ev.Add(new BattleEvent { Type = EvType.Text, Unit = r, Text = "Immune" }); return; }
             switch (f.Type)
             {
-                case FxType.Heal: HealUnit(r, r.MaxHp * f.Pct, ev); return;
+                case FxType.Heal: HealUnit(r, r.MaxHp * f.Pct * _boost, ev); return;
                 case FxType.Tm: r.Tm += TmFull * f.Val; ev.Add(new BattleEvent { Type = EvType.Text, Unit = r, Text = "Turn Meter +" }); return;
                 case FxType.TmDrain: r.Tm = Math.Max(0, r.Tm - TmFull * f.Val); ev.Add(new BattleEvent { Type = EvType.Text, Unit = r, Text = "Turn Meter -" }); return;
                 case FxType.Cleanse:

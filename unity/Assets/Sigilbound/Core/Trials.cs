@@ -1,5 +1,5 @@
 // Trials: daily Dungeons (Gilded Vault, Hall of Echoes, Sigil Forge) and the Arena.
-// Mirrors public/game/modes.js (v0.19.2): same floors, rewards, rival generation and tiers.
+// Mirrors public/game/modes.js (v0.21.0): same floors, rewards, rival generation and tiers.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,9 +42,9 @@ namespace Sigilbound.Core
         {
             new ArenaTier { Name = "Bronze", Min = 0, Week = new Reward { Gold = 5000, Common = 1 } },
             new ArenaTier { Name = "Silver", Min = 1150, Week = new Reward { Gold = 10000, Common = 2 } },
-            new ArenaTier { Name = "Gold", Min = 1300, Week = new Reward { Gold = 18000, Common = 2, Mystic = 1 } },
-            new ArenaTier { Name = "Platinum", Min = 1500, Week = new Reward { Gold = 30000, Common = 3, Mystic = 2 } },
-            new ArenaTier { Name = "Sigil", Min = 1700, Week = new Reward { Gold = 50000, Mystic = 3, Radiant = 1 } },
+            new ArenaTier { Name = "Gold", Min = 1300, Week = new Reward { Gold = 18000, Common = 2, Mystic = 1, Tome = 1 } },
+            new ArenaTier { Name = "Platinum", Min = 1500, Week = new Reward { Gold = 30000, Common = 3, Mystic = 2, Tome = 2 } },
+            new ArenaTier { Name = "Sigil", Min = 1700, Week = new Reward { Gold = 50000, Mystic = 3, Radiant = 1, Tome = 3 } },
         };
         public static ArenaTier TierFor(int points) => Tiers.LastOrDefault(t => points >= t.Min) ?? Tiers[0];
         public static ArenaTier TierNamed(string name) => Tiers.FirstOrDefault(t => t.Name == name) ?? Tiers[0];
@@ -92,7 +92,7 @@ namespace Sigilbound.Core
             if (key == DungeonKey.Vault) r.Gold = Js.RoundInt(1500 * Math.Pow(floor + 1, 1.5));
             if (key == DungeonKey.Trial) { r.Xp = Js.RoundInt(Game.StageRewards(idx, false).Xp * 3.0); r.Essence = 5 + floor * 3; }
             if (key == DungeonKey.Forge) r.Gold = Js.RoundInt(150 + lvl * 20.0);
-            if (first) { r.Common = 1; if (IsBossFloor(floor)) r.Mystic = 1; }
+            if (first) { r.Common = 1; if (IsBossFloor(floor)) { r.Mystic = 1; r.Tome = 1; } }
             return r;
         }
 

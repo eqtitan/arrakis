@@ -54,6 +54,7 @@ namespace Sigilbound.Core
         {
             S.gold += r.Gold; S.essence += r.Essence;
             S.shardCommon += r.Common; S.shardMystic += r.Mystic; S.shardRadiant += r.Radiant;
+            S.tomes += r.Tome;
         }
         public void EnsureDaily()
         {
@@ -252,6 +253,7 @@ namespace Sigilbound.Core
         }
         public void SellGear(GearSave g)
         {
+            if (g == null || g.locked) return;
             GearOwner(g)?.SetGear(g.Slot, 0);
             S.gear.Remove(g);
             S.gold += GearSellValue(g);

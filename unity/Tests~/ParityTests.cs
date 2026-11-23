@@ -93,7 +93,7 @@ static class ParityTests
             foreach (var first in new[] { true, false })
             {
                 var r = Trials.DungeonRewards(key, f, first); var wr = Json.Obj(d, first ? "rewardsFirst" : "rewards");
-                if (r.Gold != N(wr, "gold") || r.Xp != N(wr, "xp") || r.Essence != N(wr, "essence") || r.Common != N(wr, "common") || r.Mystic != N(wr, "mystic")) { dBad++; Console.WriteLine($"   {key} {f} rewards differ"); }
+                if (r.Gold != N(wr, "gold") || r.Xp != N(wr, "xp") || r.Essence != N(wr, "essence") || r.Common != N(wr, "common") || r.Mystic != N(wr, "mystic") || r.Tome != N(wr, "tome")) { dBad++; Console.WriteLine($"   {key} {f} rewards differ"); }
             }
         }
         Check(dBad == 0, "dungeon floors (enemies, bosses, rewards) match for all three dungeons");

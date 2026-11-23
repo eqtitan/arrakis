@@ -10,6 +10,8 @@ namespace Sigilbound.Core
     {
         public int uid; public string id; public int level = 1; public int xp; public int stars; public bool locked;
         public int weapon, helm, chest, boots; // gear uids, 0 = empty
+        public List<int> skillLv = new List<int>(); // skill upgrade levels 0-4 per skill (Skill Tomes); missing = 0
+        public int SkillLv(int i) => i < skillLv.Count ? skillLv[i] : 0;
         public int GetGear(GameData.Slot s) => s switch { GameData.Slot.Weapon => weapon, GameData.Slot.Helm => helm, GameData.Slot.Chest => chest, _ => boots };
         public void SetGear(GameData.Slot s, int v) { switch (s) { case GameData.Slot.Weapon: weapon = v; break; case GameData.Slot.Helm: helm = v; break; case GameData.Slot.Chest: chest = v; break; default: boots = v; break; } }
     }
@@ -18,7 +20,7 @@ namespace Sigilbound.Core
 
     [Serializable] public sealed class GearSave
     {
-        public int uid; public int slot; public int rarity; public int set; public int level;
+        public int uid; public int slot; public int rarity; public int set; public int level; public bool locked;
         public List<SubStatSave> subs = new List<SubStatSave>();
         public GameData.Slot Slot => (GameData.Slot)slot;
         public GameData.GearSet Set => (GameData.GearSet)set;
@@ -61,6 +63,8 @@ namespace Sigilbound.Core
         public bool initialized;                             // ensureModes has run (arena week set)
     }
 
+    [Serializable] public sealed class TeamPreset { public List<int> uids = new List<int>(); }
+
     [Serializable] public sealed class SaveData
     {
         public int v = 1; public bool started; public int nextUid = 1;
@@ -70,6 +74,10 @@ namespace Sigilbound.Core
         public List<GearSave> gear = new List<GearSave>();
         public List<int> team = new List<int>();
         public int cleared;
+        public int hardCleared;                               // Hard campaign stages cleared (extras.js)
+        public int tomes;                                     // Skill Tomes
+        public List<string> ach = new List<string>();         // claimed achievement ids
+        public List<TeamPreset> teams = new List<TeamPreset>(); // team presets (3 slots)
         public int pityMystic, pityRadiant;
         public string loginLast = ""; public int loginDay;
         public DailySave daily = new DailySave();
