@@ -302,6 +302,23 @@ namespace Sigilbound.Client
             _busy = false;
         }
 
+        // The hero screen's tap: the hero's own strike (melee) or cast, in place.
+        public void Showcase()
+        {
+            if (_dead || _busy) return;
+            bool caster = Looks.IsCaster(Unit.Template.Id);
+            Sound.I?.Play(caster ? "cast" : "swing", 0.5f);
+            if (_model != null) { if (caster) _model.Cast(false); else _model.Strike(); return; }
+            StartCoroutine(PlaceholderShowcase(!caster));
+        }
+        IEnumerator PlaceholderShowcase(bool melee)
+        {
+            var home = _home; _home = transform.position;
+            yield return Attack(transform.position + transform.forward * 0.6f, melee);
+            yield return Recover();
+            _home = home;
+        }
+
         public IEnumerator Recover()
         {
             _busy = true;
