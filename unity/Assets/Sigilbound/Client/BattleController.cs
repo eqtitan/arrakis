@@ -10,12 +10,13 @@ using static Sigilbound.Core.GameData;
 
 namespace Sigilbound.Client
 {
-    public enum BattleMode { Stage, Titan, Dungeon, Arena }
+    public enum BattleMode { Stage, Titan, Dungeon, Arena, Hard }
 
     public sealed class BattleSpec
     {
         public BattleMode Mode; public int Stage; public DungeonKey Dungeon; public int Floor; public Rival Rival;
         public static BattleSpec ForStage(int idx) => new BattleSpec { Mode = BattleMode.Stage, Stage = idx };
+        public static BattleSpec ForHard(int idx) => new BattleSpec { Mode = BattleMode.Hard, Stage = idx };
         public static BattleSpec Titan() => new BattleSpec { Mode = BattleMode.Titan };
         public static BattleSpec ForDungeon(DungeonKey k, int floor) => new BattleSpec { Mode = BattleMode.Dungeon, Dungeon = k, Floor = floor };
         public static BattleSpec ForArena(Rival rv) => new BattleSpec { Mode = BattleMode.Arena, Rival = rv };
@@ -43,6 +44,7 @@ namespace Sigilbound.Client
             if (spec.Mode == BattleMode.Dungeon && !G.CanEnterFloor(spec.Dungeon, spec.Floor)) { App.Toast("No runs left today for this dungeon."); return; }
             if (spec.Mode == BattleMode.Arena && G.S.daily.arenaTries <= 0) { App.Toast("No arena fights left today."); return; }
             if (spec.Mode == BattleMode.Titan && G.S.daily.titanTries <= 0) { App.Toast("No Titan tries left today."); return; }
+            if (spec.Mode == BattleMode.Hard && !G.HardOpen(spec.Stage)) { App.Toast("Clear the previous Hard stage first."); return; }
             _spec = spec;
             App.ClearLineup();
             _b = spec.Mode switch
@@ -50,6 +52,7 @@ namespace Sigilbound.Client
                 BattleMode.Titan => Core.Battle.ForTitan(G),
                 BattleMode.Dungeon => Core.Battle.ForDungeon(G, spec.Dungeon, spec.Floor),
                 BattleMode.Arena => Core.Battle.ForArena(G, spec.Rival),
+                BattleMode.Hard => Core.Battle.ForHard(G, spec.Stage),
                 _ => Core.Battle.ForStage(G, spec.Stage),
             };
             // Scenery: as battleScene() in modes.js.
@@ -280,6 +283,7 @@ namespace Sigilbound.Client
                 case BattleMode.Titan: FinishTitan(); return;
                 case BattleMode.Dungeon: FinishDungeon(); return;
                 case BattleMode.Arena: FinishArena(); return;
+                case BattleMode.Hard: FinishHard(); return;
             }
             if (_b.Result == BattleResult.Victory)
             {
@@ -330,6 +334,56 @@ namespace Sigilbound.Client
         }
 
         AutoRun _auto;
+
+        // Hard campaign result (MODES.hard.finish in extras.js).
+        void FinishHard()
+        {
+            int idx = _spec.Stage;
+            if (_b.Result != BattleResult.Victory)
+            {
+                App.Modal("DEFEAT", 250, r =>
+                {
+                    Ui.Text(new Rect(r.x, r.y, r.width, 80), "Hard stages hit much harder. Level up, upgrade gear and try again.", 13, Palette.Dim, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                    if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Retry", Ui.Kind.Secondary)) { App.CloseModal(); Begin(BattleSpec.ForHard(idx)); }
+                    if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Map")) End(ScreenId.Campaign);
+                });
+                return;
+            }
+            var res = G.CompleteHard(idx); App.Save();
+            App.Online.PushProfile();
+            string ups = string.Join("\n", res.LevelUps.Select(l => $"{Hero(l.hero.id).ShortName} → Lv {l.hero.level}"));
+            string gear = $"\nFound: {GearRarityNames[res.Gear.rarity]} {res.Gear.Set} {res.Gear.Slot}";
+            int next = idx + 1;
+            App.Modal("HARD CLEARED", 340, r =>
+            {
+                Ui.Text(new Rect(r.x, r.y, r.width, 60), res.Reward + $"\n+{Ui.Fmt(res.Reward.Xp)} XP each" + (res.FirstClear ? " · First Hard clear!" : ""), 14, Palette.Text, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                Ui.Text(new Rect(r.x, r.y + 64, r.width, 90), ups + gear, 13, Palette.Good, FontStyle.Normal, TextAnchor.UpperCenter, true);
+                if (G.HardOpen(next) && Ui.Button(new Rect(r.x, r.yMax - 100, r.width, 44), $"Hard {Game.StageLabel(next)} ▶")) { App.CloseModal(); Begin(BattleSpec.ForHard(next)); }
+                if (Ui.Button(new Rect(r.x, r.yMax - 46, r.width / 2 - 5, 44), "Replay", Ui.Kind.Secondary)) { App.CloseModal(); Begin(BattleSpec.ForHard(idx)); }
+                if (Ui.Button(new Rect(r.x + r.width / 2 + 5, r.yMax - 46, r.width / 2 - 5, 44), "Map", Ui.Kind.Secondary)) End(ScreenId.Campaign);
+            });
+        }
+
+        // Turn-order bar under the header: the next 7 actors (Battle.PredictTurns, extras.js predictTurns).
+        List<Unit> _turns = new List<Unit>(); int _turnsFrame = -1;
+        void DrawTurnBar(float y)
+        {
+            if (_b.Over) return;
+            if (_turnsFrame != Time.frameCount) { _turnsFrame = Time.frameCount; _turns = _b.PredictTurns(7); } // once per frame, not per GUI event
+            var list = _turns;
+            GUI.DrawTexture(new Rect(0, y, Ui.W, 30), Ui.Solid(new Color(0.04f, 0.03f, 0.06f, 0.5f)));
+            Ui.Text(new Rect(8, y, 40, 30), "Next", 11, Palette.Dim, FontStyle.Bold, TextAnchor.MiddleLeft);
+            float w = (Ui.W - 52 - 6 * 4) / 7f;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var u = list[i];
+                var r = new Rect(48 + i * (w + 4), y + 3, w, 24);
+                bool now = i == 0 && u == _actor;
+                Ui.Panel(r, u.Ally ? Palette.Hex("#1f3326") : Palette.Hex("#3a1c1c"), now ? Palette.Gold : u.Ally ? Palette.Good : Palette.Bad, 8);
+                string nm = u.Titan ? "Titan" : u.Template.ShortName;
+                Ui.Text(r, $"{Ui.ColorTag("●", Palette.Element(u.El))}{(nm.Length > 5 ? nm.Substring(0, 5) : nm)}", 10, Palette.Text, FontStyle.Bold, TextAnchor.MiddleCenter);
+            }
+        }
 
         // The whole auto-replay run (battles, wins, losses, gold, XP, shards, gear, level ups).
         void ShowAutoSummary(string why, int stage)
@@ -438,6 +492,7 @@ namespace Sigilbound.Client
                 BattleMode.Titan => $"Titan · Turn {Mathf.Min(_b.BossTurns + 1, TitanTurns)}/{TitanTurns} · {Ui.Fmt(_b.TitanDamage)} dmg",
                 BattleMode.Dungeon => $"{Trials.Dungeon(_spec.Dungeon).Name} · F{_spec.Floor + 1} · W{_b.Wave + 1}/{_b.Waves.Count}",
                 BattleMode.Arena => $"Arena · vs {_spec.Rival.Name}",
+                BattleMode.Hard => $"Hard {Game.StageLabel(_spec.Stage)} · Wave {_b.Wave + 1}/{_b.Waves.Count}",
                 _ => $"Stage {Game.StageLabel(_spec.Stage)} · Wave {_b.Wave + 1}/{_b.Waves.Count}",
             };
             float bx = Ui.W - 10;
@@ -446,6 +501,7 @@ namespace Sigilbound.Client
             if (_spec.Mode == BattleMode.Stage) { bx -= 54; if (Ui.Button(new Rect(bx, top + 8, 50, 34), "Loop", G.S.settings.autoReplay ? Ui.Kind.Primary : Ui.Kind.Secondary, 12)) { G.S.settings.autoReplay = !G.S.settings.autoReplay; App.Save(); } }
             bx -= 46; if (Ui.Button(new Rect(bx, top + 8, 42, 34), "Cam", Ui.Kind.Secondary, 11)) CycleCamera();
             Ui.Text(new Rect(56, top + 8, bx - 60, 34), info, 12, Palette.Text, FontStyle.Bold, TextAnchor.MiddleLeft, false, true);
+            DrawTurnBar(top + 50);
 
             // unit bars + tap targets
             bool manual = _awaiting && _actor != null && _actor.Ally && !Auto;
@@ -458,7 +514,7 @@ namespace Sigilbound.Client
                 if (!u.Alive) continue;
                 Vector3 sp = cam.WorldToScreenPoint(v.HeadTop ? v.HeadTop.position + Vector3.up * 0.25f : v.transform.position + Vector3.up * 2.2f);
                 if (sp.z < 0) continue;
-                float x = Mathf.Clamp(sp.x / Ui.Scale, 46, Ui.W - 46), y = Mathf.Max(safe.y + 84, (Screen.height - sp.y) / Ui.Scale); // tags stay on screen
+                float x = Mathf.Clamp(sp.x / Ui.Scale, 46, Ui.W - 46), y = Mathf.Max(safe.y + 114, (Screen.height - sp.y) / Ui.Scale); // tags stay on screen, below the turn bar
                 float w = u.Titan ? 140 : 76;
                 Ui.Text(new Rect(x - w / 2 - 10, y - 30, w + 20, 16), $"{Ui.ColorTag("●", Palette.Element(u.El))} {(u.Ally ? u.Template.ShortName : u.Name)}", 11, Palette.Text, FontStyle.Bold, TextAnchor.MiddleCenter);
                 Ui.Bar(new Rect(x - w / 2, y - 13, w, 7), u.Titan ? 1 : u.Hp / (float)u.MaxHp, u.Ally ? Palette.Good : Palette.Bad);

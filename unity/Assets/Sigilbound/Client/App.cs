@@ -22,7 +22,7 @@ namespace Sigilbound.Client
         }
     }
 
-    public enum ScreenId { Intro, Home, Campaign, Prep, Heroes, Hero, Equip, Summon, Titan, Battle, Friends, FriendProfile, Chat, Blocked, Trials, Dungeon, ArenaPvp }
+    public enum ScreenId { Intro, Home, Campaign, Prep, Heroes, Hero, Equip, Summon, Titan, Battle, Friends, FriendProfile, Chat, Blocked, Trials, Dungeon, ArenaPvp, Achievements }
 
     public sealed partial class App : MonoBehaviour
     {
@@ -246,9 +246,10 @@ namespace Sigilbound.Client
             switch (Screen)
             {
                 case ScreenId.Home: DrawHome(content); break;
-                case ScreenId.Campaign: DrawCampaign(content); break;
+                case ScreenId.Campaign: if (_hardTab && G.S.cleared > 0) DrawHardCampaign(content); else DrawCampaign(content); break;
                 case ScreenId.Prep: DrawPrep(content); break;
-                case ScreenId.Heroes: DrawHeroes(content); break;
+                case ScreenId.Heroes: if (_codex) DrawCodex(content); else DrawHeroes(content); break;
+                case ScreenId.Achievements: DrawAchievements(content); break;
                 case ScreenId.Hero: DrawHero(content); break;
                 case ScreenId.Equip: DrawEquip(content); break;
                 case ScreenId.Summon: DrawSummon(content); break;
@@ -296,7 +297,7 @@ namespace Sigilbound.Client
             for (int i = 0; i < items.Length; i++)
             {
                 var it = items[i];
-                bool on = Screen == it.id || (it.id == ScreenId.Heroes && (Screen == ScreenId.Hero || Screen == ScreenId.Equip))
+                bool on = Screen == it.id || (it.id == ScreenId.Home && Screen == ScreenId.Achievements) || (it.id == ScreenId.Heroes && (Screen == ScreenId.Hero || Screen == ScreenId.Equip))
                     || (it.id == ScreenId.Trials && (Screen == ScreenId.Titan || Screen == ScreenId.Dungeon || Screen == ScreenId.ArenaPvp))
                     || (it.id == ScreenId.Friends && (Screen == ScreenId.FriendProfile || Screen == ScreenId.Chat || Screen == ScreenId.Blocked));
                 var cell = new Rect(i * w, r.y, w, 64);
@@ -317,7 +318,7 @@ namespace Sigilbound.Client
         {
             int n = G.LoginAvailable ? 1 : 0;
             foreach (var q in GameData.DailyQuests) if (!G.QuestClaimed(q.Id) && G.QuestProgress(q.Id) >= q.Goal) n++;
-            return n;
+            return n + G.AchReadyCount; // + achievements ready to claim (extras.js homeBadge)
         }
 
         void DrawModalAndToasts()
