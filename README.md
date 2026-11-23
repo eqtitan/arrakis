@@ -107,43 +107,7 @@ tools/
   rslhelper-export.mjs     reads RSL Helper's local SQLite DB, outputs roster.json
 ```
 
-## Sigilbound (prototype game) — `public/game/`
+## Sigilbound
 
-An original, fully free-to-play hero-collector RPG for mobile browsers.
-It's a separate side project from the optimizer and shares no code with it.
-
-- **Play locally:** `npm run dev`, then open `http://localhost:5174/game/`.
-  Or serve the folder directly: `cd public/game && python3 -m http.server`.
-  It's plain JS with no build step. Deploys with the site at `/game/`.
-- **Features:** 24 original heroes in 4 rarities and 5 elements, turn-meter
-  battles (manual / auto / 1–3× speed / auto-replay), a 60-stage campaign,
-  a daily Titan boss, gear with sets and upgrades, leveling and star rank-ups,
-  summoning with pity, an essence exchange, daily login and quests.
-- **No monetization:** there's no shop and no paid currency.
-  Every shard is earned in play. Progress saves to `localStorage`.
-- **3D battles** (`three3d.js`, built from `game3d/three3d.mjs` with `npm run build:game3d`):
-  rigged, animated CC0 hero models by Quaternius (`models/`, see `models/CREDITS.md`) recolored
-  per hero, scenery, animations and particle effects, with the HTML HUD pinned over each unit. It falls back
-  to the 2D sprites without WebGL, and Home → *Battles: 3D/2D* switches it off.
-- Art is drawn in code (`art.js`): vector hero portraits, chapter backdrops and
-  canvas battle effects. To use real artwork, add images under `public/game/art/`
-  and list them in `ART_FILES` in `art.js`.
-- **Friends & chat:** a Friends tab with friend codes, requests, friend
-  profiles and 1-on-1 messaging, served by `functions/api/sb/[[path]].ts`. It
-  needs a Cloudflare D1 database bound as `SIGIL_DB` (see `wrangler.toml`).
-  Without it the rest of the game still works and the tab explains why.
-  Test locally: `npm run build && npx wrangler pages dev dist --d1 SIGIL_DB=local`.
-- Files: `data.js` (content), `state.js` (save/progression), `battle.js`
-  (DOM-free engine), `ui.js` (screens), `online.js` (friends & chat), `style.css`.
-
-## Sigilbound (Unity 3D version), `unity/`
-
-A Unity 6 port of the game with a 3D battlefield and placeholder 3D heroes. It builds native
-Android and iOS apps. The game rules live in plain C# and are tested with
-`dotnet run --project unity/Tests~`. See `unity/README.md` for setup and builds.
-
-## Sigilbound phone apps, `mobile/`
-
-Capacitor wraps the web game into native Android and iOS apps. GitHub Actions builds an
-installable Android APK on every push and posts it to the `android-latest` release. iOS is
-compiled on GitHub's Macs. See `mobile/README.md`.
+The Sigilbound game that used to live here has moved to its own repository:
+[eqtitan/SigilBound](https://github.com/eqtitan/SigilBound).
