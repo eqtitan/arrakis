@@ -12,7 +12,7 @@ namespace Sigilbound.Client
 
         public void OpenSettings()
         {
-            Modal("Settings", Mathf.Min(Ui.Safe.height - 40, 640), DrawSettings);
+            Modal("Settings", Mathf.Min(Ui.Safe.height - 40, 740), DrawSettings);
         }
 
         void SettingRow(ref float y, Rect b, string title, string sub)
@@ -35,10 +35,24 @@ namespace Sigilbound.Client
             y += 40;
         }
 
+        void Slider(ref float y, Rect b, string title, double value, System.Action<double> set)
+        {
+            int pct = Mathf.RoundToInt((float)value * 100);
+            Ui.Text(new Rect(b.x, y, b.width - 60, 22), title, 15, Palette.TrimHi, FontStyle.Bold, TextAnchor.MiddleLeft, false, true);
+            Ui.Text(new Rect(b.xMax - 60, y, 60, 22), pct > 0 ? pct + "%" : "Off", 12, Palette.Dim, FontStyle.Normal, TextAnchor.MiddleRight);
+            float v = GUI.HorizontalSlider(new Rect(b.x, y + 26, b.width, 20), pct, 0, 100);
+            int nv = Mathf.RoundToInt(v / 5) * 5; // 5% steps like the web slider
+            if (nv != pct) { set(nv / 100.0); Save(); }
+            y += 52;
+        }
+
         void DrawSettings(Rect b)
         {
             float y = b.y;
             var st = G.S.settings;
+            // Volume sliders (0 = off) that apply instantly, as audio.js.
+            Slider(ref y, b, "Music", st.musicVol, v => { st.musicVol = v; Sound.I?.ApplyVolumes(); });
+            Slider(ref y, b, "Sound effects", st.sfxVol, v => { st.sfxVol = v; Sound.I?.ApplyVolumes(); });
             var cams = BattleLayout.Cameras;
             SettingRow(ref y, b, "Camera angle", "Also switchable during battle with Cam.");
             Chips(ref y, b, System.Array.ConvertAll(cams, c => c.Name), System.Array.FindIndex(cams, c => c.Key == BattleLayout.Camera(st.cam).Key), i => { st.cam = cams[i].Key; Save(); Toast("Camera: " + cams[i].Name); });
@@ -72,7 +86,7 @@ namespace Sigilbound.Client
                         case PromoResult.Empty: Toast("Enter a code first."); break;
                         case PromoResult.Invalid: Toast("That code isn't valid."); break;
                         case PromoResult.AlreadyUsed: Toast("You've already used this code."); break;
-                        default: Save(); _promoInput = ""; Toast($"{entry.Label}: {entry.Reward}"); break;
+                        default: Save(); _promoInput = ""; Sound.I?.Play("legendary", 1, 1, 0); Toast($"{entry.Label}: {entry.Reward}"); break;
                     }
                 }
                 y += 46;

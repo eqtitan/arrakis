@@ -41,6 +41,7 @@ namespace Sigilbound.Core
         public string cam = "angle";      // battle camera preset (Three-quarter is the default)
         public int fpsCap = 60;           // 30 (cooler) or 60 (smoother)
         public string quality = "auto";   // auto | Ultra | High | Medium | Low
+        public double sfxVol = 0.8, musicVol = 0.6; // 0..1, 0 = off (audio.js)
     }
 
     [Serializable] public sealed class ArenaSave

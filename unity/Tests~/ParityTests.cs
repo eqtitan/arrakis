@@ -37,7 +37,7 @@ static class ParityTests
         Check(save.shardMystic == Json.Int(Json.Obj(web, "shards"), "mystic") && save.pityMystic == Json.Int(Json.Obj(web, "pity"), "mystic"), "imported shards and pity");
         Check(save.daily.date == "2026-11-23" && save.daily.win == 3 && save.daily.runsTrial == 1 && save.daily.arenaTries == 2 && save.loginDay == 1, "imported daily quests, dungeon runs, arena tries, login");
         Check(save.modes.initialized && save.modes.floorsVault == 3 && save.modes.forgeSet == (int)GearSet.Keen && save.modes.arena.points == 1320 && save.modes.codes.Contains("1qestrz-ml0zya"), "imported trials progress and used promo codes");
-        Check(save.settings.fpsCap == 30 && save.playerName == "Fixture Ünïcode ✓", "imported settings and a Unicode player name");
+        Check(save.settings.fpsCap == 30 && save.settings.musicVol == 0 && save.settings.sfxVol == 0.8 && save.playerName == "Fixture Ünïcode ✓", "imported settings (music switched off on the web = volume 0) and a Unicode player name");
         var h0 = save.heroes[0];
         Check(h0.id == "ysolde" && h0.weapon != 0 && h0.helm != 0 && h0.chest != 0 && h0.boots != 0, "imported equipped gear links");
 
@@ -58,7 +58,7 @@ static class ParityTests
         // ---------- export round trip ----------
         var json = SaveCodec.ToJson(save);
         var diffs = new List<string>();
-        Diff(web, Json.Parse(json), "", diffs, new HashSet<string> { "settings.quality" });
+        Diff(web, Json.Parse(json), "", diffs, new HashSet<string> { "settings.quality", "settings.sfxVol", "settings.musicVol" });
         Check(diffs.Count == 0, "exported JSON equals the web save field for field" + (diffs.Count > 0 ? ": " + string.Join("; ", diffs.Take(6)) : ""));
         var again = SaveCodec.FromCode(SaveCodec.ToCode(save));
         Check(again != null && SaveCodec.ToJson(again) == json, "Unity save code round-trips (export → import → same JSON)");

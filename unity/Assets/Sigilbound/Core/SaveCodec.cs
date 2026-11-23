@@ -124,6 +124,9 @@ namespace Sigilbound.Core
                 if (!Json.Bool(st, "camDefault2")) s.settings.cam = "angle"; // modes.js one-time switch to Three-quarter
                 s.settings.fpsCap = Json.Int(st, "fpsCap", 60) == 30 ? 30 : 60;
                 s.settings.quality = Json.Str(st, "quality", "auto");
+                // audio.js: numeric volumes, or the older on/off switches.
+                s.settings.sfxVol = Json.Has(st, "sfxVol") ? Json.Num(st, "sfxVol") : st.TryGetValue("sound", out var so) && so is bool sb && !sb ? 0 : 0.8;
+                s.settings.musicVol = Json.Has(st, "musicVol") ? Json.Num(st, "musicVol") : st.TryGetValue("music", out var mo) && mo is bool mb && !mb ? 0 : 0.6;
             }
 
             var stats = Json.Obj(root, "stats");
@@ -208,6 +211,7 @@ namespace Sigilbound.Core
             var st = Json.Obj(root, "settings") ?? new Dictionary<string, object>();
             st["speed"] = s.settings.speed; st["auto"] = s.settings.auto; st["autoReplay"] = s.settings.autoReplay;
             st["cam"] = s.settings.cam; st["camDefault2"] = 1; st["fpsCap"] = s.settings.fpsCap; st["quality"] = s.settings.quality;
+            st["sfxVol"] = s.settings.sfxVol; st["musicVol"] = s.settings.musicVol;
             root["settings"] = st;
             var stats = Json.Obj(root, "stats") ?? new Dictionary<string, object>();
             stats["wins"] = s.wins; stats["summons"] = s.summons; stats["titanBest"] = s.titanBestAllTime;

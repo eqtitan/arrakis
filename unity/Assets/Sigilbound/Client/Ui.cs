@@ -209,7 +209,9 @@ namespace Sigilbound.Client
             var col = GUI.color; if (!enabled) GUI.color = new Color(1, 1, 1, 0.4f);
             bool hit = GUI.Button(r, text, ButtonStyle(k, size));
             GUI.color = col; GUI.enabled = was;
-            return hit && !Scroller.WasDragging;
+            hit = hit && !Scroller.WasDragging;
+            if (hit && k != Kind.Ghost) Sound.I?.Play("tap", 0.45f, 1, 0); // every button taps, as the web
+            return hit;
         }
 
         public static void Text(Rect r, string text, int size = 15, Color? color = null, FontStyle fs = FontStyle.Normal, TextAnchor align = TextAnchor.MiddleLeft, bool wrap = false, bool serif = false) =>

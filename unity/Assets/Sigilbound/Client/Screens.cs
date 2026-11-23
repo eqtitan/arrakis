@@ -61,7 +61,7 @@ namespace Sigilbound.Client
             Ui.Text(new Rect(r.x + 14, r.y + 8, 220, 24), $"Daily Login · Day {(G.S.loginDay - (login ? 0 : 1)) % 7 + 1}", 16, Palette.Text, FontStyle.Bold);
             Ui.Text(new Rect(r.x + 14, r.y + 32, 230, 22), login ? LoginRewards[G.S.loginDay % LoginRewards.Length].ToString() : "Come back tomorrow", 12, Palette.Dim);
             if (Ui.Button(new Rect(r.xMax - 100, r.y + 14, 86, 36), login ? "Claim" : "Claimed", Ui.Kind.Primary, 14, login))
-            { var rw = G.ClaimLogin(); Save(); Toast("Login reward: " + rw); }
+            { var rw = G.ClaimLogin(); Save(); Sound.I?.Play("coin"); Toast("Login reward: " + rw); }
 
             float qh = 40 + DailyQuests.Length * 44;
             r = Row(ref y, qh);
@@ -75,7 +75,7 @@ namespace Sigilbound.Client
                 Ui.Bar(new Rect(r.x + 14, qy + 20, 220, 5), p / (float)q.Goal, Palette.Gold);
                 Ui.Text(new Rect(r.x + 14, qy + 26, 240, 16), $"{p}/{q.Goal} · {q.Reward}", 11, Palette.Dim);
                 if (Ui.Button(new Rect(r.xMax - 86, qy + 4, 72, 32), claimed ? "Done" : "Claim", Ui.Kind.Primary, 13, done && !claimed))
-                { var rw = G.ClaimQuest(q.Id); if (rw != null) { Save(); Toast("Quest complete: " + rw); } }
+                { var rw = G.ClaimQuest(q.Id); if (rw != null) { Save(); Sound.I?.Play("coin"); Toast("Quest complete: " + rw); } }
                 qy += 44;
             }
             int next = Mathf.Min(G.S.cleared, TotalStages - 1);
@@ -394,6 +394,9 @@ namespace Sigilbound.Client
             if (res.Count == 0) { Toast("Not enough shards."); return; }
             Save();
             var best = res.Max(h => Hero(h.id).Rarity);
+            // audio.js / ui.js: a low cast, then a fanfare by the best rarity.
+            Sound.I?.Play("cast", 0.5f, 0.6f, 0);
+            Sound.I?.Play(best >= Rarity.Legendary ? "legendary" : best >= Rarity.Epic ? "victory" : "confirm", 1, 1, 0);
             Vfx.I.Burst(new Vector3(0, 1.2f, 0.6f), Palette.Rarity(best), true);
             if (best >= Rarity.Epic) Vfx.I.Shake(0.15f);
             Modal(best == Rarity.Legendary ? "LEGENDARY!" : "Summoned!", 120 + res.Count * 26 + 60, b =>
