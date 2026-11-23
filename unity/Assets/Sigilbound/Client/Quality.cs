@@ -70,6 +70,7 @@ namespace Sigilbound.Client
             QualitySettings.antiAliasing = new[] { 0, 2, 2, 4 }[Tier];
 #endif
             SkillFx.I?.SetTier(Tier);
+            PostFx.SetTier(Tier);
             _acc = 0; _frames = 0; _settle = 3f;
         }
 

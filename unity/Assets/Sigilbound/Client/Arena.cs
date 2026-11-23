@@ -69,6 +69,7 @@ namespace Sigilbound.Client
 
         public void Build(int chapter, bool titan)
         {
+            PostFx.SetArena(chapter, titan, true); // per-arena colour grade (postfx2 presets)
             if (_scenery) Destroy(_scenery);
             _scenery = new GameObject("Scenery");
             var (top, bottom, ground, prop) = titan ? (Palette.Hex("#1a0a0a"), Palette.Hex("#c0401a"), Palette.Hex("#24100c"), Palette.Hex("#100606")) : Palette.Scene(chapter);
@@ -85,12 +86,6 @@ namespace Sigilbound.Client
             var skyMat = CharacterView.Unlit(Color.white); skyMat.mainTexture = Gradient(top, bottom);
             sky.GetComponent<Renderer>().sharedMaterial = skyMat;
 
-            // Ground
-            var g = GameObject.CreatePrimitive(PrimitiveType.Plane);
-            g.transform.SetParent(_scenery.transform);
-            g.transform.localScale = new Vector3(8, 1, 8);
-            var gm = new Material(g.GetComponent<Renderer>().sharedMaterial) { color = ground };
-            g.GetComponent<Renderer>().sharedMaterial = gm;
             // The rune circle: units stand on its rim (BattleLayout.Rim*).
             var circle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             Destroy(circle.GetComponent<Collider>());
@@ -101,36 +96,9 @@ namespace Sigilbound.Client
             RuneRing(1.0f, 0.06f, new Color(1f, 0.81f, 0.42f, 0.55f));
             RuneRing(0.82f, 0.03f, new Color(1f, 0.85f, 0.5f, 0.3f));
 
-            // Scenery props ring the arena, themed loosely per chapter.
-            var rng = new System.Random(chapter * 31 + 3);
-            var propMat = new Material(gm) { color = prop };
-            var glowMat = CharacterView.Unlit(Color.Lerp(bottom, Color.white, 0.3f) * new Color(1, 1, 1, 0.8f));
-            int kind = titan ? 2 : chapter % 5;
-            for (int i = 0; i < 26; i++)
-            {
-                float ang = (float)rng.NextDouble() * Mathf.PI * 2;
-                float rad = 7.5f + (float)rng.NextDouble() * 9f;
-                var pos = new Vector3(Mathf.Cos(ang) * rad, 0, Mathf.Sin(ang) * rad * 0.8f + 5f);
-                if (pos.z < -3.5f) continue; // keep the camera's view clear
-                float s = 0.6f + (float)rng.NextDouble() * 1.4f;
-                switch (kind)
-                {
-                    case 0: // trees
-                        Prop(PrimitiveType.Cylinder, pos + Vector3.up * 0.6f * s, new Vector3(0.25f, 0.6f, 0.25f) * s, propMat);
-                        Prop(PrimitiveType.Capsule, pos + Vector3.up * 2.0f * s, new Vector3(1.4f, 1.6f, 1.4f) * s, propMat);
-                        break;
-                    case 1: case 3: // reeds / stumps
-                        Prop(PrimitiveType.Cylinder, pos + Vector3.up * 0.5f * s, new Vector3(0.12f, 0.5f * s * 2, 0.12f), propMat);
-                        break;
-                    case 2: // jagged rocks
-                        Prop(PrimitiveType.Cube, pos + Vector3.up * 0.7f * s, new Vector3(1.2f, 1.6f, 1.0f) * s, propMat, new Vector3(rng.Next(-15, 15), rng.Next(0, 90), rng.Next(-15, 15)));
-                        break;
-                    default: // ruins / crystals
-                        if (i % 2 == 0) Prop(PrimitiveType.Cube, pos + Vector3.up * 1.2f * s, new Vector3(0.5f, 2.4f, 0.5f) * s, propMat);
-                        else Prop(PrimitiveType.Cube, pos + Vector3.up * 0.8f * s, new Vector3(0.35f, 1.6f, 0.35f) * s, glowMat, new Vector3(0, 45, rng.Next(-20, 20)));
-                        break;
-                }
-            }
+            // Ground, water or lava, scatter, horizon silhouettes and motes (scenery.mjs themes).
+            float density = Quality.I == null ? 1f : new[] { 0.4f, 0.7f, 1f, 1.3f }[Quality.I.Tier];
+            Scenery.Build(_scenery.transform, chapter, titan, density, bottom);
         }
 
         // A glowing ellipse on the ground at `k` times the rim size.
